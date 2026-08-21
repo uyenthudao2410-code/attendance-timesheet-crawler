@@ -1,0 +1,71 @@
+name: Attendance Browser Diagnose
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TZ: Asia/Ho_Chi_Minh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Validate private configuration
+        shell: bash
+        env:
+          ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
+          ATTENDANCE_ARTIFACT_KEY: ${{ secrets.ATTENDANCE_ARTIFACT_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$ATTENDANCE_ROSTER_JSON" || { echo "Missing ATTENDANCE_ROSTER_JSON"; exit 1; }
+          test -n "$ATTENDANCE_ARTIFACT_KEY" || { echo "Missing ATTENDANCE_ARTIFACT_KEY"; exit 1; }
+
+      - name: Capture H5 browser network evidence
+        env:
+          ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
+        run: node scripts/attendance-browser-diagnose.mjs
+
+      - name: Encrypt diagnostic bundle
+        if: always()
+        shell: bash
+        env:
+          ATTENDANCE_ARTIFACT_KEY: ${{ secrets.ATTENDANCE_ARTIFACT_KEY }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          test -d diagnostic
+          tar -czf attendance-browser-diagnostic.tgz diagnostic
+          printf '%s' "$ATTENDANCE_ARTIFACT_KEY" | \
+            openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
+              -pass stdin \
+              -in attendance-browser-diagnostic.tgz \
+              -out attendance-browser-diagnostic.tgz.enc
+          rm -rf diagnostic attendance-browser-diagnostic.tgz
+
+      - name: Upload encrypted diagnostic artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: attendance-browser-diagnostic-${{ github.run_id }}
+          path: attendance-browser-diagnostic.tgz.enc
+          retention-days: 1
+          if-no-files-found: error

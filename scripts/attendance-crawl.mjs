@@ -1,6 +1,7 @@
 import { chromium, devices } from "playwright";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { extractAttendanceFromApiPayloads } from "../src/api-parser.mjs";
 import { extractAttendance } from "../src/parser.mjs";
 
 const TZ = "Asia/Ho_Chi_Minh";
@@ -141,6 +142,48 @@ async function collectVerificationSignals(page, text) {
   };
 }
 
+function safeRequestMetadata(response) {
+  const request = response.request();
+  const headers = request.headers();
+  return {
+    method: request.method(),
+    url: request.url(),
+    post_data: request.postData(),
+    headers: {
+      accept: headers.accept || null,
+      "content-type": headers["content-type"] || null,
+      origin: headers.origin || null,
+      referer: headers.referer || null,
+    },
+  };
+}
+
+function compactSession(session) {
+  if (!session) return null;
+  return { in: session.in ?? null, out: session.out ?? null, minutes: session.minutes ?? null };
+}
+
+function compareParsers(apiAttendance, domAttendance) {
+  if (!apiAttendance) return null;
+  const apiComparable = {
+    status: apiAttendance.status,
+    morning: compactSession(apiAttendance.morning),
+    afternoon: compactSession(apiAttendance.afternoon),
+    total_minutes: apiAttendance.total_minutes,
+  };
+  const domComparable = {
+    status: domAttendance.status,
+    morning: compactSession(domAttendance.morning),
+    afternoon: compactSession(domAttendance.afternoon),
+    total_minutes: domAttendance.total_minutes,
+  };
+  return {
+    agrees: JSON.stringify(apiComparable) === JSON.stringify(domComparable),
+    api: apiComparable,
+    dom: domComparable,
+  };
+}
+
 async function processEmployee(context, employee, targetDate, debugDir) {
   const page = await context.newPage();
   const jsonEndpoints = new Set();
@@ -155,12 +198,14 @@ async function processEmployee(context, employee, targetDate, debugDir) {
       jsonEndpoints.add(`${url.origin}${url.pathname}`);
 
       if (url.hostname === ATTENDANCE_API_HOST && url.pathname === ATTENDANCE_API_PATH) {
+        const request = DEBUG_MODE ? safeRequestMetadata(response) : null;
         const pending = response
           .json()
           .then((body) => {
             attendanceApiPayloads.push({
               status: response.status(),
               endpoint: `${url.origin}${url.pathname}`,
+              ...(request ? { request } : {}),
               body,
             });
           })
@@ -187,15 +232,18 @@ async function processEmployee(context, employee, targetDate, debugDir) {
     }
 
     const navigation = await navigateToReadOnlyTimesheet(page, employee.url);
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(700);
     await Promise.allSettled([...apiResponsePromises]);
 
     const text = navigation.text || (await getReadableText(page));
     if (!text.trim()) throw new Error("Rendered page contains no readable text");
 
-    const attendance = extractAttendance(text, targetDate, {
+    const domAttendance = extractAttendance(text, targetDate, {
       allowTodayLabel: targetDate === currentVNDate(),
     });
+    const apiAttendance = extractAttendanceFromApiPayloads(attendanceApiPayloads, targetDate);
+    const attendance = apiAttendance ?? { ...domAttendance, data_source: "rendered_dom" };
+    const parserCrosscheck = compareParsers(apiAttendance, domAttendance);
     const verification = await collectVerificationSignals(page, text);
 
     if (DEBUG_MODE) {
@@ -206,6 +254,13 @@ async function processEmployee(context, employee, targetDate, debugDir) {
         await fs.writeFile(
           path.join(debugDir, `${slug}-attendance-api.json`),
           JSON.stringify(attendanceApiPayloads, null, 2),
+          "utf8",
+        );
+      }
+      if (parserCrosscheck) {
+        await fs.writeFile(
+          path.join(debugDir, `${slug}-parser-crosscheck.json`),
+          JSON.stringify(parserCrosscheck, null, 2),
           "utf8",
         );
       }
@@ -220,6 +275,7 @@ async function processEmployee(context, employee, targetDate, debugDir) {
       ...attendance,
       verification,
       attendance_api_payload_count: attendanceApiPayloads.length,
+      parser_crosscheck_agrees: parserCrosscheck?.agrees ?? null,
       json_endpoints: [...jsonEndpoints].slice(0, 20),
     };
   } catch (error) {
@@ -268,7 +324,7 @@ async function main() {
   }
 
   const report = {
-    schema_version: 2,
+    schema_version: 3,
     date: targetDate,
     timezone: TZ,
     generated_at: new Date().toISOString(),
@@ -280,12 +336,14 @@ async function main() {
 
   const counts = {
     total: results.length,
+    api: results.filter((item) => item.data_source === "attendance_api").length,
+    dom: results.filter((item) => item.data_source === "rendered_dom").length,
     complete: results.filter((item) => item.status === "complete").length,
     incomplete: results.filter((item) => item.status === "incomplete").length,
     date_not_found: results.filter((item) => item.status === "date_not_found").length,
     technical_error: results.filter((item) => item.status === "technical_error").length,
   };
-  console.log(`Attendance crawl finished: total=${counts.total} complete=${counts.complete} incomplete=${counts.incomplete} date_not_found=${counts.date_not_found} technical_error=${counts.technical_error}`);
+  console.log(`Attendance crawl finished: total=${counts.total} api=${counts.api} dom=${counts.dom} complete=${counts.complete} incomplete=${counts.incomplete} date_not_found=${counts.date_not_found} technical_error=${counts.technical_error}`);
 }
 
 main().catch((error) => {

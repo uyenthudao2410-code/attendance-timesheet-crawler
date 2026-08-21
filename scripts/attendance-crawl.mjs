@@ -5,17 +5,38 @@ import { extractAttendance } from "../src/parser.mjs";
 
 const TZ = "Asia/Ho_Chi_Minh";
 const DEBUG_MODE = String(process.env.DEBUG_MODE || "false").toLowerCase() === "true";
+const ALLOWED_HOSTS = new Set(["h5.timemark.com", "h5.dayscamera.com"]);
 
-const employees = [
-  ["Điêu Văn Mạnh", "ATT_URL_DIEU_VAN_MANH"],
-  ["Nguyễn Thị Thục Anh", "ATT_URL_NGUYEN_THI_THUC_ANH"],
-  ["Vũ Đình Tuệ", "ATT_URL_VU_DINH_TUE"],
-  ["Bùi Duy Hoàng", "ATT_URL_BUI_DUY_HOANG"],
-  ["Nguyễn Thành Long", "ATT_URL_NGUYEN_THANH_LONG"],
-  ["Trần Thanh Bình", "ATT_URL_TRAN_THANH_BINH"],
-  ["Lê Thị Phương Linh", "ATT_URL_LE_THI_PHUONG_LINH"],
-  ["Lê Đăng Hiếu", "ATT_URL_LE_DANG_HIEU"],
-].map(([name, env]) => ({ name, env, url: process.env[env] || "" }));
+function loadPrivateRoster() {
+  const raw = process.env.ATTENDANCE_ROSTER_JSON;
+  if (!raw) throw new Error("Missing repository secret ATTENDANCE_ROSTER_JSON");
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("ATTENDANCE_ROSTER_JSON is not valid JSON");
+  }
+  if (!Array.isArray(parsed) || parsed.length < 1 || parsed.length > 50) {
+    throw new Error("ATTENDANCE_ROSTER_JSON must be an array containing 1-50 employees");
+  }
+
+  return parsed.map((item, index) => {
+    const name = String(item?.name || "").trim();
+    const url = String(item?.url || "").trim();
+    if (!name || !url) throw new Error(`Roster item ${index + 1} must contain name and url`);
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      throw new Error(`Roster item ${index + 1} contains an invalid URL`);
+    }
+    if (parsedUrl.protocol !== "https:" || !ALLOWED_HOSTS.has(parsedUrl.hostname)) {
+      throw new Error(`Roster item ${index + 1} URL is outside the allowed attendance hosts`);
+    }
+    return { name, url };
+  });
+}
 
 function currentVNDate() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -91,7 +112,6 @@ async function navigateToReadOnlyTimesheet(page, originalUrl) {
   }
 
   // Read-only fallback: keep every original parameter and switch only the view selector.
-  // This never calls a clock-in/clock-out control.
   try {
     const fallback = new URL(originalUrl);
     fallback.searchParams.set("attendanceType", "myTimesheet");
@@ -121,15 +141,6 @@ async function collectVerificationSignals(page, text) {
 }
 
 async function processEmployee(context, employee, targetDate, debugDir) {
-  if (!employee.url) {
-    return {
-      name: employee.name,
-      access_ok: false,
-      status: "technical_error",
-      error: `Missing repository secret ${employee.env}`,
-    };
-  }
-
   const page = await context.newPage();
   const jsonEndpoints = new Set();
   page.on("response", (response) => {
@@ -202,6 +213,7 @@ async function processEmployee(context, employee, targetDate, debugDir) {
 }
 
 async function main() {
+  const employees = loadPrivateRoster();
   const targetDate = validDateOrToday(process.env.TARGET_DATE?.trim());
   const outputDir = "output";
   const debugDir = "debug";
@@ -217,7 +229,6 @@ async function main() {
 
   const results = [];
   try {
-    // Sequential processing avoids hammering the attendance service and keeps evidence attributable.
     for (const employee of employees) {
       results.push(await processEmployee(context, employee, targetDate, debugDir));
     }
@@ -244,7 +255,6 @@ async function main() {
     date_not_found: results.filter((item) => item.status === "date_not_found").length,
     technical_error: results.filter((item) => item.status === "technical_error").length,
   };
-  // Deliberately do not print attendance times, locations, URLs, page text or device IDs to public Actions logs.
   console.log(`Attendance crawl finished: total=${counts.total} complete=${counts.complete} incomplete=${counts.incomplete} date_not_found=${counts.date_not_found} technical_error=${counts.technical_error}`);
 }
 

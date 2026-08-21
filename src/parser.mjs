@@ -89,7 +89,7 @@ export function selectDateScope(rawText, isoDate, { allowTodayLabel = false } = 
   }
 
   end = Math.min(end, start + 160);
-  const scopedLines = lines.slice(Math.max(0, start - 3), end);
+  const scopedLines = lines.slice(start, end);
   return {
     found: true,
     matched_by: matchedBy,
@@ -105,17 +105,14 @@ function normalizeState(value) {
 export function parseTableRecords(rawText, isoDate) {
   vietnamDateParts(isoDate);
   const text = String(rawText || "").replace(/\u00a0/g, " ").replace(/\r/g, "");
-  const dateToken = "(?:20\\d{2}[\\/-](?:0?[1-9]|1[0-2])[\\/-](?:0?[1-9]|[12]\\d|3[01])|(?:0?[1-9]|[12]\\d|3[01])[\\/-](?:0?[1-9]|1[0-2])[\\/-]20\\d{2})";
-  const regex = new RegExp(`(?:Vào\\s*ca|Tan\\s*ca|Time\\s*In|Time\\s*Out|Clock\\s*in|Clock\\s*out|Check\\s*in|Check\\s*out)\\s+((?:[01]?\\d|2[0-3]):[0-5]\\d)\\s+(${dateToken})`, "gi");
+  const regex = /\b(Vào\s*ca|Tan\s*ca|Time\s*In|Time\s*Out|Clock\s*in|Clock\s*out|Check\s*in|Check\s*out)\s+((?:[01]?\d|2[0-3]):[0-5]\d)\s+(20\d{2}[\/-](?:0?[1-9]|1[0-2])[\/-](?:0?[1-9]|[12]\d|3[01])|(?:0?[1-9]|[12]\d|3[01])[\/-](?:0?[1-9]|1[0-2])[\/-]20\d{2})/gi;
   const records = [];
   const seen = new Set();
 
   for (const match of text.matchAll(regex)) {
-    const full = match[0];
-    const stateMatch = full.match(/^(?:Vào\s*ca|Tan\s*ca|Time\s*In|Time\s*Out|Clock\s*in|Clock\s*out|Check\s*in|Check\s*out)/i);
-    const state = normalizeState(stateMatch?.[0]);
-    const time = normalizeTime(match[1]);
-    const date = normalizeDateToken(match[2]);
+    const state = normalizeState(match[1]);
+    const time = normalizeTime(match[2]);
+    const date = normalizeDateToken(match[3]);
     if (!time || date !== isoDate) continue;
     const key = `${state}|${time}|${date}`;
     if (seen.has(key)) continue;

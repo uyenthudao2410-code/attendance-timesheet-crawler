@@ -1,0 +1,17 @@
+{
+  "name": "attendance-timesheet-crawler",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Read-only TimeMark/DaysCamera attendance crawler for GitHub Actions",
+  "scripts": {
+    "test": "node --test",
+    "crawl": "node scripts/attendance-crawl.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "playwright": "^1.55.0"
+  }
+}

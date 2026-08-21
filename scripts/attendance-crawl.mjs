@@ -2,6 +2,7 @@ import { chromium, devices } from "playwright";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { extractAttendanceFromApiPayloads } from "../src/api-parser.mjs";
+import { fetchDirectAttendancePayload } from "../src/direct-api-client.mjs";
 import { extractAttendance } from "../src/parser.mjs";
 
 const TZ = "Asia/Ho_Chi_Minh";
@@ -136,9 +137,27 @@ async function collectVerificationSignals(page, text) {
     // Signals are advisory only.
   }
   return {
+    source: "rendered_dom",
     photo_element_count: imageCount,
     map_element_count: mapLikeCount,
     location_text_present: /(Địa\s*chỉ|Vị\s*trí|Location|Hà\s*Nội|Phường|P\.|Quận|Q\.|Huyện)/i.test(text),
+  };
+}
+
+function collectApiVerification(attendance) {
+  const evidence = [attendance?.morning?.evidence, attendance?.afternoon?.evidence].filter(Boolean);
+  const photoPresent = evidence.some((item) => item.in_photo_present || item.out_photo_present);
+  const locationPresent = evidence.some((item) => item.in_address || item.out_address);
+  const coordinatesPresent = evidence.some(
+    (item) =>
+      (item.in_lat != null && item.in_lng != null) ||
+      (item.out_lat != null && item.out_lng != null),
+  );
+  return {
+    source: "attendance_api",
+    photo_evidence_present: photoPresent,
+    location_evidence_present: locationPresent,
+    coordinate_evidence_present: coordinatesPresent,
   };
 }
 
@@ -184,7 +203,50 @@ function compareParsers(apiAttendance, domAttendance) {
   };
 }
 
-async function processEmployee(context, employee, targetDate, debugDir) {
+async function saveEncryptedDebugJson(debugDir, employeeName, suffix, value) {
+  if (!DEBUG_MODE) return;
+  const slug = slugify(employeeName);
+  await fs.writeFile(path.join(debugDir, `${slug}-${suffix}.json`), JSON.stringify(value, null, 2), "utf8");
+}
+
+async function tryDirectApi(employee, targetDate, debugDir) {
+  try {
+    const payload = await fetchDirectAttendancePayload(employee.url, targetDate);
+    await saveEncryptedDebugJson(debugDir, employee.name, "direct-api", payload);
+    const parsed = extractAttendanceFromApiPayloads([payload], targetDate);
+    if (!parsed) return { ok: false, reason: "invalid_api_envelope" };
+    return {
+      ok: true,
+      payload,
+      attendance: { ...parsed, data_source: "attendance_api_direct" },
+    };
+  } catch (error) {
+    if (DEBUG_MODE) {
+      await saveEncryptedDebugJson(debugDir, employee.name, "direct-api-error", { error: safeError(error) });
+    }
+    return { ok: false, reason: safeError(error) };
+  }
+}
+
+async function processEmployee(getBrowserContext, employee, targetDate, debugDir) {
+  const direct = await tryDirectApi(employee, targetDate, debugDir);
+  if (direct.ok) {
+    const attendance = direct.attendance;
+    return {
+      name: employee.name,
+      access_ok: true,
+      http_status: direct.payload.status,
+      page_title: null,
+      navigation_method: "direct_api",
+      ...attendance,
+      verification: collectApiVerification(attendance),
+      attendance_api_payload_count: 1,
+      parser_crosscheck_agrees: null,
+      json_endpoints: [direct.payload.endpoint],
+    };
+  }
+
+  const context = await getBrowserContext();
   const page = await context.newPage();
   const jsonEndpoints = new Set();
   const attendanceApiPayloads = [];
@@ -241,28 +303,25 @@ async function processEmployee(context, employee, targetDate, debugDir) {
     const domAttendance = extractAttendance(text, targetDate, {
       allowTodayLabel: targetDate === currentVNDate(),
     });
-    const apiAttendance = extractAttendanceFromApiPayloads(attendanceApiPayloads, targetDate);
+    const apiAttendanceRaw = extractAttendanceFromApiPayloads(attendanceApiPayloads, targetDate);
+    const apiAttendance = apiAttendanceRaw
+      ? { ...apiAttendanceRaw, data_source: "attendance_api_browser" }
+      : null;
     const attendance = apiAttendance ?? { ...domAttendance, data_source: "rendered_dom" };
     const parserCrosscheck = compareParsers(apiAttendance, domAttendance);
-    const verification = await collectVerificationSignals(page, text);
+    const verification = apiAttendance
+      ? collectApiVerification(apiAttendance)
+      : await collectVerificationSignals(page, text);
 
     if (DEBUG_MODE) {
       const slug = slugify(employee.name);
       await fs.writeFile(path.join(debugDir, `${slug}.txt`), text, "utf8");
       await page.screenshot({ path: path.join(debugDir, `${slug}.png`), fullPage: true });
       if (attendanceApiPayloads.length) {
-        await fs.writeFile(
-          path.join(debugDir, `${slug}-attendance-api.json`),
-          JSON.stringify(attendanceApiPayloads, null, 2),
-          "utf8",
-        );
+        await saveEncryptedDebugJson(debugDir, employee.name, "attendance-api", attendanceApiPayloads);
       }
       if (parserCrosscheck) {
-        await fs.writeFile(
-          path.join(debugDir, `${slug}-parser-crosscheck.json`),
-          JSON.stringify(parserCrosscheck, null, 2),
-          "utf8",
-        );
+        await saveEncryptedDebugJson(debugDir, employee.name, "parser-crosscheck", parserCrosscheck);
       }
     }
 
@@ -272,6 +331,7 @@ async function processEmployee(context, employee, targetDate, debugDir) {
       http_status: response?.status() ?? null,
       page_title: await page.title(),
       navigation_method: navigation.method,
+      direct_api_fallback_reason: direct.reason,
       ...attendance,
       verification,
       attendance_api_payload_count: attendanceApiPayloads.length,
@@ -292,6 +352,7 @@ async function processEmployee(context, employee, targetDate, debugDir) {
       access_ok: false,
       status: "technical_error",
       error: safeError(error),
+      direct_api_fallback_reason: direct.reason,
     };
   } finally {
     await page.close();
@@ -306,25 +367,31 @@ async function main() {
   await fs.mkdir(outputDir, { recursive: true });
   if (DEBUG_MODE) await fs.mkdir(debugDir, { recursive: true });
 
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({
-    ...devices["iPhone 13"],
-    locale: "vi-VN",
-    timezoneId: TZ,
-  });
+  let browser = null;
+  let context = null;
+  const getBrowserContext = async () => {
+    if (context) return context;
+    browser = await chromium.launch({ headless: true });
+    context = await browser.newContext({
+      ...devices["iPhone 13"],
+      locale: "vi-VN",
+      timezoneId: TZ,
+    });
+    return context;
+  };
 
   const results = [];
   try {
     for (const employee of employees) {
-      results.push(await processEmployee(context, employee, targetDate, debugDir));
+      results.push(await processEmployee(getBrowserContext, employee, targetDate, debugDir));
     }
   } finally {
-    await context.close();
-    await browser.close();
+    if (context) await context.close();
+    if (browser) await browser.close();
   }
 
   const report = {
-    schema_version: 3,
+    schema_version: 4,
     date: targetDate,
     timezone: TZ,
     generated_at: new Date().toISOString(),
@@ -336,14 +403,17 @@ async function main() {
 
   const counts = {
     total: results.length,
-    api: results.filter((item) => item.data_source === "attendance_api").length,
+    direct_api: results.filter((item) => item.data_source === "attendance_api_direct").length,
+    browser_api: results.filter((item) => item.data_source === "attendance_api_browser").length,
     dom: results.filter((item) => item.data_source === "rendered_dom").length,
     complete: results.filter((item) => item.status === "complete").length,
     incomplete: results.filter((item) => item.status === "incomplete").length,
     date_not_found: results.filter((item) => item.status === "date_not_found").length,
     technical_error: results.filter((item) => item.status === "technical_error").length,
   };
-  console.log(`Attendance crawl finished: total=${counts.total} api=${counts.api} dom=${counts.dom} complete=${counts.complete} incomplete=${counts.incomplete} date_not_found=${counts.date_not_found} technical_error=${counts.technical_error}`);
+  console.log(
+    `Attendance crawl finished: total=${counts.total} direct_api=${counts.direct_api} browser_api=${counts.browser_api} dom=${counts.dom} complete=${counts.complete} incomplete=${counts.incomplete} date_not_found=${counts.date_not_found} technical_error=${counts.technical_error}`,
+  );
 }
 
 main().catch((error) => {

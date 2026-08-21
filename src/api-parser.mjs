@@ -45,25 +45,56 @@ function normalizeApiRecord(raw) {
   };
 }
 
-export function normalizeAttendanceApiRecords(payloads, isoDate) {
+function dedupeRecords(records) {
   const seen = new Set();
-  const records = [];
+  const result = [];
+  for (const record of records) {
+    const key = record.record_seq != null
+      ? `seq:${record.record_seq}`
+      : `${record.state}|${record.time}|${record.date}|${record.lat}|${record.lng}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(record);
+  }
+  return result;
+}
 
+function normalizedRecordsFromPayloads(payloads) {
+  const records = [];
   for (const payload of Array.isArray(payloads) ? payloads : []) {
     if (!validApiEnvelope(payload)) continue;
     for (const raw of payload.body.data.records) {
       const record = normalizeApiRecord(raw);
-      if (!record || record.date !== isoDate) continue;
-      const key = record.record_seq != null
-        ? `seq:${record.record_seq}`
-        : `${record.state}|${record.time}|${record.date}|${record.lat}|${record.lng}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      records.push(record);
+      if (record) records.push(record);
     }
   }
+  return dedupeRecords(records);
+}
 
-  return records.sort((a, b) => (b.record_seq ?? 0) - (a.record_seq ?? 0));
+export function normalizeAttendanceApiRecords(payloads, isoDate) {
+  return normalizedRecordsFromPayloads(payloads)
+    .filter((record) => record.date === isoDate)
+    .sort((a, b) => (b.record_seq ?? 0) - (a.record_seq ?? 0));
+}
+
+export function summarizeAttendanceApiHistory(payloads, targetDate = null) {
+  const validPayloads = (Array.isArray(payloads) ? payloads : []).filter(validApiEnvelope);
+  if (!validPayloads.length) return null;
+  const records = normalizedRecordsFromPayloads(validPayloads).sort((a, b) => {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return (b.record_seq ?? 0) - (a.record_seq ?? 0);
+  });
+  const totalAvailableRecords = Math.max(
+    0,
+    ...validPayloads.map((payload) => Number(payload?.body?.data?.totalNum) || 0),
+  );
+  return {
+    history_record_count: records.length,
+    api_total_available_records: totalAvailableRecords,
+    latest_record_date: records[0]?.date ?? null,
+    earliest_record_date: records.at(-1)?.date ?? null,
+    target_date_present: targetDate ? records.some((record) => record.date === targetDate) : null,
+  };
 }
 
 function apiRecordsAsTimesheetText(records) {
@@ -100,12 +131,25 @@ function durationConsistency(session) {
     : "mismatch";
 }
 
+export function minutesToHourMetrics(minutes) {
+  if (!Number.isInteger(minutes) || minutes < 0) {
+    return { hours_decimal: null, hours_display: null };
+  }
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return {
+    hours_decimal: Number((minutes / 60).toFixed(2)),
+    hours_display: `${hours}h${String(mins).padStart(2, "0")}`,
+  };
+}
+
 function attachEvidence(session, records) {
   if (!session) return null;
   const input = session.in ? bestEvidenceRecord(records, "in", session.in) : null;
   const output = session.out ? bestEvidenceRecord(records, "out", session.out) : null;
   return {
     ...session,
+    ...minutesToHourMetrics(session.minutes),
     duration_consistency: durationConsistency(session),
     evidence: {
       in_record_seq: input?.record_seq ?? null,
@@ -140,12 +184,14 @@ export function extractAttendanceFromApiPayloads(payloads, isoDate) {
     ...validPayloads.map((payload) => Number(payload?.body?.data?.totalNum) || 0),
   );
   const reviewRequired = durationMismatches.length > 0;
+  const trustedTotalMinutes = reviewRequired ? null : parsed.total_minutes;
 
   return {
     ...parsed,
     morning,
     afternoon,
-    total_minutes: reviewRequired ? null : parsed.total_minutes,
+    total_minutes: trustedTotalMinutes,
+    ...minutesToHourMetrics(trustedTotalMinutes),
     status: reviewRequired ? "review_required" : parsed.status,
     data_source: "attendance_api",
     validation: {

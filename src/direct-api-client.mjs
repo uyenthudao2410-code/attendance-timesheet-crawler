@@ -1,5 +1,6 @@
 const API_URL = "https://app.dayscamera.com/next/attendance/record/query/plain";
 const VIETNAM_OFFSET = "+07:00";
+const DAY_SECONDS = 24 * 60 * 60;
 
 export function extractDeviceId(attendanceUrl) {
   const parsed = new URL(attendanceUrl);
@@ -16,21 +17,24 @@ export function targetDateEpochRange(isoDate) {
   if (!Number.isFinite(startTimestamp)) throw new Error("Invalid target date");
   return {
     startTimestamp,
-    endTimestamp: startTimestamp + 24 * 60 * 60 - 1,
+    endTimestamp: startTimestamp + DAY_SECONDS - 1,
   };
 }
 
-export function buildDirectApiRequest(attendanceUrl, isoDate) {
+export function targetDateHistoryEpochRange(isoDate, days = 45) {
+  if (!Number.isInteger(days) || days < 1 || days > 90) {
+    throw new Error("History days must be an integer between 1 and 90");
+  }
+  const target = targetDateEpochRange(isoDate);
+  return {
+    startTimestamp: target.startTimestamp - (days - 1) * DAY_SECONDS,
+    endTimestamp: target.endTimestamp,
+  };
+}
+
+function buildApiRequest(attendanceUrl, range, pageSize) {
   const sourceUrl = new URL(attendanceUrl);
   const deviceId = extractDeviceId(attendanceUrl);
-  const { startTimestamp, endTimestamp } = targetDateEpochRange(isoDate);
-  const body = {
-    device_id: deviceId,
-    startTimestamp,
-    endTimestamp,
-    page: 1,
-    pageSize: 100,
-  };
   return {
     url: API_URL,
     method: "POST",
@@ -39,13 +43,26 @@ export function buildDirectApiRequest(attendanceUrl, isoDate) {
       "content-type": "application/json",
       referer: `${sourceUrl.origin}/`,
     },
-    body,
+    body: {
+      device_id: deviceId,
+      startTimestamp: range.startTimestamp,
+      endTimestamp: range.endTimestamp,
+      page: 1,
+      pageSize,
+    },
   };
 }
 
-export async function fetchDirectAttendancePayload(attendanceUrl, isoDate, { fetchImpl = globalThis.fetch } = {}) {
+export function buildDirectApiRequest(attendanceUrl, isoDate) {
+  return buildApiRequest(attendanceUrl, targetDateEpochRange(isoDate), 100);
+}
+
+export function buildDirectApiHistoryRequest(attendanceUrl, isoDate, days = 45) {
+  return buildApiRequest(attendanceUrl, targetDateHistoryEpochRange(isoDate, days), 500);
+}
+
+async function executeApiRequest(request, fetchImpl) {
   if (typeof fetchImpl !== "function") throw new Error("Fetch implementation unavailable");
-  const request = buildDirectApiRequest(attendanceUrl, isoDate);
   const response = await fetchImpl(request.url, {
     method: request.method,
     headers: request.headers,
@@ -71,4 +88,16 @@ export async function fetchDirectAttendancePayload(attendanceUrl, isoDate, { fet
     },
     body,
   };
+}
+
+export async function fetchDirectAttendancePayload(attendanceUrl, isoDate, { fetchImpl = globalThis.fetch } = {}) {
+  return executeApiRequest(buildDirectApiRequest(attendanceUrl, isoDate), fetchImpl);
+}
+
+export async function fetchDirectAttendanceHistoryPayload(
+  attendanceUrl,
+  isoDate,
+  { fetchImpl = globalThis.fetch, days = 45 } = {},
+) {
+  return executeApiRequest(buildDirectApiHistoryRequest(attendanceUrl, isoDate, days), fetchImpl);
 }

@@ -59,8 +59,8 @@ function normalizeDateToken(value) {
 }
 
 function looksLikeDateLine(line) {
-  return /\b(?:0?[1-9]|[12]\d|3[01])[\/-](?:0?[1-9]|1[0-2])[\/-]20\d{2}\b/.test(line) ||
-    /\b20\d{2}[\/-](?:0?[1-9]|1[0-2])[\/-](?:0?[1-9]|[12]\d|3[01])\b/.test(line);
+  return /\b(?:3[01]|[12]\d|0?[1-9])[\/-](?:1[0-2]|0?[1-9])[\/-]20\d{2}\b/.test(line) ||
+    /\b20\d{2}[\/-](?:1[0-2]|0?[1-9])[\/-](?:3[01]|[12]\d|0?[1-9])\b/.test(line);
 }
 
 export function selectDateScope(rawText, isoDate, { allowTodayLabel = false } = {}) {
@@ -105,7 +105,7 @@ function normalizeState(value) {
 export function parseTableRecords(rawText, isoDate) {
   vietnamDateParts(isoDate);
   const text = String(rawText || "").replace(/\u00a0/g, " ").replace(/\r/g, "");
-  const regex = /\b(Vào\s*ca|Tan\s*ca|Time\s*In|Time\s*Out|Clock\s*in|Clock\s*out|Check\s*in|Check\s*out)\s+((?:[01]?\d|2[0-3]):[0-5]\d)\s+(20\d{2}[\/-](?:0?[1-9]|1[0-2])[\/-](?:0?[1-9]|[12]\d|3[01])|(?:0?[1-9]|[12]\d|3[01])[\/-](?:0?[1-9]|1[0-2])[\/-]20\d{2})/gi;
+  const regex = /\b(Vào\s*ca|Tan\s*ca|Time\s*In|Time\s*Out|Clock\s*in|Clock\s*out|Check\s*in|Check\s*out)\s+((?:[01]?\d|2[0-3]):[0-5]\d)\s+(20\d{2}[\/-](?:1[0-2]|0?[1-9])[\/-](?:3[01]|[12]\d|0?[1-9])|(?:3[01]|[12]\d|0?[1-9])[\/-](?:1[0-2]|0?[1-9])[\/-]20\d{2})\b/gi;
   const records = [];
   const seen = new Set();
 

@@ -4,11 +4,11 @@ GitHub Actions + Playwright crawler for reading TimeMark / DaysCamera attendance
 
 ## Security model
 
-This repository is intentionally public, but attendance URLs, `deviceId` values, screenshots, locations and attendance results are **not** public source data.
+This repository is intentionally public, but employee names, attendance URLs, `deviceId` values, screenshots, locations and attendance results are **not** public source data.
 
-- Employee URLs are supplied only through GitHub Actions repository secrets.
+- The complete employee roster is supplied through one GitHub Actions repository secret.
 - The crawler never performs clock-in / clock-out actions; it is read-only.
-- Scheduled runs do not print attendance times, locations or page text to Actions logs.
+- Scheduled runs do not print employee names, attendance times, locations, URLs or page text to Actions logs.
 - Result files are encrypted before being uploaded as workflow artifacts.
 - Raw text/screenshots are disabled for scheduled runs. Debug evidence is produced only on manual runs and is encrypted before upload.
 
@@ -18,19 +18,26 @@ The workflow runs at `11:45 UTC`, equivalent to `18:45 Asia/Ho_Chi_Minh`, every 
 
 ## Required repository secrets
 
-Create these GitHub Actions secrets:
+Create exactly these two GitHub Actions secrets:
 
-- `ATT_URL_DIEU_VAN_MANH`
-- `ATT_URL_NGUYEN_THI_THUC_ANH`
-- `ATT_URL_VU_DINH_TUE`
-- `ATT_URL_BUI_DUY_HOANG`
-- `ATT_URL_NGUYEN_THANH_LONG`
-- `ATT_URL_TRAN_THANH_BINH`
-- `ATT_URL_LE_THI_PHUONG_LINH`
-- `ATT_URL_LE_DANG_HIEU`
-- `ATTENDANCE_ARTIFACT_KEY`
+### `ATTENDANCE_ROSTER_JSON`
 
-Keep each original H5 URL exactly as supplied by the attendance app.
+A JSON array containing the private employee name and original H5 URL. Example with placeholders only:
+
+```json
+[
+  { "name": "Employee 1", "url": "https://h5.timemark.com/attendance-management?..." },
+  { "name": "Employee 2", "url": "https://h5.dayscamera.com/attendance-management?..." }
+]
+```
+
+Keep every original H5 URL exactly as supplied by the attendance app. The crawler accepts only HTTPS URLs on `h5.timemark.com` and `h5.dayscamera.com`.
+
+### `ATTENDANCE_ARTIFACT_KEY`
+
+A strong private passphrase used to encrypt workflow results before artifact upload. Store it only as a repository secret and in your own secure password manager.
+
+GitHub path: **Repository > Settings > Secrets and variables > Actions > New repository secret**.
 
 ## Output
 
@@ -48,17 +55,21 @@ The crawler normalizes each employee to:
 }
 ```
 
-The plaintext JSON exists only inside the temporary GitHub runner. Before artifact upload it is encrypted with AES-256-CBC/PBKDF2 using `ATTENDANCE_ARTIFACT_KEY`.
+The plaintext JSON exists only inside the temporary GitHub runner. Before artifact upload, the runner packs the result and encrypts it with AES-256-CBC + PBKDF2 using `ATTENDANCE_ARTIFACT_KEY`. Only the `.enc` file is uploaded.
 
 ## Local test
 
 ```bash
-npm ci
-npx playwright install chromium
+npm install
 npm test
+npx playwright install chromium
 ```
 
-To crawl locally, define the 8 `ATT_URL_*` variables and `node scripts/attendance-crawl.mjs`.
+To crawl locally, set `ATTENDANCE_ROSTER_JSON`, then run:
+
+```bash
+npm run crawl
+```
 
 ## Parser strategy
 
@@ -70,6 +81,10 @@ To crawl locally, define the 8 `ATT_URL_*` variables and `node scripts/attendanc
 6. Fall back to separate `Vào ca` / `Tan ca` timestamps only when a paired interval is unavailable.
 7. Distinguish crawler/access failure from a genuinely missing attendance mark.
 
+## Manual debug run
+
+Use **Actions > Attendance Crawl > Run workflow** and enable `debug=true`. Raw page text and screenshots are bundled only inside the encrypted artifact. Do not expose decrypted debug files publicly.
+
 ## Privacy note
 
-Do not commit real attendance JSON, screenshots, raw page text, webhook URLs or employee H5 links to this public repository.
+Do not commit real employee names, attendance JSON, screenshots, raw page text, webhook URLs or employee H5 links to this public repository.

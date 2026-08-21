@@ -1,8 +1,14 @@
 import { chromium, devices } from "playwright";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { extractAttendanceFromApiPayloads } from "../src/api-parser.mjs";
-import { fetchDirectAttendancePayload } from "../src/direct-api-client.mjs";
+import {
+  extractAttendanceFromApiPayloads,
+  summarizeAttendanceApiHistory,
+} from "../src/api-parser.mjs";
+import {
+  fetchDirectAttendanceHistoryPayload,
+  fetchDirectAttendancePayload,
+} from "../src/direct-api-client.mjs";
 import { extractAttendance } from "../src/parser.mjs";
 
 const TZ = "Asia/Ho_Chi_Minh";
@@ -215,10 +221,65 @@ async function tryDirectApi(employee, targetDate, debugDir) {
     await saveEncryptedDebugJson(debugDir, employee.name, "direct-api", payload);
     const parsed = extractAttendanceFromApiPayloads([payload], targetDate);
     if (!parsed) return { ok: false, reason: "invalid_api_envelope" };
+
+    let attendance = { ...parsed, data_source: "attendance_api_direct" };
+    let historyPayload = null;
+
+    if (parsed.status === "date_not_found") {
+      try {
+        historyPayload = await fetchDirectAttendanceHistoryPayload(employee.url, targetDate);
+        await saveEncryptedDebugJson(debugDir, employee.name, "direct-api-history", historyPayload);
+        const historySummary = summarizeAttendanceApiHistory([historyPayload], targetDate);
+        const historyParsed = extractAttendanceFromApiPayloads([historyPayload], targetDate);
+
+        if (historyParsed && historyParsed.status !== "date_not_found") {
+          attendance = {
+            ...historyParsed,
+            data_source: "attendance_api_direct_history",
+            device_history: {
+              ...historySummary,
+              interpretation: "target_date_recovered_from_history_query",
+            },
+          };
+        } else {
+          attendance = {
+            ...attendance,
+            device_history: historySummary
+              ? {
+                  ...historySummary,
+                  interpretation: historySummary.history_record_count > 0
+                    ? "history_exists_but_no_target_date"
+                    : "device_history_empty",
+                }
+              : {
+                  history_record_count: null,
+                  latest_record_date: null,
+                  earliest_record_date: null,
+                  target_date_present: null,
+                  interpretation: "history_check_unavailable",
+                },
+          };
+        }
+      } catch (historyError) {
+        attendance = {
+          ...attendance,
+          device_history: {
+            history_record_count: null,
+            latest_record_date: null,
+            earliest_record_date: null,
+            target_date_present: null,
+            interpretation: "history_check_error",
+            error: safeError(historyError),
+          },
+        };
+      }
+    }
+
     return {
       ok: true,
       payload,
-      attendance: { ...parsed, data_source: "attendance_api_direct" },
+      historyPayload,
+      attendance,
     };
   } catch (error) {
     if (DEBUG_MODE) {
@@ -240,7 +301,7 @@ async function processEmployee(getBrowserContext, employee, targetDate, debugDir
       navigation_method: "direct_api",
       ...attendance,
       verification: collectApiVerification(attendance),
-      attendance_api_payload_count: 1,
+      attendance_api_payload_count: direct.historyPayload ? 2 : 1,
       parser_crosscheck_agrees: null,
       json_endpoints: [direct.payload.endpoint],
     };
@@ -391,7 +452,7 @@ async function main() {
   }
 
   const report = {
-    schema_version: 4,
+    schema_version: 5,
     date: targetDate,
     timezone: TZ,
     generated_at: new Date().toISOString(),
@@ -404,15 +465,17 @@ async function main() {
   const counts = {
     total: results.length,
     direct_api: results.filter((item) => item.data_source === "attendance_api_direct").length,
+    direct_api_history: results.filter((item) => item.data_source === "attendance_api_direct_history").length,
     browser_api: results.filter((item) => item.data_source === "attendance_api_browser").length,
     dom: results.filter((item) => item.data_source === "rendered_dom").length,
     complete: results.filter((item) => item.status === "complete").length,
     incomplete: results.filter((item) => item.status === "incomplete").length,
+    review_required: results.filter((item) => item.status === "review_required").length,
     date_not_found: results.filter((item) => item.status === "date_not_found").length,
     technical_error: results.filter((item) => item.status === "technical_error").length,
   };
   console.log(
-    `Attendance crawl finished: total=${counts.total} direct_api=${counts.direct_api} browser_api=${counts.browser_api} dom=${counts.dom} complete=${counts.complete} incomplete=${counts.incomplete} date_not_found=${counts.date_not_found} technical_error=${counts.technical_error}`,
+    `Attendance crawl finished: total=${counts.total} direct_api=${counts.direct_api} direct_api_history=${counts.direct_api_history} browser_api=${counts.browser_api} dom=${counts.dom} complete=${counts.complete} incomplete=${counts.incomplete} review_required=${counts.review_required} date_not_found=${counts.date_not_found} technical_error=${counts.technical_error}`,
   );
 }
 

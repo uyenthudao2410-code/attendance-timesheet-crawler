@@ -52,47 +52,17 @@ jobs:
 
       - name: Validate private configuration
         env:
+          ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
           ATTENDANCE_ARTIFACT_KEY: ${{ secrets.ATTENDANCE_ARTIFACT_KEY }}
-          ATT_URL_DIEU_VAN_MANH: ${{ secrets.ATT_URL_DIEU_VAN_MANH }}
-          ATT_URL_NGUYEN_THI_THUC_ANH: ${{ secrets.ATT_URL_NGUYEN_THI_THUC_ANH }}
-          ATT_URL_VU_DINH_TUE: ${{ secrets.ATT_URL_VU_DINH_TUE }}
-          ATT_URL_BUI_DUY_HOANG: ${{ secrets.ATT_URL_BUI_DUY_HOANG }}
-          ATT_URL_NGUYEN_THANH_LONG: ${{ secrets.ATT_URL_NGUYEN_THANH_LONG }}
-          ATT_URL_TRAN_THANH_BINH: ${{ secrets.ATT_URL_TRAN_THANH_BINH }}
-          ATT_URL_LE_THI_PHUONG_LINH: ${{ secrets.ATT_URL_LE_THI_PHUONG_LINH }}
-          ATT_URL_LE_DANG_HIEU: ${{ secrets.ATT_URL_LE_DANG_HIEU }}
         shell: bash
         run: |
           set -euo pipefail
-          missing=0
-          for name in \
-            ATTENDANCE_ARTIFACT_KEY \
-            ATT_URL_DIEU_VAN_MANH \
-            ATT_URL_NGUYEN_THI_THUC_ANH \
-            ATT_URL_VU_DINH_TUE \
-            ATT_URL_BUI_DUY_HOANG \
-            ATT_URL_NGUYEN_THANH_LONG \
-            ATT_URL_TRAN_THANH_BINH \
-            ATT_URL_LE_THI_PHUONG_LINH \
-            ATT_URL_LE_DANG_HIEU
-          do
-            if [ -z "${!name:-}" ]; then
-              echo "Missing required repository secret: $name"
-              missing=1
-            fi
-          done
-          exit "$missing"
+          test -n "$ATTENDANCE_ROSTER_JSON" || { echo "Missing required repository secret: ATTENDANCE_ROSTER_JSON"; exit 1; }
+          test -n "$ATTENDANCE_ARTIFACT_KEY" || { echo "Missing required repository secret: ATTENDANCE_ARTIFACT_KEY"; exit 1; }
 
       - name: Crawl attendance pages
         env:
-          ATT_URL_DIEU_VAN_MANH: ${{ secrets.ATT_URL_DIEU_VAN_MANH }}
-          ATT_URL_NGUYEN_THI_THUC_ANH: ${{ secrets.ATT_URL_NGUYEN_THI_THUC_ANH }}
-          ATT_URL_VU_DINH_TUE: ${{ secrets.ATT_URL_VU_DINH_TUE }}
-          ATT_URL_BUI_DUY_HOANG: ${{ secrets.ATT_URL_BUI_DUY_HOANG }}
-          ATT_URL_NGUYEN_THANH_LONG: ${{ secrets.ATT_URL_NGUYEN_THANH_LONG }}
-          ATT_URL_TRAN_THANH_BINH: ${{ secrets.ATT_URL_TRAN_THANH_BINH }}
-          ATT_URL_LE_THI_PHUONG_LINH: ${{ secrets.ATT_URL_LE_THI_PHUONG_LINH }}
-          ATT_URL_LE_DANG_HIEU: ${{ secrets.ATT_URL_LE_DANG_HIEU }}
+          ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
         run: node scripts/attendance-crawl.mjs
 
       - name: Encrypt result before artifact upload

@@ -6,6 +6,8 @@ import { extractAttendance } from "../src/parser.mjs";
 const TZ = "Asia/Ho_Chi_Minh";
 const DEBUG_MODE = String(process.env.DEBUG_MODE || "false").toLowerCase() === "true";
 const ALLOWED_HOSTS = new Set(["h5.timemark.com", "h5.dayscamera.com"]);
+const ATTENDANCE_API_HOST = "app.dayscamera.com";
+const ATTENDANCE_API_PATH = "/next/attendance/record/query/plain";
 
 function loadPrivateRoster() {
   const raw = process.env.ATTENDANCE_ROSTER_JSON;
@@ -111,7 +113,6 @@ async function navigateToReadOnlyTimesheet(page, originalUrl) {
     }
   }
 
-  // Read-only fallback: keep every original parameter and switch only the view selector.
   try {
     const fallback = new URL(originalUrl);
     fallback.searchParams.set("attendanceType", "myTimesheet");
@@ -143,12 +144,30 @@ async function collectVerificationSignals(page, text) {
 async function processEmployee(context, employee, targetDate, debugDir) {
   const page = await context.newPage();
   const jsonEndpoints = new Set();
+  const attendanceApiPayloads = [];
+  const apiResponsePromises = [];
+
   page.on("response", (response) => {
     try {
       const headers = response.headers();
-      if ((headers["content-type"] || "").includes("application/json")) {
-        const url = new URL(response.url());
-        jsonEndpoints.add(`${url.origin}${url.pathname}`);
+      if (!(headers["content-type"] || "").includes("application/json")) return;
+      const url = new URL(response.url());
+      jsonEndpoints.add(`${url.origin}${url.pathname}`);
+
+      if (url.hostname === ATTENDANCE_API_HOST && url.pathname === ATTENDANCE_API_PATH) {
+        const pending = response
+          .json()
+          .then((body) => {
+            attendanceApiPayloads.push({
+              status: response.status(),
+              endpoint: `${url.origin}${url.pathname}`,
+              body,
+            });
+          })
+          .catch(() => {
+            // The DOM parser remains the safe fallback if one response cannot be decoded.
+          });
+        apiResponsePromises.push(pending);
       }
     } catch {
       // Network metadata is best-effort and never blocks attendance extraction.
@@ -168,6 +187,9 @@ async function processEmployee(context, employee, targetDate, debugDir) {
     }
 
     const navigation = await navigateToReadOnlyTimesheet(page, employee.url);
+    await page.waitForTimeout(500);
+    await Promise.allSettled([...apiResponsePromises]);
+
     const text = navigation.text || (await getReadableText(page));
     if (!text.trim()) throw new Error("Rendered page contains no readable text");
 
@@ -180,6 +202,13 @@ async function processEmployee(context, employee, targetDate, debugDir) {
       const slug = slugify(employee.name);
       await fs.writeFile(path.join(debugDir, `${slug}.txt`), text, "utf8");
       await page.screenshot({ path: path.join(debugDir, `${slug}.png`), fullPage: true });
+      if (attendanceApiPayloads.length) {
+        await fs.writeFile(
+          path.join(debugDir, `${slug}-attendance-api.json`),
+          JSON.stringify(attendanceApiPayloads, null, 2),
+          "utf8",
+        );
+      }
     }
 
     return {
@@ -190,6 +219,7 @@ async function processEmployee(context, employee, targetDate, debugDir) {
       navigation_method: navigation.method,
       ...attendance,
       verification,
+      attendance_api_payload_count: attendanceApiPayloads.length,
       json_endpoints: [...jsonEndpoints].slice(0, 20),
     };
   } catch (error) {
@@ -238,7 +268,7 @@ async function main() {
   }
 
   const report = {
-    schema_version: 1,
+    schema_version: 2,
     date: targetDate,
     timezone: TZ,
     generated_at: new Date().toISOString(),

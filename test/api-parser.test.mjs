@@ -51,6 +51,8 @@ test("API parser returns completed morning with evidence", () => {
   assert.equal(result.morning.in, "06:59");
   assert.equal(result.morning.out, "11:04");
   assert.equal(result.morning.minutes, 245);
+  assert.equal(result.morning.duration_consistency, "aligned");
+  assert.equal(result.validation.trusted_for_reporting, true);
   assert.equal(result.morning.evidence.in_record_seq, 101);
   assert.equal(result.morning.evidence.out_record_seq, 102);
   assert.equal(result.morning.evidence.in_photo_present, true);
@@ -64,6 +66,23 @@ test("API parser deduplicates repeated payloads by recordSeq", () => {
   ];
   const normalized = normalizeAttendanceApiRecords([payload(records), payload(records)], "2026-08-21");
   assert.equal(normalized.length, 2);
+});
+
+test("duration mismatch is fail-closed for reporting", () => {
+  const result = extractAttendanceFromApiPayloads([
+    payload([
+      { recordSeq: 302, state: 3, date: "2026/08/21", time: "11:00", workingHours: "1.00" },
+      { recordSeq: 301, state: 0, date: "2026/08/21", time: "07:00", workingHours: "0" },
+    ]),
+  ], "2026-08-21");
+
+  assert.equal(result.morning.in, "07:00");
+  assert.equal(result.morning.out, "11:00");
+  assert.equal(result.morning.duration_consistency, "mismatch");
+  assert.equal(result.status, "review_required");
+  assert.equal(result.total_minutes, null);
+  assert.equal(result.validation.duration_mismatch_count, 1);
+  assert.equal(result.validation.trusted_for_reporting, false);
 });
 
 test("valid API with no target-date records remains date_not_found", () => {

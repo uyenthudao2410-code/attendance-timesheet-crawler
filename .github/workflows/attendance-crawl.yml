@@ -1,0 +1,127 @@
+name: Attendance Crawl
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_date:
+        description: "Vietnam attendance date (YYYY-MM-DD); blank = today"
+        required: false
+        type: string
+      debug:
+        description: "Capture raw text/screenshots inside the encrypted artifact"
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    # GitHub cron is UTC. 11:45 UTC = 18:45 Asia/Ho_Chi_Minh.
+    - cron: "45 11 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: attendance-crawl
+  cancel-in-progress: false
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TZ: Asia/Ho_Chi_Minh
+      TARGET_DATE: ${{ github.event.inputs.target_date }}
+      DEBUG_MODE: ${{ github.event.inputs.debug || 'false' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run parser tests
+        run: npm test
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Validate private configuration
+        env:
+          ATTENDANCE_ARTIFACT_KEY: ${{ secrets.ATTENDANCE_ARTIFACT_KEY }}
+          ATT_URL_DIEU_VAN_MANH: ${{ secrets.ATT_URL_DIEU_VAN_MANH }}
+          ATT_URL_NGUYEN_THI_THUC_ANH: ${{ secrets.ATT_URL_NGUYEN_THI_THUC_ANH }}
+          ATT_URL_VU_DINH_TUE: ${{ secrets.ATT_URL_VU_DINH_TUE }}
+          ATT_URL_BUI_DUY_HOANG: ${{ secrets.ATT_URL_BUI_DUY_HOANG }}
+          ATT_URL_NGUYEN_THANH_LONG: ${{ secrets.ATT_URL_NGUYEN_THANH_LONG }}
+          ATT_URL_TRAN_THANH_BINH: ${{ secrets.ATT_URL_TRAN_THANH_BINH }}
+          ATT_URL_LE_THI_PHUONG_LINH: ${{ secrets.ATT_URL_LE_THI_PHUONG_LINH }}
+          ATT_URL_LE_DANG_HIEU: ${{ secrets.ATT_URL_LE_DANG_HIEU }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in \
+            ATTENDANCE_ARTIFACT_KEY \
+            ATT_URL_DIEU_VAN_MANH \
+            ATT_URL_NGUYEN_THI_THUC_ANH \
+            ATT_URL_VU_DINH_TUE \
+            ATT_URL_BUI_DUY_HOANG \
+            ATT_URL_NGUYEN_THANH_LONG \
+            ATT_URL_TRAN_THANH_BINH \
+            ATT_URL_LE_THI_PHUONG_LINH \
+            ATT_URL_LE_DANG_HIEU
+          do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing required repository secret: $name"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Crawl attendance pages
+        env:
+          ATT_URL_DIEU_VAN_MANH: ${{ secrets.ATT_URL_DIEU_VAN_MANH }}
+          ATT_URL_NGUYEN_THI_THUC_ANH: ${{ secrets.ATT_URL_NGUYEN_THI_THUC_ANH }}
+          ATT_URL_VU_DINH_TUE: ${{ secrets.ATT_URL_VU_DINH_TUE }}
+          ATT_URL_BUI_DUY_HOANG: ${{ secrets.ATT_URL_BUI_DUY_HOANG }}
+          ATT_URL_NGUYEN_THANH_LONG: ${{ secrets.ATT_URL_NGUYEN_THANH_LONG }}
+          ATT_URL_TRAN_THANH_BINH: ${{ secrets.ATT_URL_TRAN_THANH_BINH }}
+          ATT_URL_LE_THI_PHUONG_LINH: ${{ secrets.ATT_URL_LE_THI_PHUONG_LINH }}
+          ATT_URL_LE_DANG_HIEU: ${{ secrets.ATT_URL_LE_DANG_HIEU }}
+        run: node scripts/attendance-crawl.mjs
+
+      - name: Encrypt result before artifact upload
+        if: ${{ hashFiles('output/*.json') != '' }}
+        env:
+          ATTENDANCE_ARTIFACT_KEY: ${{ secrets.ATTENDANCE_ARTIFACT_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          mkdir -p secure-bundle
+          cp -R output secure-bundle/
+          if [ -d debug ]; then
+            cp -R debug secure-bundle/
+          fi
+          tar -C secure-bundle -czf attendance-payload.tgz .
+          printf '%s' "$ATTENDANCE_ARTIFACT_KEY" | \
+            openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
+              -pass stdin \
+              -in attendance-payload.tgz \
+              -out attendance-payload.tgz.enc
+          rm -rf secure-bundle output debug attendance-payload.tgz
+
+      - name: Upload encrypted attendance artifact
+        if: ${{ hashFiles('attendance-payload.tgz.enc') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: attendance-encrypted-${{ github.run_id }}
+          path: attendance-payload.tgz.enc
+          retention-days: 3
+          if-no-files-found: error

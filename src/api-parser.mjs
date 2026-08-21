@@ -1,5 +1,7 @@
 import { extractAttendance } from "./parser.mjs";
 
+const MAX_APP_DURATION_DELTA_MINUTES = 3;
+
 function validApiEnvelope(payload) {
   const body = payload?.body;
   return (
@@ -90,12 +92,21 @@ function bestEvidenceRecord(records, state, time) {
   })[0];
 }
 
+function durationConsistency(session) {
+  if (!session?.in || !session?.out) return "open";
+  if (!Number.isInteger(session.app_delta_minutes)) return "unverified";
+  return Math.abs(session.app_delta_minutes) <= MAX_APP_DURATION_DELTA_MINUTES
+    ? "aligned"
+    : "mismatch";
+}
+
 function attachEvidence(session, records) {
   if (!session) return null;
   const input = session.in ? bestEvidenceRecord(records, "in", session.in) : null;
   const output = session.out ? bestEvidenceRecord(records, "out", session.out) : null;
   return {
     ...session,
+    duration_consistency: durationConsistency(session),
     evidence: {
       in_record_seq: input?.record_seq ?? null,
       out_record_seq: output?.record_seq ?? null,
@@ -119,16 +130,29 @@ export function extractAttendanceFromApiPayloads(payloads, isoDate) {
 
   const records = normalizeAttendanceApiRecords(validPayloads, isoDate);
   const parsed = extractAttendance(apiRecordsAsTimesheetText(records), isoDate);
+  const morning = attachEvidence(parsed.morning, records);
+  const afternoon = attachEvidence(parsed.afternoon, records);
+  const durationMismatches = [morning, afternoon].filter(
+    (session) => session?.duration_consistency === "mismatch",
+  );
   const totalAvailableRecords = Math.max(
     0,
     ...validPayloads.map((payload) => Number(payload?.body?.data?.totalNum) || 0),
   );
+  const reviewRequired = durationMismatches.length > 0;
 
   return {
     ...parsed,
-    morning: attachEvidence(parsed.morning, records),
-    afternoon: attachEvidence(parsed.afternoon, records),
+    morning,
+    afternoon,
+    total_minutes: reviewRequired ? null : parsed.total_minutes,
+    status: reviewRequired ? "review_required" : parsed.status,
     data_source: "attendance_api",
+    validation: {
+      max_app_duration_delta_minutes: MAX_APP_DURATION_DELTA_MINUTES,
+      duration_mismatch_count: durationMismatches.length,
+      trusted_for_reporting: !reviewRequired,
+    },
     api_payload_count: validPayloads.length,
     api_record_count: records.length,
     api_total_available_records: totalAvailableRecords,

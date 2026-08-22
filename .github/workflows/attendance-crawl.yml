@@ -15,7 +15,7 @@ on:
   schedule:
     # GitHub cron is UTC; Vietnam is UTC+7 year-round.
     - cron: "30 5 * * *"   # 12:30 VN - morning report source run
-    - cron: "30 14 * * *"  # 21:30 VN - daily summary source run
+    - cron: "5 14 * * *"   # 21:05 VN - daily summary source run
     - cron: "45 23 * * *"  # 06:45 VN next day - previous-day final reconciliation source run
 
 permissions:
@@ -59,7 +59,7 @@ jobs:
             target_date="$(TZ=Asia/Ho_Chi_Minh date +%F)"
             case "${SCHEDULE_EXPRESSION:-}" in
               "30 5 * * *") run_slot="morning_1230" ;;
-              "30 14 * * *") run_slot="daily_2130" ;;
+              "5 14 * * *") run_slot="daily_2105" ;;
               *) run_slot="manual_or_validation" ;;
             esac
           fi

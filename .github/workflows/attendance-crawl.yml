@@ -12,9 +12,17 @@ on:
         required: false
         default: false
         type: boolean
+  # Temporary one-shot trigger for validating this schedule correction.
+  # It is removed immediately after the validation run is created.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/attendance-crawl.yml"
   schedule:
-    # GitHub cron is UTC. 11:45 UTC = 18:45 Asia/Ho_Chi_Minh.
-    - cron: "45 11 * * *"
+    # GitHub cron is UTC; Vietnam is UTC+7 year-round.
+    - cron: "30 5 * * *"   # 12:30 VN - morning report source run
+    - cron: "0 14 * * *"   # 21:00 VN - daily summary source run
+    - cron: "45 23 * * *"  # 06:45 VN next day - previous-day final reconciliation source run
 
 permissions:
   contents: read
@@ -29,7 +37,6 @@ jobs:
     timeout-minutes: 20
     env:
       TZ: Asia/Ho_Chi_Minh
-      TARGET_DATE: ${{ github.event.inputs.target_date }}
       DEBUG_MODE: ${{ github.event.inputs.debug || 'false' }}
 
     steps:
@@ -40,6 +47,35 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+
+      - name: Resolve attendance target date
+        shell: bash
+        env:
+          MANUAL_TARGET_DATE: ${{ github.event.inputs.target_date }}
+          SCHEDULE_EXPRESSION: ${{ github.event.schedule }}
+        run: |
+          set -euo pipefail
+          if [ -n "${MANUAL_TARGET_DATE:-}" ]; then
+            target_date="$MANUAL_TARGET_DATE"
+            run_slot="manual"
+          elif [ "${SCHEDULE_EXPRESSION:-}" = "45 23 * * *" ]; then
+            target_date="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"
+            run_slot="final_0645"
+          else
+            target_date="$(TZ=Asia/Ho_Chi_Minh date +%F)"
+            case "${SCHEDULE_EXPRESSION:-}" in
+              "30 5 * * *") run_slot="morning_1230" ;;
+              "0 14 * * *") run_slot="daily_2100" ;;
+              *) run_slot="validation" ;;
+            esac
+          fi
+          if ! [[ "$target_date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "Invalid resolved target date" >&2
+            exit 1
+          fi
+          echo "TARGET_DATE=$target_date" >> "$GITHUB_ENV"
+          echo "ATTENDANCE_RUN_SLOT=$run_slot" >> "$GITHUB_ENV"
+          echo "Attendance run slot=$run_slot target_date=$target_date"
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund

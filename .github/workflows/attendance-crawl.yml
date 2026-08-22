@@ -12,12 +12,6 @@ on:
         required: false
         default: false
         type: boolean
-  # Temporary one-shot trigger for validating this schedule correction.
-  # It is removed immediately after the validation run is created.
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/attendance-crawl.yml"
   schedule:
     # GitHub cron is UTC; Vietnam is UTC+7 year-round.
     - cron: "30 5 * * *"   # 12:30 VN - morning report source run
@@ -66,7 +60,7 @@ jobs:
             case "${SCHEDULE_EXPRESSION:-}" in
               "30 5 * * *") run_slot="morning_1230" ;;
               "0 14 * * *") run_slot="daily_2100" ;;
-              *) run_slot="validation" ;;
+              *) run_slot="manual_or_validation" ;;
             esac
           fi
           if ! [[ "$target_date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then

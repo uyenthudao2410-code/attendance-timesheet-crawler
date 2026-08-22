@@ -47,9 +47,6 @@ jobs:
       - name: Run parser tests
         run: npm test
 
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
-
       - name: Validate private configuration
         env:
           ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
@@ -60,10 +57,36 @@ jobs:
           test -n "$ATTENDANCE_ROSTER_JSON" || { echo "Missing required repository secret: ATTENDANCE_ROSTER_JSON"; exit 1; }
           test -n "$ATTENDANCE_ARTIFACT_KEY" || { echo "Missing required repository secret: ATTENDANCE_ARTIFACT_KEY"; exit 1; }
 
+      - name: Check whether browser fallback is required
+        id: browser_preflight
+        env:
+          ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
+        run: node scripts/browser-fallback-preflight.mjs
+
+      - name: Install Chromium only for browser fallback
+        if: ${{ steps.browser_preflight.outputs.browser_required == 'true' }}
+        run: npx playwright install --with-deps chromium
+
       - name: Crawl attendance pages
+        id: crawl_initial
+        continue-on-error: true
         env:
           ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
         run: node scripts/attendance-crawl.mjs
+
+      - name: Install Chromium after unexpected direct-API failure
+        if: ${{ steps.crawl_initial.outcome == 'failure' && steps.browser_preflight.outputs.browser_required != 'true' }}
+        run: npx playwright install --with-deps chromium
+
+      - name: Retry crawl once after initial failure
+        if: ${{ steps.crawl_initial.outcome == 'failure' }}
+        env:
+          ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf output debug
+          node scripts/attendance-crawl.mjs
 
       - name: Encrypt result before artifact upload
         if: ${{ hashFiles('output/*.json') != '' }}

@@ -14,8 +14,13 @@ if (!Array.isArray(roster) || roster.length !== 8) {
   throw new Error("ATTENDANCE_ROSTER_JSON must contain exactly 8 employees");
 }
 
-const deviceIds = roster.map((item, index) => {
+const canonicalRows = [];
+const deviceIds = [];
+for (const [index, item] of roster.entries()) {
+  const name = String(item?.name || "").trim();
   const urlText = String(item?.url || "").trim();
+  if (!name || !urlText) throw new Error(`Roster item ${index + 1} must contain name and url`);
+
   let url;
   try {
     url = new URL(urlText);
@@ -27,14 +32,18 @@ const deviceIds = roster.map((item, index) => {
   }
   const deviceId = String(url.searchParams.get("deviceId") || "").trim();
   if (!deviceId) throw new Error(`Roster item ${index + 1} is missing deviceId`);
-  return deviceId;
-});
+  deviceIds.push(deviceId);
+
+  // Preserve the exact private name + full URL text and array order. Do not
+  // reconstruct/reorder URL parameters: canonical skill URLs are byte-sensitive.
+  canonicalRows.push(`${name}\t${urlText}`);
+}
 
 if (new Set(deviceIds).size !== deviceIds.length) {
   throw new Error("ATTENDANCE_ROSTER_JSON contains duplicate deviceId values");
 }
 
-const canonical = deviceIds.join("\n");
+const canonical = canonicalRows.join("\n");
 const digest = (domain) =>
   crypto.createHash("sha256").update(`${domain}\n${canonical}`, "utf8").digest("hex");
 

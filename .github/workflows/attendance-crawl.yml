@@ -13,10 +13,13 @@ on:
         default: false
         type: boolean
   schedule:
+    # GitHub scheduled runs may be queued. Start the source crawl a few minutes
+    # before each business reporting milestone; the consumer still waits for the
+    # exact slot/date state and never substitutes an older run.
     # GitHub cron is UTC; Vietnam is UTC+7 year-round.
-    - cron: "30 5 * * *"   # 12:30 VN - morning report source run
-    - cron: "5 14 * * *"   # 21:05 VN - daily summary source run
-    - cron: "45 23 * * *"  # 06:45 VN next day - previous-day final reconciliation source run
+    - cron: "25 5 * * *"   # 12:25 VN -> source for 12:30 morning report
+    - cron: "59 13 * * *"  # 20:59 VN -> source for 21:05 daily summary
+    - cron: "40 23 * * *"  # 06:40 VN next day -> source for 06:45 final reconciliation
 
 permissions:
   contents: write
@@ -52,14 +55,14 @@ jobs:
           if [ -n "${MANUAL_TARGET_DATE:-}" ]; then
             target_date="$MANUAL_TARGET_DATE"
             run_slot="manual"
-          elif [ "${SCHEDULE_EXPRESSION:-}" = "45 23 * * *" ]; then
+          elif [ "${SCHEDULE_EXPRESSION:-}" = "40 23 * * *" ]; then
             target_date="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"
             run_slot="final_0645"
           else
             target_date="$(TZ=Asia/Ho_Chi_Minh date +%F)"
             case "${SCHEDULE_EXPRESSION:-}" in
-              "30 5 * * *") run_slot="morning_1230" ;;
-              "5 14 * * *") run_slot="daily_2105" ;;
+              "25 5 * * *") run_slot="morning_1230" ;;
+              "59 13 * * *") run_slot="daily_2105" ;;
               *) run_slot="manual_or_validation" ;;
             esac
           fi

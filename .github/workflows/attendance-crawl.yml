@@ -14,10 +14,10 @@ on:
         type: boolean
   schedule:
     # GitHub cron is UTC; Vietnam is UTC+7 year-round.
-    # The daily summary producer must start exactly at the 21:05 business slot.
-    - cron: "25 5 * * *"   # 12:25 VN -> source for 12:30 morning report
-    - cron: "5 14 * * *"   # 21:05 VN -> source for 21:05 daily summary
-    - cron: "40 23 * * *"  # 06:40 VN next day -> source for 06:45 final reconciliation
+    # Business snapshots are collected first; ChatGPT/Teams consumers publish after the source is ready.
+    - cron: "30 5 * * *"   # 12:30 VN -> morning snapshot
+    - cron: "5 14 * * *"   # 21:05 VN -> daily-summary snapshot
+    - cron: "0 23 * * *"   # 06:00 VN next day -> previous-day final snapshot for 06:45 reconciliation
 
 permissions:
   contents: write
@@ -53,9 +53,9 @@ jobs:
           if [ -n "${MANUAL_TARGET_DATE:-}" ]; then
             target_date="$MANUAL_TARGET_DATE"
             run_slot="manual"
-          elif [ "${SCHEDULE_EXPRESSION:-}" = "40 23 * * *" ] || [ "${SCHEDULE_EXPRESSION:-}" = "45 23 * * *" ]; then
-            # Accept the previous 06:45-source cron too, so an event already
-            # queued during rollout cannot be misclassified.
+          elif [ "${SCHEDULE_EXPRESSION:-}" = "0 23 * * *" ] || [ "${SCHEDULE_EXPRESSION:-}" = "40 23 * * *" ] || [ "${SCHEDULE_EXPRESSION:-}" = "45 23 * * *" ]; then
+            # Accept previous final-source crons too, so already queued rollout events
+            # cannot be misclassified while the new 06:00 source schedule takes over.
             target_date="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"
             run_slot="final_0645"
           else

@@ -13,12 +13,10 @@ on:
         default: false
         type: boolean
   schedule:
-    # GitHub scheduled runs may be queued. Start the source crawl a few minutes
-    # before each business reporting milestone; the consumer still waits for the
-    # exact slot/date state and never substitutes an older run.
     # GitHub cron is UTC; Vietnam is UTC+7 year-round.
+    # The daily summary producer must start exactly at the 21:05 business slot.
     - cron: "25 5 * * *"   # 12:25 VN -> source for 12:30 morning report
-    - cron: "59 13 * * *"  # 20:59 VN -> source for 21:05 daily summary
+    - cron: "5 14 * * *"   # 21:05 VN -> source for 21:05 daily summary
     - cron: "40 23 * * *"  # 06:40 VN next day -> source for 06:45 final reconciliation
 
 permissions:

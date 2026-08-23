@@ -19,9 +19,9 @@ GitHub Actions
 Scheduled report consumer
   -> validates the canonical skill roster
   -> waits for the matching scheduled-run state
-  -> verifies date + slot + roster fingerprint
+  -> verifies date + slot + exact-roster fingerprint
   -> downloads exactly that run's artifact
-  -> derives the same artifact key from the canonical device IDs
+  -> derives the same artifact key from the exact canonical roster
   -> decrypts and validates the JSON
   -> publishes at most one Teams message for the reporting milestone
 ```
@@ -69,7 +69,9 @@ Example with placeholders only:
 
 Keep every original H5 URL exactly as supplied by the attendance app. Only HTTPS URLs on `h5.timemark.com` and `h5.dayscamera.com` are accepted. The workflow requires exactly eight unique `deviceId` values.
 
-A separate artifact-decryption secret is not required. The workflow derives the encryption passphrase deterministically from the eight confidential canonical `deviceId` values in roster order using a domain-separated SHA-256 derivation. The report consumer derives the same value from the canonical skill roster. A different domain-separated digest is used as the public-safe roster fingerprint, so publishing the fingerprint does not publish the encryption key.
+A separate artifact-decryption secret is not required. The workflow derives the encryption passphrase deterministically from the exact ordered eight `(employee name, full canonical URL)` pairs using a domain-separated SHA-256 derivation. The original full URL text is used as-is; URL parameters are not reconstructed, reordered or normalized. The report consumer derives the same value from the canonical skill roster. A different domain-separated digest is used as the public-safe roster fingerprint, so publishing the fingerprint does not publish the encryption key.
+
+This means a GitHub roster that differs from the skill roster by employee order, employee name, URL host, device ID, query value or URL parameter ordering will not match the scheduled consumer and will fail closed instead of silently producing a report from a different mapping.
 
 ## Scheduled-run state
 
@@ -88,7 +90,7 @@ The state file contains only non-sensitive routing metadata:
 - run slot
 - target date
 - artifact ID and artifact name
-- one-way roster fingerprint
+- one-way exact-roster fingerprint
 - completion time
 
 It contains no employee names, attendance times, H5 URLs, device IDs, photos, addresses or locations. Manual `workflow_dispatch` runs never overwrite the scheduled state files.
@@ -103,7 +105,7 @@ This repository is public, but employee names, attendance URLs, `deviceId` value
 - The collector is read-only and never calls a clock-in / clock-out endpoint.
 - Scheduled logs contain aggregate status only; no employee names, times, locations, URLs or device IDs are printed.
 - Result files are encrypted before artifact upload.
-- The encryption key is derived only at runtime from confidential canonical device IDs and is never committed or printed.
+- The encryption key is derived only at runtime from the exact confidential canonical roster and is never committed or printed.
 - Debug request/response evidence, raw page text and screenshots are allowed only inside encrypted manual-run artifacts.
 - No `Authorization` or `Cookie` header is captured in debug request metadata.
 - Scheduled state files contain routing metadata only and cannot be used as attendance evidence.
@@ -159,7 +161,7 @@ Before any Teams report is sent, the consumer must prove all of the following:
 
 1. `attendance-link-reader` roster validation returns `ROSTER OK` for exactly eight canonical employees.
 2. The state file is for the exact expected run slot and target date.
-3. The state roster fingerprint equals the fingerprint derived from the canonical skill roster.
+3. The state exact-roster fingerprint equals the fingerprint derived from the exact ordered canonical skill `(name, full URL)` pairs.
 4. The artifact ID/name comes from that state file; no old or alternate artifact is substituted.
 5. The decrypted JSON has the expected schema, exact target date, `Asia/Ho_Chi_Minh` timezone and exactly eight employees matching canonical roster order/names.
 6. Every reported punch comes from the app-derived JSON; no Teams timestamp, image-upload time, URL parameter or normal schedule is used as a punch.

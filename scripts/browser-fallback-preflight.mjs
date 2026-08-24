@@ -1,6 +1,10 @@
 import fs from "node:fs/promises";
 import { extractAttendanceFromApiPayloads } from "../src/api-parser.mjs";
-import { fetchDirectAttendancePayload } from "../src/direct-api-client.mjs";
+import {
+  fetchDirectAttendanceHistoryPayload,
+  fetchDirectAttendancePayload,
+} from "../src/direct-api-client.mjs";
+import { shouldBrowserVerifyAttendance } from "../src/source-selection.mjs";
 
 const TZ = "Asia/Ho_Chi_Minh";
 const ALLOWED_HOSTS = new Set(["h5.timemark.com", "h5.dayscamera.com"]);
@@ -76,9 +80,18 @@ async function main() {
   for (const employee of employees) {
     try {
       const payload = await fetchDirectAttendancePayload(employee.url, targetDate);
-      const parsed = extractAttendanceFromApiPayloads([payload], targetDate);
-      if (parsed) directApiOkCount += 1;
-      else browserFallbackCount += 1;
+      let parsed = extractAttendanceFromApiPayloads([payload], targetDate);
+
+      if (shouldBrowserVerifyAttendance(parsed)) {
+        const historyPayload = await fetchDirectAttendanceHistoryPayload(employee.url, targetDate);
+        const historyParsed = extractAttendanceFromApiPayloads([historyPayload], targetDate);
+        if (historyParsed && historyParsed.status !== "date_not_found") {
+          parsed = historyParsed;
+        }
+      }
+
+      if (shouldBrowserVerifyAttendance(parsed)) browserFallbackCount += 1;
+      else directApiOkCount += 1;
     } catch {
       browserFallbackCount += 1;
     }

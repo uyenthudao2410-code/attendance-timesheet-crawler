@@ -122,7 +122,7 @@ test("daily report never totals across an open session", () => {
   assert.match(report.employees[0].status_text, /thiếu giờ ra sau 13:00/);
 });
 
-test("stale date_not_found is source maintenance, never employee no-attendance", () => {
+test("healthy canonical source with history but no target date is no attendance record, not source failure", () => {
   const report = buildAttendanceBusinessReport(rawReport({
     status: "date_not_found",
     sessions: [],
@@ -138,14 +138,36 @@ test("stale date_not_found is source maintenance, never employee no-attendance",
   }), "morning_1230", NAMES);
 
   const row = report.employees[0];
-  assert.equal(row.status_code, "source_review");
-  assert.equal(row.source_issue_code, "source_history_stale");
+  assert.equal(row.status_code, "not_recorded_morning");
+  assert.equal(row.status_text, "⚠️ Không có bản ghi chấm công ca sáng");
+  assert.equal(row.source_record_state, "target_date_absent");
   assert.equal(row.source_health.latest_record_date, "2026-08-18");
-  assert.match(row.status_text, /lịch sử hiện dừng ở 18\/08\/2026/);
-  assert.match(row.status_text, /cập nhật\/đối soát link nguồn/);
-  assert.doesNotMatch(row.status_text, /Chưa ghi nhận$/);
-  assert.equal(report.quality.source_review_count, 8);
-  assert.equal(report.quality.stale_source_count, 1);
+  assert.equal(report.quality.source_review_count, 7);
+  assert.equal(report.quality.stale_source_count, 0);
+  assert.equal(report.quality.no_target_record_count, 1);
+});
+
+test("daily healthy canonical source with history but no target date is publishable as no attendance record", () => {
+  const report = buildAttendanceBusinessReport(rawReport({
+    status: "date_not_found",
+    sessions: [],
+    morning: null,
+    afternoon: null,
+    device_history: {
+      history_record_count: 202,
+      latest_record_date: "2026-08-18",
+      earliest_record_date: "2026-07-16",
+      target_date_present: false,
+      interpretation: "history_exists_but_no_target_date",
+    },
+  }), "daily_2105", NAMES);
+
+  const row = report.employees[0];
+  assert.equal(row.status_code, "not_recorded");
+  assert.equal(row.status_text, "⚠️ Không có bản ghi chấm công");
+  assert.equal(row.source_record_state, "target_date_absent");
+  assert.equal(row.total_minutes, null);
+  assert.equal(row.total_display, "—");
 });
 
 test("empty source history is explicitly classified as a link/source problem", () => {
@@ -183,12 +205,11 @@ test("generic date_not_found still fails closed without inferring absence", () =
   assert.equal(report.employees[0].status_code, "source_review");
   assert.equal(report.employees[0].source_issue_code, "source_unresolved");
   assert.equal(report.employees[0].status_text, "⚠️ Nguồn chưa xác nhận được dữ liệu ngày này – cần đối soát nguồn");
-  assert.doesNotMatch(report.employees[0].status_text, /Chưa ghi nhận$/);
   assert.match(report.teams_html, /Nguồn chưa xác nhận được dữ liệu ngày này/);
   assert.equal(report.quality.review_required_count, 8);
 });
 
-test("daily date_not_found also fails closed as source review", () => {
+test("daily date_not_found without source-health evidence still fails closed as source review", () => {
   const report = buildAttendanceBusinessReport(rawReport({
     status: "date_not_found",
     source_classification: "link_history_stale_needs_verification",

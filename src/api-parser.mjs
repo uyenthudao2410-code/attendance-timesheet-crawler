@@ -174,9 +174,11 @@ export function extractAttendanceFromApiPayloads(payloads, isoDate) {
 
   const records = normalizeAttendanceApiRecords(validPayloads, isoDate);
   const parsed = extractAttendance(apiRecordsAsTimesheetText(records), isoDate);
+  const sessions = (Array.isArray(parsed.sessions) ? parsed.sessions : [parsed.morning, parsed.afternoon].filter(Boolean))
+    .map((session) => attachEvidence(session, records));
   const morning = attachEvidence(parsed.morning, records);
   const afternoon = attachEvidence(parsed.afternoon, records);
-  const durationMismatches = [morning, afternoon].filter(
+  const durationMismatches = sessions.filter(
     (session) => session?.duration_consistency === "mismatch",
   );
   const totalAvailableRecords = Math.max(
@@ -184,12 +186,19 @@ export function extractAttendanceFromApiPayloads(payloads, isoDate) {
     ...validPayloads.map((payload) => Number(payload?.body?.data?.totalNum) || 0),
   );
   const reviewRequired = durationMismatches.length > 0;
-  const trustedTotalMinutes = reviewRequired ? null : parsed.total_minutes;
+  const completedMinutes = sessions
+    .filter((session) => session?.in && session?.out && Number.isInteger(session?.minutes))
+    .map((session) => session.minutes);
+  const calculatedTotalMinutes = completedMinutes.length
+    ? completedMinutes.reduce((sum, value) => sum + value, 0)
+    : null;
+  const trustedTotalMinutes = reviewRequired ? null : calculatedTotalMinutes;
 
   return {
     ...parsed,
     morning,
     afternoon,
+    sessions,
     total_minutes: trustedTotalMinutes,
     ...minutesToHourMetrics(trustedTotalMinutes),
     status: reviewRequired ? "review_required" : parsed.status,

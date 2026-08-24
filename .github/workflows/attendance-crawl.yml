@@ -12,6 +12,10 @@ on:
         required: false
         default: false
         type: boolean
+  push:
+    branches: [main]
+    paths:
+      - ".github/attendance-proof-trigger"
   schedule:
     # GitHub cron is UTC; Vietnam is UTC+7 year-round.
     # Queue early to absorb scheduler delay, but capture only at/after the business snapshot time.
@@ -47,9 +51,13 @@ jobs:
         env:
           MANUAL_TARGET_DATE: ${{ github.event.inputs.target_date }}
           SCHEDULE_EXPRESSION: ${{ github.event.schedule }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
-          if [ -n "${MANUAL_TARGET_DATE:-}" ]; then
+          if [ "$EVENT_NAME" = "push" ]; then
+            target_date="$(TZ=Asia/Ho_Chi_Minh date +%F)"
+            run_slot="morning_1230"
+          elif [ -n "${MANUAL_TARGET_DATE:-}" ]; then
             target_date="$MANUAL_TARGET_DATE"
             run_slot="manual"
           else
@@ -177,8 +185,8 @@ jobs:
           retention-days: 3
           if-no-files-found: error
 
-      - name: Publish non-sensitive scheduled run state
-        if: ${{ github.event_name == 'schedule' && steps.upload_artifact.outcome == 'success' }}
+      - name: Publish non-sensitive run state
+        if: ${{ (github.event_name == 'schedule' || github.event_name == 'push') && steps.upload_artifact.outcome == 'success' }}
         env:
           ARTIFACT_ID: ${{ steps.upload_artifact.outputs['artifact-id'] }}
           ARTIFACT_NAME: attendance-encrypted-${{ github.run_id }}

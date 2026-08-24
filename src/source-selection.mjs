@@ -32,13 +32,7 @@ export function chooseBrowserAttendance(apiAttendance, domAttendance) {
   };
 }
 
-function dateToUtcDay(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return null;
-  const timestamp = Date.parse(`${value}T00:00:00Z`);
-  return Number.isFinite(timestamp) ? Math.floor(timestamp / 86400000) : null;
-}
-
-export function classifyDateNotFoundSource(history, targetDate, staleAfterDays = 7) {
+export function classifyDateNotFoundSource(history, _targetDate, _staleAfterDays = 7) {
   if (!history || history.history_record_count == null) {
     return "target_date_not_found_unverified_history";
   }
@@ -47,14 +41,10 @@ export function classifyDateNotFoundSource(history, targetDate, staleAfterDays =
     return "link_history_empty_needs_verification";
   }
 
-  const latestDay = dateToUtcDay(history.latest_record_date);
-  const targetDay = dateToUtcDay(targetDate);
-  if (latestDay != null && targetDay != null) {
-    const ageDays = targetDay - latestDay;
-    if (ageDays >= staleAfterDays) {
-      return "link_history_stale_needs_verification";
-    }
-  }
-
+  // ATTENDANCE_ROSTER_JSON is the administrator-owned canonical source mapping.
+  // A readable source with historical records is healthy enough to establish that
+  // the target date has no attendance record. The age of the latest prior record
+  // must not by itself reclassify a canonical link as stale/broken because the
+  // employee may simply have been on leave or otherwise had no attendance records.
   return "target_date_not_found";
 }

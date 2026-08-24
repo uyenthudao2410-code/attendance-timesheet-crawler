@@ -1,6 +1,6 @@
 {
   "slot": "morning_1230",
   "target_date": "2026-08-24",
-  "requested_at": "2026-08-24T14:00:00+07:00",
-  "reason": "13:50 corrected rerun with date_not_found false-negative guard"
+  "requested_at": "2026-08-24T14:19:00+07:00",
+  "reason": "manual retest 13:50 source completeness gate"
 }

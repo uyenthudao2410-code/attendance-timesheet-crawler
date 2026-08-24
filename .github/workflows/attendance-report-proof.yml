@@ -1,0 +1,75 @@
+name: Attendance Report Proof
+
+on:
+  push:
+    paths:
+      - ".github/attendance-report-proof-trigger"
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TZ: Asia/Ho_Chi_Minh
+      DEBUG_MODE: false
+      ATTENDANCE_RUN_SLOT: morning_1230
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Resolve proof date
+        shell: bash
+        run: echo "TARGET_DATE=$(TZ=Asia/Ho_Chi_Minh date +%F)" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run full tests
+        run: npm test
+
+      - name: Preflight all eight GitHub roster entries
+        id: browser_preflight
+        env:
+          ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
+        run: node scripts/browser-fallback-preflight.mjs
+
+      - name: Install Chromium when required
+        if: ${{ steps.browser_preflight.outputs.browser_required == 'true' }}
+        run: npx playwright install --with-deps chromium
+
+      - name: Crawl current attendance from GitHub
+        env:
+          ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
+        run: node scripts/attendance-crawl.mjs
+
+      - name: Build GitHub-owned business report
+        env:
+          ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
+        run: node scripts/build-report-payload.mjs
+
+      - name: Validate report-ready contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const file = `output/report-${process.env.ATTENDANCE_RUN_SLOT}-${process.env.TARGET_DATE}.json`;
+          const report = JSON.parse(fs.readFileSync(file, 'utf8'));
+          if (report.schema_version !== 1) throw new Error('report schema mismatch');
+          if (report.kind !== 'attendance_business_report') throw new Error('report kind mismatch');
+          if (report.slot !== process.env.ATTENDANCE_RUN_SLOT) throw new Error('report slot mismatch');
+          if (report.date !== process.env.TARGET_DATE) throw new Error('report date mismatch');
+          if (report.timezone !== 'Asia/Ho_Chi_Minh') throw new Error('report timezone mismatch');
+          if (report.employee_count !== 8 || report.employees?.length !== 8) throw new Error('report must account for exactly 8 employees');
+          if (typeof report.teams_html !== 'string' || !report.teams_html.includes('BÁO CÁO CHẤM CÔNG CA SÁNG')) throw new Error('teams_html missing');
+          console.log(`REPORT_PROOF=PASS employees=${report.employee_count} technical=${report.quality.technical_error_count} review=${report.quality.review_required_count}`);
+          NODE

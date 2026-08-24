@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "date": "2026-08-24",
+  "slot": "morning_1230",
+  "employee_count": 8,
+  "technical_error_count": 0,
+  "review_required_count": 0,
+  "open_session_count": 0,
+  "report_sha256": "1dcb2bac666d96c02e0f833930498167280a4891a37ad3d6eb240cd964dc4a7c",
+  "source_head_sha": "980848b29727286cadf198f4ef9a33d81017c53b",
+  "generated_at": "2026-08-24T06:28:46.989Z"
+}

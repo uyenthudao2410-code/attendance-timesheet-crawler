@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "request_id": "verify-newchat-morning-20260824-160613",
+  "request_id": "verify-newchat-morning-20260824-160729",
   "slot": "morning_1230",
   "target_date": "2026-08-24",
-  "requested_at": "2026-08-24T16:06:13+07:00",
+  "requested_at": "2026-08-24T16:07:29+07:00",
   "reason": "verify production flow after Teams destination-only update"
 }

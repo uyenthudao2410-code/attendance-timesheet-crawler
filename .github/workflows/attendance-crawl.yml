@@ -14,9 +14,9 @@ on:
         type: boolean
   schedule:
     # GitHub cron is UTC; Vietnam is UTC+7 year-round.
-    # Collect source data before the business report window to absorb GitHub scheduler delay.
-    - cron: "15 5 * * *"   # 12:15 VN -> source for 12:30 morning report
-    - cron: "50 13 * * *"  # 20:50 VN -> source for 21:05 daily-summary report
+    # Queue early to absorb GitHub scheduler delay, then wait inside the job until the business snapshot time.
+    - cron: "55 4 * * *"   # 11:55 VN queue -> snapshot at/after 12:15 for 12:30 morning report
+    - cron: "30 13 * * *"  # 20:30 VN queue -> snapshot at/after 20:50 for 21:05 daily-summary report
 
 permissions:
   contents: write
@@ -28,7 +28,7 @@ concurrency:
 jobs:
   crawl:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     env:
       TZ: Asia/Ho_Chi_Minh
       DEBUG_MODE: ${{ github.event.inputs.debug || 'false' }}
@@ -55,8 +55,8 @@ jobs:
           else
             target_date="$(TZ=Asia/Ho_Chi_Minh date +%F)"
             case "${SCHEDULE_EXPRESSION:-}" in
-              "15 5 * * *"|"25 5 * * *"|"30 5 * * *") run_slot="morning_1230" ;;
-              "50 13 * * *"|"59 13 * * *"|"5 14 * * *") run_slot="daily_2105" ;;
+              "55 4 * * *"|"15 5 * * *"|"25 5 * * *"|"30 5 * * *") run_slot="morning_1230" ;;
+              "30 13 * * *"|"50 13 * * *"|"59 13 * * *"|"5 14 * * *") run_slot="daily_2105" ;;
               *) run_slot="manual_or_validation" ;;
             esac
           fi
@@ -67,6 +67,26 @@ jobs:
           echo "TARGET_DATE=$target_date" >> "$GITHUB_ENV"
           echo "ATTENDANCE_RUN_SLOT=$run_slot" >> "$GITHUB_ENV"
           echo "Attendance run slot=$run_slot target_date=$target_date"
+
+      - name: Wait until business snapshot time
+        if: ${{ github.event_name == 'schedule' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$ATTENDANCE_RUN_SLOT" in
+            morning_1230) snapshot_time="12:15:00" ;;
+            daily_2105) snapshot_time="20:50:00" ;;
+            *) echo "No wait target for slot=$ATTENDANCE_RUN_SLOT"; exit 0 ;;
+          esac
+          target_epoch="$(TZ=Asia/Ho_Chi_Minh date -d "${TARGET_DATE} ${snapshot_time}" +%s)"
+          now_epoch="$(TZ=Asia/Ho_Chi_Minh date +%s)"
+          if [ "$now_epoch" -lt "$target_epoch" ]; then
+            wait_seconds=$((target_epoch - now_epoch))
+            echo "Queued early for slot=$ATTENDANCE_RUN_SLOT; waiting ${wait_seconds}s until snapshot window."
+            sleep "$wait_seconds"
+          else
+            echo "Scheduler started at/after snapshot window; proceeding immediately."
+          fi
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund

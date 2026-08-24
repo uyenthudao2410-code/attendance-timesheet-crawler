@@ -8,6 +8,8 @@ const artifactId = String(process.env.ARTIFACT_ID || "").trim();
 const artifactName = String(process.env.ARTIFACT_NAME || "").trim();
 const fingerprint = String(process.env.ATTENDANCE_ROSTER_FINGERPRINT || "").trim();
 const identityFingerprint = String(process.env.ATTENDANCE_IDENTITY_FINGERPRINT || "").trim();
+const reportFile = String(process.env.ATTENDANCE_REPORT_FILE || "").trim();
+const reportSha256 = String(process.env.ATTENDANCE_REPORT_SHA256 || "").trim();
 
 if (!ALLOWED_SLOTS.has(slot)) throw new Error("Unsupported ATTENDANCE_RUN_SLOT");
 if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) throw new Error("Invalid TARGET_DATE");
@@ -15,9 +17,11 @@ if (!/^\d+$/.test(artifactId)) throw new Error("Invalid ARTIFACT_ID");
 if (!artifactName) throw new Error("Missing ARTIFACT_NAME");
 if (!/^[a-f0-9]{64}$/.test(fingerprint)) throw new Error("Invalid roster fingerprint");
 if (!/^[a-f0-9]{64}$/.test(identityFingerprint)) throw new Error("Invalid identity fingerprint");
+if (reportFile !== `output/report-${slot}-${targetDate}.json`) throw new Error("Invalid ATTENDANCE_REPORT_FILE");
+if (!/^[a-f0-9]{64}$/.test(reportSha256)) throw new Error("Invalid ATTENDANCE_REPORT_SHA256");
 
 const state = {
-  schema_version: 2,
+  schema_version: 3,
   run_id: String(process.env.GITHUB_RUN_ID || ""),
   run_attempt: Number(process.env.GITHUB_RUN_ATTEMPT || "1"),
   slot,
@@ -27,6 +31,8 @@ const state = {
   roster_fingerprint: fingerprint,
   identity_fingerprint: identityFingerprint,
   encryption: "rsa-oaep-sha256+aes-256-cbc-pbkdf2-200000",
+  report_file: reportFile,
+  report_sha256: reportSha256,
   completed_at: new Date().toISOString(),
 };
 if (!/^\d+$/.test(state.run_id)) throw new Error("Invalid GITHUB_RUN_ID");

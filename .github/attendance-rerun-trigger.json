@@ -1,6 +1,6 @@
 {
   "slot": "morning_1230",
   "target_date": "2026-08-24",
-  "requested_at": "2026-08-24T13:55:00+07:00",
-  "reason": "13:50 production rerun after artifact key rotation"
+  "requested_at": "2026-08-24T14:00:00+07:00",
+  "reason": "13:50 corrected rerun with date_not_found false-negative guard"
 }

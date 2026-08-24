@@ -1,10 +1,5 @@
 const TZ = "Asia/Ho_Chi_Minh";
 const MIDDAY_SPLIT_MINUTE = 12 * 60 + 45;
-const SOURCE_REVIEW_STATES = new Set([
-  "target_date_not_found_unverified_history",
-  "link_history_empty_needs_verification",
-  "link_history_stale_needs_verification",
-]);
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -81,16 +76,19 @@ function employeeSessions(employee) {
   });
 }
 
-function sourceNeedsReview(employee) {
-  return SOURCE_REVIEW_STATES.has(String(employee?.source_classification || ""));
-}
-
 function baseEmployee(employee) {
   return {
     name: employee.name,
     data_source: employee.data_source ?? null,
     source_classification: employee.source_classification ?? null,
     access_ok: employee.access_ok !== false,
+  };
+}
+
+function unresolvedSourceStatus() {
+  return {
+    status_code: "source_review",
+    status_text: "⚠️ Nguồn chưa xác nhận được dữ liệu ngày này – cần đối soát",
   };
 }
 
@@ -105,12 +103,10 @@ function buildMorningEmployee(employee) {
     };
   }
   if (employee.status === "date_not_found") {
-    const reviewSource = sourceNeedsReview(employee);
     return {
       ...base,
       morning: null,
-      status_code: reviewSource ? "source_review" : "not_recorded",
-      status_text: reviewSource ? "⚠️ Nguồn cần kiểm tra/đối soát" : "⚠️ Chưa ghi nhận",
+      ...unresolvedSourceStatus(),
     };
   }
 
@@ -194,14 +190,12 @@ function buildDailyEmployee(employee) {
     };
   }
   if (employee.status === "date_not_found") {
-    const reviewSource = sourceNeedsReview(employee);
     return {
       ...base,
       sessions: [],
       total_minutes: null,
       total_display: "—",
-      status_code: reviewSource ? "source_review" : "not_recorded",
-      status_text: reviewSource ? "⚠️ Nguồn cần kiểm tra/đối soát" : "⚠️ Chưa ghi nhận",
+      ...unresolvedSourceStatus(),
     };
   }
 

@@ -302,12 +302,18 @@ function finalize(morning, afternoon, dateScopeMatch, appReportedMinutes = null,
   if (!morning?.out) missing.push("morning_out");
   if (!afternoon?.in) missing.push("afternoon_in");
   if (!afternoon?.out) missing.push("afternoon_out");
-  const minuteParts = [morning?.minutes, afternoon?.minutes].filter((value) => Number.isInteger(value));
+  const sessions = Array.isArray(meta.sessions)
+    ? meta.sessions
+    : [morning, afternoon].filter(Boolean);
+  const minuteParts = sessions
+    .filter((session) => session?.in && session?.out && Number.isInteger(session?.minutes))
+    .map((session) => session.minutes);
   return {
     date_scope_found: true,
     date_scope_match: dateScopeMatch,
     morning,
     afternoon,
+    sessions,
     total_minutes: minuteParts.length ? minuteParts.reduce((sum, value) => sum + value, 0) : null,
     app_reported_minutes: appReportedMinutes,
     missing,
@@ -325,7 +331,7 @@ export function extractAttendance(rawText, isoDate, options = {}) {
       choosePeriodSession(sessions, "afternoon"),
       "table_row_date",
       null,
-      { table_record_count: tableRecords.length, table_session_count: sessions.length },
+      { table_record_count: tableRecords.length, table_session_count: sessions.length, sessions },
     );
   }
 
@@ -336,6 +342,7 @@ export function extractAttendance(rawText, isoDate, options = {}) {
       date_scope_match: null,
       morning: null,
       afternoon: null,
+      sessions: [],
       total_minutes: null,
       app_reported_minutes: null,
       missing: [],
@@ -348,12 +355,15 @@ export function extractAttendance(rawText, isoDate, options = {}) {
   const intervals = pairedIntervals(scope.text);
   const inTimes = labeledTimes(scope.text, "(?:Vào\\s*ca|Time\\s*In|Clock\\s*in|Check\\s*in)");
   const outTimes = labeledTimes(scope.text, "(?:Tan\\s*ca|Time\\s*Out|Clock\\s*out|Check\\s*out)");
+  const morning = chooseLegacySession(intervals, inTimes, outTimes, "morning");
+  const afternoon = chooseLegacySession(intervals, inTimes, outTimes, "afternoon");
+  const sessions = [morning, afternoon].filter(Boolean);
   return finalize(
-    chooseLegacySession(intervals, inTimes, outTimes, "morning"),
-    chooseLegacySession(intervals, inTimes, outTimes, "afternoon"),
+    morning,
+    afternoon,
     scope.matched_by,
     parseDurationMinutes(scope.text),
-    { table_record_count: 0, table_session_count: 0 },
+    { table_record_count: 0, table_session_count: sessions.length, sessions },
   );
 }
 

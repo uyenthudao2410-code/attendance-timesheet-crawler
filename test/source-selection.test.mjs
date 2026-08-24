@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   chooseBrowserAttendance,
+  classifyDateNotFoundSource,
   shouldBrowserVerifyAttendance,
 } from "../src/source-selection.mjs";
 
@@ -44,4 +45,34 @@ test("structured browser API remains preferred when it has target-date data", ()
   assert.equal(selected.recovered_from_dom, false);
   assert.equal(selected.source_disagreement, null);
   assert.equal(selected.attendance, api);
+});
+
+test("empty history is a technical link verification state, not employee no-attendance proof", () => {
+  assert.equal(
+    classifyDateNotFoundSource(
+      { history_record_count: 0, latest_record_date: null },
+      "2026-08-23",
+    ),
+    "link_history_empty_needs_verification",
+  );
+});
+
+test("old history is classified as a stale link instead of a clean date miss", () => {
+  assert.equal(
+    classifyDateNotFoundSource(
+      { history_record_count: 77, latest_record_date: "2026-08-07" },
+      "2026-08-23",
+    ),
+    "link_history_stale_needs_verification",
+  );
+});
+
+test("recent history can remain a normal target-date miss", () => {
+  assert.equal(
+    classifyDateNotFoundSource(
+      { history_record_count: 10, latest_record_date: "2026-08-22" },
+      "2026-08-23",
+    ),
+    "target_date_not_found",
+  );
 });

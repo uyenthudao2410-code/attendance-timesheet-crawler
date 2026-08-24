@@ -57,17 +57,17 @@ test("empty history is a technical link verification state, not employee no-atte
   );
 });
 
-test("old history is classified as a stale link instead of a clean date miss", () => {
+test("older healthy canonical history remains a normal target-date miss", () => {
   assert.equal(
     classifyDateNotFoundSource(
       { history_record_count: 77, latest_record_date: "2026-08-07" },
       "2026-08-23",
     ),
-    "link_history_stale_needs_verification",
+    "target_date_not_found",
   );
 });
 
-test("recent history can remain a normal target-date miss", () => {
+test("recent history remains a normal target-date miss", () => {
   assert.equal(
     classifyDateNotFoundSource(
       { history_record_count: 10, latest_record_date: "2026-08-22" },

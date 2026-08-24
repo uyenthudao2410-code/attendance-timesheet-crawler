@@ -10,6 +10,7 @@ import {
   fetchDirectAttendancePayload,
 } from "../src/direct-api-client.mjs";
 import { extractAttendance } from "../src/parser.mjs";
+import { chooseBrowserAttendance } from "../src/source-selection.mjs";
 
 const TZ = "Asia/Ho_Chi_Minh";
 const DEBUG_MODE = String(process.env.DEBUG_MODE || "false").toLowerCase() === "true";
@@ -291,7 +292,7 @@ async function tryDirectApi(employee, targetDate, debugDir) {
 
 async function processEmployee(getBrowserContext, employee, targetDate, debugDir) {
   const direct = await tryDirectApi(employee, targetDate, debugDir);
-  if (direct.ok) {
+  if (direct.ok && direct.attendance.status !== "date_not_found") {
     const attendance = direct.attendance;
     return {
       name: employee.name,
@@ -307,6 +308,9 @@ async function processEmployee(getBrowserContext, employee, targetDate, debugDir
     };
   }
 
+  const directFallbackReason = direct.ok
+    ? "direct_api_date_not_found_after_history_requires_browser_verification"
+    : direct.reason;
   const context = await getBrowserContext();
   const page = await context.newPage();
   const jsonEndpoints = new Set();
@@ -361,18 +365,20 @@ async function processEmployee(getBrowserContext, employee, targetDate, debugDir
     const text = navigation.text || (await getReadableText(page));
     if (!text.trim()) throw new Error("Rendered page contains no readable text");
 
-    const domAttendance = extractAttendance(text, targetDate, {
+    const domAttendance = { ...extractAttendance(text, targetDate, {
       allowTodayLabel: targetDate === currentVNDate(),
-    });
+    }), data_source: "rendered_dom" };
     const apiAttendanceRaw = extractAttendanceFromApiPayloads(attendanceApiPayloads, targetDate);
     const apiAttendance = apiAttendanceRaw
       ? { ...apiAttendanceRaw, data_source: "attendance_api_browser" }
       : null;
-    const attendance = apiAttendance ?? { ...domAttendance, data_source: "rendered_dom" };
+    const selection = chooseBrowserAttendance(apiAttendance, domAttendance);
+    if (!selection.attendance) throw new Error("Neither browser API nor rendered page produced attendance data");
+    const attendance = selection.attendance;
     const parserCrosscheck = compareParsers(apiAttendance, domAttendance);
-    const verification = apiAttendance
-      ? collectApiVerification(apiAttendance)
-      : await collectVerificationSignals(page, text);
+    const verification = selection.recovered_from_dom || !apiAttendance
+      ? await collectVerificationSignals(page, text)
+      : collectApiVerification(apiAttendance);
 
     if (DEBUG_MODE) {
       const slug = slugify(employee.name);
@@ -392,9 +398,10 @@ async function processEmployee(getBrowserContext, employee, targetDate, debugDir
       http_status: response?.status() ?? null,
       page_title: await page.title(),
       navigation_method: navigation.method,
-      direct_api_fallback_reason: direct.reason,
+      direct_api_fallback_reason: directFallbackReason,
       ...attendance,
       verification,
+      source_disagreement: selection.source_disagreement,
       attendance_api_payload_count: attendanceApiPayloads.length,
       parser_crosscheck_agrees: parserCrosscheck?.agrees ?? null,
       json_endpoints: [...jsonEndpoints].slice(0, 20),
@@ -413,7 +420,7 @@ async function processEmployee(getBrowserContext, employee, targetDate, debugDir
       access_ok: false,
       status: "technical_error",
       error: safeError(error),
-      direct_api_fallback_reason: direct.reason,
+      direct_api_fallback_reason: directFallbackReason,
     };
   } finally {
     await page.close();
@@ -467,7 +474,7 @@ async function main() {
     direct_api: results.filter((item) => item.data_source === "attendance_api_direct").length,
     direct_api_history: results.filter((item) => item.data_source === "attendance_api_direct_history").length,
     browser_api: results.filter((item) => item.data_source === "attendance_api_browser").length,
-    dom: results.filter((item) => item.data_source === "rendered_dom").length,
+    dom: results.filter((item) => String(item.data_source || "").startsWith("rendered_dom")).length,
     complete: results.filter((item) => item.status === "complete").length,
     incomplete: results.filter((item) => item.status === "incomplete").length,
     review_required: results.filter((item) => item.status === "review_required").length,

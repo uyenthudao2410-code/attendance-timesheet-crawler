@@ -144,7 +144,7 @@ test("stale date_not_found is source maintenance, never employee no-attendance",
   assert.match(row.status_text, /lịch sử hiện dừng ở 18\/08\/2026/);
   assert.match(row.status_text, /cập nhật\/đối soát link nguồn/);
   assert.doesNotMatch(row.status_text, /Chưa ghi nhận$/);
-  assert.equal(report.quality.source_review_count, 7);
+  assert.equal(report.quality.source_review_count, 8);
   assert.equal(report.quality.stale_source_count, 1);
 });
 

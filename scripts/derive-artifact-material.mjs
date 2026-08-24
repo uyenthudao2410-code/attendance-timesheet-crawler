@@ -15,6 +15,7 @@ if (!Array.isArray(roster) || roster.length !== 8) {
 }
 
 const canonicalRows = [];
+const identityRows = [];
 const deviceIds = [];
 for (const [index, item] of roster.entries()) {
   const name = String(item?.name || "").trim();
@@ -34,24 +35,22 @@ for (const [index, item] of roster.entries()) {
   if (!deviceId) throw new Error(`Roster item ${index + 1} is missing deviceId`);
   deviceIds.push(deviceId);
 
-  // Preserve the exact private name + full URL text and array order. Do not
-  // reconstruct/reorder URL parameters: canonical skill URLs are byte-sensitive.
   canonicalRows.push(`${name}\t${urlText}`);
+  identityRows.push(`${name}\t${deviceId}`);
 }
 
 if (new Set(deviceIds).size !== deviceIds.length) {
   throw new Error("ATTENDANCE_ROSTER_JSON contains duplicate deviceId values");
 }
 
-const canonical = canonicalRows.join("\n");
-const digest = (domain) =>
-  crypto.createHash("sha256").update(`${domain}\n${canonical}`, "utf8").digest("hex");
+const digest = (domain, rows) =>
+  crypto.createHash("sha256").update(`${domain}\n${rows.join("\n")}`, "utf8").digest("hex");
 
 const mode = process.argv[2];
-if (mode === "key") {
-  process.stdout.write(digest("attendance-artifact-key-v1"));
-} else if (mode === "fingerprint") {
-  process.stdout.write(digest("attendance-roster-fingerprint-v1"));
+if (mode === "fingerprint") {
+  process.stdout.write(digest("attendance-roster-fingerprint-v1", canonicalRows));
+} else if (mode === "identity-fingerprint") {
+  process.stdout.write(digest("attendance-identity-fingerprint-v1", identityRows));
 } else {
-  throw new Error("Usage: node scripts/derive-artifact-material.mjs <key|fingerprint>");
+  throw new Error("Usage: node scripts/derive-artifact-material.mjs <fingerprint|identity-fingerprint>");
 }

@@ -1,15 +1,15 @@
 {
   "schema_version": 3,
-  "run_id": "32699590297",
+  "run_id": "32701027217",
   "run_attempt": 1,
   "slot": "morning_1230",
   "target_date": "2026-08-24",
-  "artifact_id": "9510053507",
-  "artifact_name": "attendance-encrypted-32699590297",
+  "artifact_id": "9510524337",
+  "artifact_name": "attendance-encrypted-32701027217",
   "roster_fingerprint": "f1d72e1abb736997cd82d294a970e7a96b1195bfd0ced784e39663e5ea8b6396",
   "identity_fingerprint": "0b4bfa0e3b0d830a48767c4c048aea6e866e57ce1635164991992609f760678e",
   "encryption": "rsa-oaep-sha256+aes-256-cbc-pbkdf2-200000",
   "report_file": "output/report-morning_1230-2026-08-24.json",
-  "report_sha256": "1a67ab9aadd2ba61bd73d8dcb9e3f6d3eabb7e75d8ff652924c5e3bb20f980e0",
-  "completed_at": "2026-08-24T07:01:14.686Z"
+  "report_sha256": "50f120d15bc542bcad9479f748d05c50e6ebb48e17a9ee4fe00bd16ab2842868",
+  "completed_at": "2026-08-24T07:21:16.417Z"
 }

@@ -46,17 +46,25 @@ jobs:
           ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
         run: node scripts/attendance-crawl.mjs
 
-      - name: Encrypt recovery JSON to one-time certificate
+      - name: Encrypt recovery and private roster diagnostic
+        env:
+          ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
         shell: bash
         run: |
           set -euo pipefail
+          set +x
+          umask 077
           test -s "output/attendance-${TARGET_DATE}.json"
+          mkdir -p recovery-bundle
+          cp "output/attendance-${TARGET_DATE}.json" recovery-bundle/
+          printf '%s' "$ATTENDANCE_ROSTER_JSON" > recovery-bundle/roster.json
+          tar -C recovery-bundle -czf attendance-recovery-bundle.tgz .
           openssl cms -encrypt -binary -aes256 \
-            -in "output/attendance-${TARGET_DATE}.json" \
+            -in attendance-recovery-bundle.tgz \
             -outform DER \
             -out attendance-recovery.cms \
             .github/attendance-recovery-public.crt
-          rm -rf output debug
+          rm -rf recovery-bundle attendance-recovery-bundle.tgz output debug
 
       - name: Upload encrypted recovery artifact
         id: upload

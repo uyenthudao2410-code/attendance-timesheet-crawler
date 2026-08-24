@@ -19,7 +19,7 @@ GitHub Secret: ATTENDANCE_ROSTER_JSON (exactly 8 employees)
   -> publish state schema v3 with artifact ID + exact report file + SHA-256
 
 Scheduled Teams consumer
-  -> wait for matching current-date state v3
+  -> wait for the matching state v3
   -> download exactly that artifact
   -> decrypt it
   -> verify report SHA-256 and report contract
@@ -32,14 +32,18 @@ The attendance application is the source of punch evidence. GitHub Actions is th
 
 GitHub cron is UTC; Vietnam is UTC+7 year-round. The producer is deliberately queued early so GitHub scheduler delay does not race the business reporting time.
 
-| Purpose | Queue time VN | GitHub cron | Snapshot not before | Teams publication |
-|---|---:|---|---:|---:|
-| Morning | 11:55 | `55 4 * * *` | 12:15 | 12:30 |
-| End of day | 20:30 | `30 13 * * *` | 20:50 | 21:05 |
+| Purpose | Target attendance date | Queue time VN | GitHub cron | Snapshot not before | Teams publication |
+|---|---|---:|---|---:|---:|
+| Morning report | current day | 13:20 | `20 6 * * *` | 13:35 current day | **13:50 current day** |
+| Daily final report | previous day | 07:20 next morning | `20 0 * * *` | 07:35 current morning | **07:50 next morning** |
 
-There is **no 06:45 next-day reconciliation production schedule**.
+There is **no 21:05 production report and no separate 06:45 reconciliation schedule**. The final daily report is intentionally generated the next morning so late/end-of-day punches can be included before publication.
+
+For the 07:50 report, `TARGET_DATE` is yesterday in `Asia/Ho_Chi_Minh`, while the snapshot wait clock is today at 07:35. These two dates must not be conflated; otherwise the workflow can incorrectly treat yesterday's 07:35 as already elapsed and capture too early.
 
 If GitHub starts before the snapshot time, the job waits inside the workflow and collects only at/after the snapshot time. If GitHub starts late, it proceeds immediately. Consumers have a bounded wait window and fail closed rather than substituting stale data.
+
+The internal slot identifiers remain `morning_1230` and `daily_2105` only for backward-compatible state/report paths. They **do not represent the current business publication times**.
 
 ## Private roster
 
@@ -71,9 +75,9 @@ For each of the 8 roster entries:
 2. if the target date cannot be safely established, perform browser verification;
 3. use browser-observed structured API data when available;
 4. use rendered DOM only as the final read-only fallback;
-5. classify a technical failure separately from a genuine no-record result.
+5. classify a technical failure separately from an unresolved target-date result.
 
-A direct-API miss is **not a missing link**. It is a source-selection state that may require browser verification.
+A direct-API miss is **not a missing link and is not evidence that the employee did not punch**. It is a source-selection/evidence state that may require browser or source-identity verification.
 
 ## Session model
 
@@ -123,7 +127,7 @@ After the crawler succeeds, GitHub runs:
 node scripts/build-report-payload.mjs
 ```
 
-It creates exactly one report for the current slot:
+It creates exactly one report for the current internal slot:
 
 ```text
 output/report-morning_1230-YYYY-MM-DD.json
@@ -148,21 +152,24 @@ Contract:
 
 GitHub is responsible for all business interpretation used in the Teams report. The consumer is forbidden from modifying `teams_html` or recalculating rows from raw attendance data.
 
-### Morning rules
+### Morning report rules — published 13:50
 
 - a valid `morning.in` without `morning.out` is `Đang làm việc`;
-- lack of an afternoon session at 12:30 is not an attendance defect;
-- `date_not_found` remains `⚠️ Chưa ghi nhận`, never an inferred absence;
+- absence of an afternoon session is irrelevant to the morning report;
+- `date_not_found` is **always** fail-closed as `source_review` with `⚠️ Nguồn chưa xác nhận được dữ liệu ngày này – cần đối soát`;
+- `date_not_found` must never be converted to `Chưa ghi nhận`, employee absence, no punch, leave, or noncompliance;
 - `technical_error` is `Không đọc được app`, never employee fault;
 - `review_required` remains `Cần đối soát` and is not manually recomputed.
 
-### End-of-day rules
+### Daily final rules — published 07:50 next morning
 
+- target date is the previous calendar day in `Asia/Ho_Chi_Minh`;
 - every trusted session in `sessions[]` is included;
 - one complete cross-midday continuous shift is valid and is not marked as missing an afternoon shift;
 - multiple sessions in a period are preserved and displayed;
 - any open/orphan session makes the daily total `Chưa chốt`;
 - the report never computes across a missing endpoint;
+- `date_not_found` is always a source-review state, never a conclusion that an employee did not attend;
 - technical/source states are not converted into employee noncompliance.
 
 ## Artifact security
@@ -177,11 +184,11 @@ For every production payload:
 4. the random passphrase is encrypted with the committed RSA public key using RSA-OAEP SHA-256;
 5. only the encrypted payload and encrypted session key are uploaded as the Actions artifact.
 
-The corresponding private key is not committed to the repository and must never be logged or placed in Teams messages.
+The corresponding private key is not committed to the repository and must never be logged or placed in Teams messages. The artifact encryption key pair may be rotated; after rotation, only artifacts created with the new public key are valid for the matching consumer key.
 
 ## Scheduled state — schema v3
 
-A successful scheduled run updates only the matching state file:
+A successful production run updates only the matching state file:
 
 ```text
 .github/attendance-state/morning_1230.json
@@ -192,7 +199,7 @@ Current contract contains only routing/integrity metadata:
 
 - `schema_version: 3`;
 - run ID and run attempt;
-- slot and target date;
+- internal slot and target date;
 - artifact ID and artifact name;
 - roster/identity fingerprints;
 - encryption marker;
@@ -206,11 +213,11 @@ The `report_file + report_sha256` binding prevents a consumer from silently usin
 
 ## Scheduled consumer contract
 
-The 12:30 and 21:05 consumers must do only the following:
+The **13:50 current-day morning consumer** and **07:50 next-morning final consumer** must do only the following:
 
-1. reject duplicate successful Teams reports for the same date/slot;
-2. wait for current-date state schema v3;
-3. validate slot, target date, identity fingerprint, artifact ID/name, report path, and encryption marker;
+1. reject a duplicate successful Teams report for the same business report window;
+2. wait for the exact state schema v3 and exact target date required by that publication;
+3. validate internal slot, target date, identity fingerprint, artifact ID/name, report path, and encryption marker;
 4. download exactly the state artifact;
 5. decrypt it without logging secrets;
 6. hash the exact report file and require equality with `state.report_sha256`;
@@ -226,7 +233,8 @@ The consumer must **not**:
 - derive punch times from Teams/images/schedules;
 - read raw attendance in order to rebuild the report;
 - recalculate durations or totals;
-- substitute another date, run, artifact, or report.
+- substitute another date, run, artifact, or report;
+- downgrade `source_review` into a no-attendance conclusion.
 
 ## Test coverage
 
@@ -242,7 +250,8 @@ The Node test suite covers the existing parser/API rules plus report-level regre
 - one continuous cross-midday shift remaining valid;
 - preservation and totaling of a third session;
 - end-of-day total blocked when any session is open;
-- source-review states not being described as employee absence.
+- `date_not_found` always remaining source-review rather than employee no-attendance;
+- technical/source-review states not being described as employee absence.
 
 Run locally for development only:
 

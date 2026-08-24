@@ -19,7 +19,7 @@ jobs:
     env:
       TZ: Asia/Ho_Chi_Minh
       TARGET_DATE: "2026-08-23"
-      DEBUG_MODE: "false"
+      DEBUG_MODE: "true"
 
     steps:
       - name: Checkout
@@ -41,12 +41,12 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Crawl exact attendance date
+      - name: Crawl exact attendance date with encrypted debug evidence
         env:
           ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
         run: node scripts/attendance-crawl.mjs
 
-      - name: Encrypt recovery and private roster diagnostic
+      - name: Encrypt recovery, H5 debug evidence and private roster diagnostic
         env:
           ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
         shell: bash
@@ -56,7 +56,8 @@ jobs:
           umask 077
           test -s "output/attendance-${TARGET_DATE}.json"
           mkdir -p recovery-bundle
-          cp "output/attendance-${TARGET_DATE}.json" recovery-bundle/
+          cp -R output recovery-bundle/
+          if [ -d debug ]; then cp -R debug recovery-bundle/; fi
           printf '%s' "$ATTENDANCE_ROSTER_JSON" > recovery-bundle/roster.json
           tar -C recovery-bundle -czf attendance-recovery-bundle.tgz .
           openssl cms -encrypt -binary -aes256 \

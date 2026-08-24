@@ -91,7 +91,7 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Run parser tests
+      - name: Run parser and report tests
         run: npm test
 
       - name: Validate private configuration
@@ -138,6 +138,12 @@ jobs:
           set -euo pipefail
           rm -rf output debug
           node scripts/attendance-crawl.mjs
+
+      - name: Build canonical business report
+        if: ${{ (env.ATTENDANCE_RUN_SLOT == 'morning_1230' || env.ATTENDANCE_RUN_SLOT == 'daily_2105') && hashFiles('output/attendance-*.json') != '' }}
+        env:
+          ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
+        run: node scripts/build-report-payload.mjs
 
       - name: Encrypt result before artifact upload
         if: ${{ hashFiles('output/*.json') != '' }}

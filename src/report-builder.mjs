@@ -26,6 +26,10 @@ function displayTime(isoTimestamp) {
   }).format(date);
 }
 
+function displayOptionalDate(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) ? displayDate(String(value)) : null;
+}
+
 function minuteOfDay(value) {
   const match = String(value || "").match(/^([01]\d|2[0-3]):([0-5]\d)$/);
   if (!match) return null;
@@ -85,10 +89,60 @@ function baseEmployee(employee) {
   };
 }
 
-function unresolvedSourceStatus() {
+function sourceReviewStatus(employee) {
+  const history = employee?.device_history && typeof employee.device_history === "object"
+    ? employee.device_history
+    : null;
+  const historyCount = Number.isInteger(history?.history_record_count) && history.history_record_count >= 0
+    ? history.history_record_count
+    : null;
+  const latestRecordDate = /^\d{4}-\d{2}-\d{2}$/.test(String(history?.latest_record_date || ""))
+    ? String(history.latest_record_date)
+    : null;
+  const earliestRecordDate = /^\d{4}-\d{2}-\d{2}$/.test(String(history?.earliest_record_date || ""))
+    ? String(history.earliest_record_date)
+    : null;
+  const interpretation = typeof history?.interpretation === "string" ? history.interpretation : null;
+
+  if (historyCount === 0 || interpretation === "device_history_empty") {
+    return {
+      status_code: "source_review",
+      status_text: "⚠️ Nguồn chấm công không trả lịch sử – cần cập nhật/đối soát link nguồn",
+      source_issue_code: "source_history_empty",
+      source_health: {
+        history_record_count: historyCount ?? 0,
+        latest_record_date: latestRecordDate,
+        earliest_record_date: earliestRecordDate,
+        interpretation,
+      },
+    };
+  }
+
+  if (historyCount > 0 && latestRecordDate) {
+    const latestDisplay = displayOptionalDate(latestRecordDate);
+    return {
+      status_code: "source_review",
+      status_text: `⚠️ Nguồn chấm công chưa có dữ liệu ngày này; lịch sử hiện dừng ở ${latestDisplay} – cần cập nhật/đối soát link nguồn`,
+      source_issue_code: "source_history_stale",
+      source_health: {
+        history_record_count: historyCount,
+        latest_record_date: latestRecordDate,
+        earliest_record_date: earliestRecordDate,
+        interpretation,
+      },
+    };
+  }
+
   return {
     status_code: "source_review",
-    status_text: "⚠️ Nguồn chưa xác nhận được dữ liệu ngày này – cần đối soát",
+    status_text: "⚠️ Nguồn chưa xác nhận được dữ liệu ngày này – cần đối soát nguồn",
+    source_issue_code: "source_unresolved",
+    source_health: {
+      history_record_count: historyCount,
+      latest_record_date: latestRecordDate,
+      earliest_record_date: earliestRecordDate,
+      interpretation,
+    },
   };
 }
 
@@ -106,7 +160,7 @@ function buildMorningEmployee(employee) {
     return {
       ...base,
       morning: null,
-      ...unresolvedSourceStatus(),
+      ...sourceReviewStatus(employee),
     };
   }
 
@@ -195,7 +249,7 @@ function buildDailyEmployee(employee) {
       sessions: [],
       total_minutes: null,
       total_display: "—",
-      ...unresolvedSourceStatus(),
+      ...sourceReviewStatus(employee),
     };
   }
 
@@ -346,6 +400,7 @@ export function buildAttendanceBusinessReport(rawReport, slot, expectedNames) {
   const rows = slot === "morning_1230"
     ? rawReport.employees.map(buildMorningEmployee)
     : rawReport.employees.map(buildDailyEmployee);
+  const sourceReviewRows = rows.filter((row) => row.status_code === "source_review");
   const report = {
     schema_version: 1,
     kind: "attendance_business_report",
@@ -359,6 +414,9 @@ export function buildAttendanceBusinessReport(rawReport, slot, expectedNames) {
     quality: {
       technical_error_count: rows.filter((row) => row.status_code === "technical_error").length,
       review_required_count: rows.filter((row) => ["review_required", "source_review"].includes(row.status_code)).length,
+      source_review_count: sourceReviewRows.length,
+      stale_source_count: sourceReviewRows.filter((row) => row.source_issue_code === "source_history_stale").length,
+      empty_source_count: sourceReviewRows.filter((row) => row.source_issue_code === "source_history_empty").length,
       open_session_count: rows.filter((row) => row.status_code === "open_session").length,
       accounted_employee_count: rows.length,
     },

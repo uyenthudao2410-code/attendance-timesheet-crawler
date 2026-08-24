@@ -122,7 +122,23 @@ test("daily report never totals across an open session", () => {
   assert.match(report.employees[0].status_text, /thiếu giờ ra sau 13:00/);
 });
 
-test("date_not_found with stale source is a source review, not employee absence", () => {
+test("date_not_found is always source review, never an employee no-attendance conclusion", () => {
+  const report = buildAttendanceBusinessReport(rawReport({
+    status: "date_not_found",
+    sessions: [],
+    morning: null,
+    afternoon: null,
+    api_total_available_records: 74,
+  }), "morning_1230", NAMES);
+
+  assert.equal(report.employees[0].status_code, "source_review");
+  assert.equal(report.employees[0].status_text, "⚠️ Nguồn chưa xác nhận được dữ liệu ngày này – cần đối soát");
+  assert.doesNotMatch(report.employees[0].status_text, /Chưa ghi nhận$/);
+  assert.match(report.teams_html, /Nguồn chưa xác nhận được dữ liệu ngày này/);
+  assert.equal(report.quality.review_required_count, 8);
+});
+
+test("daily date_not_found also fails closed as source review", () => {
   const report = buildAttendanceBusinessReport(rawReport({
     status: "date_not_found",
     source_classification: "link_history_stale_needs_verification",
@@ -132,5 +148,5 @@ test("date_not_found with stale source is a source review, not employee absence"
   }), "daily_2105", NAMES);
 
   assert.equal(report.employees[0].status_code, "source_review");
-  assert.equal(report.employees[0].status_text, "⚠️ Nguồn cần kiểm tra/đối soát");
+  assert.equal(report.employees[0].status_text, "⚠️ Nguồn chưa xác nhận được dữ liệu ngày này – cần đối soát");
 });

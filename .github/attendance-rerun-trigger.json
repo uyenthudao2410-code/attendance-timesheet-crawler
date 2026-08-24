@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "request_id": "morning-20260824-150100",
+  "request_id": "morning-20260824-150840",
   "slot": "morning_1230",
   "target_date": "2026-08-24",
-  "requested_at": "2026-08-24T15:01:00+07:00",
-  "reason": "one-time backfill report verification after roster secret update"
+  "requested_at": "2026-08-24T15:08:40+07:00",
+  "reason": "one-time backfill verification after secrecy-guard fix and roster secret update"
 }

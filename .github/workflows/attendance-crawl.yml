@@ -17,9 +17,9 @@ on:
       - ".github/attendance-rerun-trigger.json"
   schedule:
     # GitHub cron is UTC; Vietnam is UTC+7 year-round.
-    # Queue early to absorb scheduler delay, then capture inside the business snapshot window.
-    - cron: "20 6 * * *"   # 13:20 VN queue -> snapshot >=13:35 -> 13:50 morning report
-    - cron: "20 0 * * *"   # 07:20 VN queue -> snapshot >=07:35 -> 07:50 previous-day final report
+    # Queue well before publication to absorb GitHub scheduler delay and crawler/browser fallback time.
+    - cron: "45 5 * * *"   # 12:45 VN queue -> snapshot >=13:10 -> 13:50 morning report
+    - cron: "45 23 * * *"  # 06:45 VN queue -> snapshot >=07:00 -> 07:50 previous-day final report
 
 permissions:
   contents: write
@@ -66,11 +66,11 @@ jobs:
             esac
           else
             case "${SCHEDULE_EXPRESSION:-}" in
-              "20 6 * * *")
+              "45 5 * * *")
                 target_date="$(TZ=Asia/Ho_Chi_Minh date +%F)"
                 run_slot="morning_1230"
                 ;;
-              "20 0 * * *")
+              "45 23 * * *")
                 target_date="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"
                 run_slot="daily_2105"
                 ;;
@@ -96,11 +96,11 @@ jobs:
           case "$ATTENDANCE_RUN_SLOT" in
             morning_1230)
               snapshot_date="$TARGET_DATE"
-              snapshot_time="13:35:00"
+              snapshot_time="13:10:00"
               ;;
             daily_2105)
               snapshot_date="$(TZ=Asia/Ho_Chi_Minh date +%F)"
-              snapshot_time="07:35:00"
+              snapshot_time="07:00:00"
               ;;
             *)
               echo "No wait target for slot=$ATTENDANCE_RUN_SLOT"

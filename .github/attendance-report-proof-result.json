@@ -7,7 +7,14 @@
   "technical_error_count": 0,
   "review_required_count": 0,
   "open_session_count": 0,
-  "report_sha256": "1dcb2bac666d96c02e0f833930498167280a4891a37ad3d6eb240cd964dc4a7c",
-  "source_head_sha": "980848b29727286cadf198f4ef9a33d81017c53b",
-  "generated_at": "2026-08-24T06:28:46.989Z"
+  "report_sha256": "39efaee174ab1b9da7bfb35bf3927a0b4a17ceb46d1b4818315862a57bfd146e",
+  "outcomes": {
+    "tests": "success",
+    "preflight": "success",
+    "crawl": "success",
+    "build": "success",
+    "validate": "success"
+  },
+  "source_head_sha": "64bf2defa742ef90a0804ae1cd115ffb7846efb2",
+  "generated_at": "2026-08-24T06:30:17.256Z"
 }

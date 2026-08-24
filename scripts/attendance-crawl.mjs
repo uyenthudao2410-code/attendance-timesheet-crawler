@@ -17,6 +17,8 @@ const DEBUG_MODE = String(process.env.DEBUG_MODE || "false").toLowerCase() === "
 const ALLOWED_HOSTS = new Set(["h5.timemark.com", "h5.dayscamera.com"]);
 const ATTENDANCE_API_HOST = "app.dayscamera.com";
 const ATTENDANCE_API_PATH = "/next/attendance/record/query/plain";
+const BROWSER_STABILIZATION_TIMEOUT_MS = 12000;
+const BROWSER_STABILIZATION_POLL_MS = 800;
 
 function loadPrivateRoster() {
   const raw = process.env.ATTENDANCE_ROSTER_JSON;
@@ -98,12 +100,19 @@ async function getReadableText(page) {
 }
 
 function looksLikeTimesheet(text) {
-  return /(My\s*Timesheet|Bảng\s*công|Lịch\s*sử\s*chấm\s*công|Vào\s*ca|Tan\s*ca)/i.test(text);
+  // Action labels such as "Vào ca"/"Tan ca" also exist on the in-work landing
+  // screen. They are not sufficient proof that the historical timesheet view is
+  // open, so only explicit timesheet/history labels qualify here.
+  return /(My\s*Timesheet|Bảng\s*công|Lịch\s*sử\s*chấm\s*công|Chấm\s*công\s*của\s*tôi)/i.test(text);
 }
 
 async function navigateToReadOnlyTimesheet(page, originalUrl) {
   let text = await getReadableText(page);
-  if (looksLikeTimesheet(text)) return { method: "original_url", text };
+  const original = new URL(originalUrl);
+  const originalType = String(original.searchParams.get("attendanceType") || "").toLowerCase();
+  if (originalType === "mytimesheet" && looksLikeTimesheet(text)) {
+    return { method: "original_timesheet_url", text };
+  }
 
   const safeNavigationLabels = [/My\s*Timesheet/i, /Bảng\s*công/i, /Lịch\s*sử/i, /Timesheet/i];
   for (const label of safeNavigationLabels) {
@@ -127,8 +136,13 @@ async function navigateToReadOnlyTimesheet(page, originalUrl) {
     fallback.searchParams.set("attendanceType", "myTimesheet");
     await page.goto(fallback.toString(), { waitUntil: "domcontentloaded", timeout: 45000 });
     await page.waitForTimeout(5000);
+    try {
+      await page.waitForLoadState("networkidle", { timeout: 5000 });
+    } catch {
+      // H5 SPAs may keep long-lived connections open.
+    }
     text = await getReadableText(page);
-    return { method: "timesheet_view_fallback", text };
+    return { method: originalType === "mytimesheet" ? "timesheet_url_reload" : "timesheet_view_fallback", text };
   } catch {
     return { method: "no_timesheet_navigation", text };
   }
@@ -290,6 +304,76 @@ async function tryDirectApi(employee, targetDate, debugDir) {
   }
 }
 
+async function settleKnownApiResponses(apiResponsePromises) {
+  // A single Promise.allSettled([...array]) only waits for promises known at the
+  // instant of the copy. SPA responses can arrive while those promises settle,
+  // so drain repeatedly until the promise list is stable for two rounds.
+  let previousLength = -1;
+  let stableRounds = 0;
+  while (stableRounds < 2) {
+    const snapshot = [...apiResponsePromises];
+    await Promise.allSettled(snapshot);
+    const currentLength = apiResponsePromises.length;
+    if (currentLength === previousLength) {
+      stableRounds += 1;
+    } else {
+      stableRounds = 0;
+      previousLength = currentLength;
+    }
+    if (stableRounds < 2) await new Promise((resolve) => setTimeout(resolve, 120));
+  }
+}
+
+async function stabilizeBrowserEvidence(page, attendanceApiPayloads, apiResponsePromises, targetDate) {
+  const deadline = Date.now() + BROWSER_STABILIZATION_TIMEOUT_MS;
+  let lastResult = null;
+  let iterations = 0;
+
+  do {
+    iterations += 1;
+    await page.waitForTimeout(BROWSER_STABILIZATION_POLL_MS);
+    await settleKnownApiResponses(apiResponsePromises);
+
+    // Always read the live DOM again. Never reuse navigation.text here because
+    // it is an earlier SPA snapshot and can miss records rendered afterwards.
+    const text = await getReadableText(page);
+    if (!text.trim()) {
+      if (Date.now() < deadline) continue;
+      throw new Error("Rendered page contains no readable text");
+    }
+
+    const domAttendance = {
+      ...extractAttendance(text, targetDate, {
+        allowTodayLabel: targetDate === currentVNDate(),
+      }),
+      data_source: "rendered_dom",
+    };
+    const apiAttendanceRaw = extractAttendanceFromApiPayloads(attendanceApiPayloads, targetDate);
+    const apiAttendance = apiAttendanceRaw
+      ? { ...apiAttendanceRaw, data_source: "attendance_api_browser" }
+      : null;
+    const selection = chooseBrowserAttendance(apiAttendance, domAttendance);
+    lastResult = { text, domAttendance, apiAttendance, selection, iterations };
+
+    if (selection.attendance && selection.attendance.status !== "date_not_found") {
+      return lastResult;
+    }
+  } while (Date.now() < deadline);
+
+  return lastResult;
+}
+
+function safeHistoryLog(history) {
+  if (!history) return "history=unknown";
+  return [
+    `history_count=${history.history_record_count ?? "unknown"}`,
+    `latest=${history.latest_record_date ?? "none"}`,
+    `earliest=${history.earliest_record_date ?? "none"}`,
+    `target_present=${history.target_date_present ?? "unknown"}`,
+    `history_state=${history.interpretation ?? "unknown"}`,
+  ].join(" ");
+}
+
 async function processEmployee(getBrowserContext, employee, targetDate, debugDir) {
   const direct = await tryDirectApi(employee, targetDate, debugDir);
   if (direct.ok && direct.attendance.status !== "date_not_found") {
@@ -359,22 +443,60 @@ async function processEmployee(getBrowserContext, employee, targetDate, debugDir
     }
 
     const navigation = await navigateToReadOnlyTimesheet(page, employee.url);
-    await page.waitForTimeout(700);
-    await Promise.allSettled([...apiResponsePromises]);
+    const stabilized = await stabilizeBrowserEvidence(
+      page,
+      attendanceApiPayloads,
+      apiResponsePromises,
+      targetDate,
+    );
+    if (!stabilized?.selection?.attendance) {
+      throw new Error("Neither browser API nor rendered page produced attendance data");
+    }
 
-    const text = navigation.text || (await getReadableText(page));
-    if (!text.trim()) throw new Error("Rendered page contains no readable text");
+    let {
+      text,
+      domAttendance,
+      apiAttendance,
+      selection,
+      iterations: stabilizationIterations,
+    } = stabilized;
+    let attendance = selection.attendance;
 
-    const domAttendance = { ...extractAttendance(text, targetDate, {
-      allowTodayLabel: targetDate === currentVNDate(),
-    }), data_source: "rendered_dom" };
-    const apiAttendanceRaw = extractAttendanceFromApiPayloads(attendanceApiPayloads, targetDate);
-    const apiAttendance = apiAttendanceRaw
-      ? { ...apiAttendanceRaw, data_source: "attendance_api_browser" }
-      : null;
-    const selection = chooseBrowserAttendance(apiAttendance, domAttendance);
-    if (!selection.attendance) throw new Error("Neither browser API nor rendered page produced attendance data");
-    const attendance = selection.attendance;
+    // Preserve the direct 45-day history evidence when browser verification still
+    // cannot locate the target date. This makes unresolved source states auditable.
+    if (
+      attendance.status === "date_not_found" &&
+      direct.ok &&
+      direct.attendance?.device_history &&
+      !attendance.device_history
+    ) {
+      attendance = { ...attendance, device_history: direct.attendance.device_history };
+    }
+
+    // One bounded fresh direct read after the browser has fully stabilized covers
+    // eventual-consistency lag without substituting another date or stale run.
+    if (attendance.status === "date_not_found") {
+      const refreshedDirect = await tryDirectApi(employee, targetDate, debugDir);
+      if (refreshedDirect.ok && refreshedDirect.attendance.status !== "date_not_found") {
+        const refreshedAttendance = refreshedDirect.attendance;
+        return {
+          name: employee.name,
+          access_ok: true,
+          http_status: refreshedDirect.payload.status,
+          page_title: await page.title(),
+          navigation_method: "direct_api_refresh_after_browser",
+          direct_api_fallback_reason: directFallbackReason,
+          ...refreshedAttendance,
+          verification: collectApiVerification(refreshedAttendance),
+          source_disagreement: "initial_sources_missed_target_date_but_bounded_refresh_found_it",
+          attendance_api_payload_count: attendanceApiPayloads.length + (refreshedDirect.historyPayload ? 2 : 1),
+          parser_crosscheck_agrees: null,
+          browser_stabilization_iterations: stabilizationIterations,
+          json_endpoints: [...jsonEndpoints].slice(0, 20),
+        };
+      }
+    }
+
     const parserCrosscheck = compareParsers(apiAttendance, domAttendance);
     const verification = selection.recovered_from_dom || !apiAttendance
       ? await collectVerificationSignals(page, text)
@@ -392,6 +514,14 @@ async function processEmployee(getBrowserContext, employee, targetDate, debugDir
       }
     }
 
+    if (attendance.status === "date_not_found") {
+      console.warn(
+        `Attendance source unresolved after stabilized browser fallback: name=${employee.name} ` +
+          `navigation=${navigation.method} browser_api_payloads=${attendanceApiPayloads.length} ` +
+          `stabilization_iterations=${stabilizationIterations} ${safeHistoryLog(attendance.device_history)}`,
+      );
+    }
+
     return {
       name: employee.name,
       access_ok: true,
@@ -404,6 +534,7 @@ async function processEmployee(getBrowserContext, employee, targetDate, debugDir
       source_disagreement: selection.source_disagreement,
       attendance_api_payload_count: attendanceApiPayloads.length,
       parser_crosscheck_agrees: parserCrosscheck?.agrees ?? null,
+      browser_stabilization_iterations: stabilizationIterations,
       json_endpoints: [...jsonEndpoints].slice(0, 20),
     };
   } catch (error) {
@@ -475,6 +606,7 @@ async function main() {
     direct_api_history: results.filter((item) => item.data_source === "attendance_api_direct_history").length,
     browser_api: results.filter((item) => item.data_source === "attendance_api_browser").length,
     dom: results.filter((item) => String(item.data_source || "").startsWith("rendered_dom")).length,
+    direct_api_refresh: results.filter((item) => item.navigation_method === "direct_api_refresh_after_browser").length,
     complete: results.filter((item) => item.status === "complete").length,
     incomplete: results.filter((item) => item.status === "incomplete").length,
     review_required: results.filter((item) => item.status === "review_required").length,
@@ -482,7 +614,7 @@ async function main() {
     technical_error: results.filter((item) => item.status === "technical_error").length,
   };
   console.log(
-    `Attendance crawl finished: total=${counts.total} direct_api=${counts.direct_api} direct_api_history=${counts.direct_api_history} browser_api=${counts.browser_api} dom=${counts.dom} complete=${counts.complete} incomplete=${counts.incomplete} review_required=${counts.review_required} date_not_found=${counts.date_not_found} technical_error=${counts.technical_error}`,
+    `Attendance crawl finished: total=${counts.total} direct_api=${counts.direct_api} direct_api_history=${counts.direct_api_history} browser_api=${counts.browser_api} dom=${counts.dom} direct_api_refresh=${counts.direct_api_refresh} complete=${counts.complete} incomplete=${counts.incomplete} review_required=${counts.review_required} date_not_found=${counts.date_not_found} technical_error=${counts.technical_error}`,
   );
 }
 

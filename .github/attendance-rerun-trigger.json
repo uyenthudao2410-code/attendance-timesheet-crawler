@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "request_id": "morning-20260824-142817",
+  "request_id": "morning-20260824-143635",
   "slot": "morning_1230",
   "target_date": "2026-08-24",
-  "requested_at": "2026-08-24T14:28:17+07:00",
-  "reason": "post-fix orchestration proof"
+  "requested_at": "2026-08-24T14:36:35+07:00",
+  "reason": "verify stabilized browser fallback after crawl sequencing fix"
 }

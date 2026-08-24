@@ -30,18 +30,18 @@ The attendance application is the source of punch evidence. GitHub Actions is th
 
 ## Production schedule
 
-GitHub cron is UTC; Vietnam is UTC+7 year-round. The producer is deliberately queued early so GitHub scheduler delay does not race the business reporting time.
+GitHub cron is UTC; Vietnam is UTC+7 year-round. The producer is deliberately queued well before publication so GitHub scheduler delay, dependency install, API fallback and Chromium fallback have enough margin before Teams publication.
 
 | Purpose | Target attendance date | Queue time VN | GitHub cron | Snapshot not before | Teams publication |
 |---|---|---:|---|---:|---:|
-| Morning report | current day | 13:20 | `20 6 * * *` | 13:35 current day | **13:50 current day** |
-| Daily final report | previous day | 07:20 next morning | `20 0 * * *` | 07:35 current morning | **07:50 next morning** |
+| Morning report | current day | **12:45** | `45 5 * * *` | **13:10 current day** | **13:50 current day** |
+| Daily final report | previous day | **06:45 next morning** | `45 23 * * *` | **07:00 current morning** | **07:50 next morning** |
 
-There is **no 21:05 production report and no separate 06:45 reconciliation schedule**. The final daily report is intentionally generated the next morning so late/end-of-day punches can be included before publication.
+There is **no 21:05 publication and no separate 06:45/07:15 reconciliation report**. The 06:45 event is only the GitHub producer queue for the 07:50 final report; it does not publish a business report by itself. The final daily report is intentionally published the next morning so late/end-of-day punches can be included before publication.
 
-For the 07:50 report, `TARGET_DATE` is yesterday in `Asia/Ho_Chi_Minh`, while the snapshot wait clock is today at 07:35. These two dates must not be conflated; otherwise the workflow can incorrectly treat yesterday's 07:35 as already elapsed and capture too early.
+For the 07:50 report, `TARGET_DATE` is yesterday in `Asia/Ho_Chi_Minh`, while the snapshot wait clock is today at 07:00. These two dates must not be conflated; otherwise the workflow can incorrectly treat yesterday's snapshot time as already elapsed and capture too early.
 
-If GitHub starts before the snapshot time, the job waits inside the workflow and collects only at/after the snapshot time. If GitHub starts late, it proceeds immediately. Consumers have a bounded wait window and fail closed rather than substituting stale data.
+If GitHub starts before the snapshot time, the job waits inside the workflow and collects only at/after the snapshot time. If GitHub starts late, it proceeds immediately. The 13:50 and 07:50 consumers additionally allow a bounded completion window until 14:10 and 08:10 respectively before emitting a fail-closed source warning, preventing transient GitHub scheduler delay from being reported as an attendance error.
 
 The internal slot identifiers remain `morning_1230` and `daily_2105` only for backward-compatible state/report paths. They **do not represent the current business publication times**.
 
@@ -213,17 +213,17 @@ The `report_file + report_sha256` binding prevents a consumer from silently usin
 
 ## Scheduled consumer contract
 
-The **13:50 current-day morning consumer** and **07:50 next-morning final consumer** must do only the following:
+The **13:50 current-day morning consumer** and **07:50 next-morning final consumer** publish only to the official `BC- Báo cáo hình ảnh` Teams chat and must do only the following:
 
 1. reject a duplicate successful Teams report for the same business report window;
-2. wait for the exact state schema v3 and exact target date required by that publication;
+2. wait for the exact state schema v3 and exact target date required by that publication, with bounded grace until 14:10 / 08:10;
 3. validate internal slot, target date, identity fingerprint, artifact ID/name, report path, and encryption marker;
 4. download exactly the state artifact;
 5. decrypt it without logging secrets;
 6. hash the exact report file and require equality with `state.report_sha256`;
 7. validate report schema v1, kind, slot, date, timezone, and exactly 8 employee rows;
 8. send the existing `report.teams_html` unchanged;
-9. fail closed with one short business-facing source-unavailable message if the bounded wait/gates fail.
+9. only after the bounded window expires, fail closed with one short business-facing source-unavailable message if the gates still fail.
 
 The consumer must **not**:
 
@@ -234,7 +234,8 @@ The consumer must **not**:
 - read raw attendance in order to rebuild the report;
 - recalculate durations or totals;
 - substitute another date, run, artifact, or report;
-- downgrade `source_review` into a no-attendance conclusion.
+- downgrade `source_review` into a no-attendance conclusion;
+- publish production attendance to a TEST chat.
 
 ## Test coverage
 

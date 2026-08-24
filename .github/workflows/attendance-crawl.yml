@@ -18,6 +18,7 @@ on:
     - cron: "30 5 * * *"   # 12:30 VN -> morning snapshot
     - cron: "5 14 * * *"   # 21:05 VN -> daily-summary snapshot
     - cron: "0 23 * * *"   # 06:00 VN next day -> previous-day final snapshot for 06:45 reconciliation
+    - cron: "22 0 * * *"   # TEMP 07:22 VN -> one-time encrypted recovery of previous day
 
 permissions:
   contents: write
@@ -29,7 +30,7 @@ concurrency:
 jobs:
   crawl:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       TZ: Asia/Ho_Chi_Minh
       DEBUG_MODE: ${{ github.event.inputs.debug || 'false' }}
@@ -37,6 +38,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -53,9 +56,10 @@ jobs:
           if [ -n "${MANUAL_TARGET_DATE:-}" ]; then
             target_date="$MANUAL_TARGET_DATE"
             run_slot="manual"
+          elif [ "${SCHEDULE_EXPRESSION:-}" = "22 0 * * *" ]; then
+            target_date="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"
+            run_slot="final_0645"
           elif [ "${SCHEDULE_EXPRESSION:-}" = "0 23 * * *" ] || [ "${SCHEDULE_EXPRESSION:-}" = "40 23 * * *" ] || [ "${SCHEDULE_EXPRESSION:-}" = "45 23 * * *" ]; then
-            # Accept previous final-source crons too, so already queued rollout events
-            # cannot be misclassified while the new 06:00 source schedule takes over.
             target_date="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"
             run_slot="final_0645"
           else
@@ -122,6 +126,52 @@ jobs:
           rm -rf output debug
           node scripts/attendance-crawl.mjs
 
+      - name: Encrypt one-time recovery copy
+        if: ${{ github.event_name == 'schedule' && github.event.schedule == '22 0 * * *' && hashFiles('output/*.json') != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          openssl cms -encrypt -binary -aes256 \
+            -in "output/attendance-${TARGET_DATE}.json" \
+            -outform DER \
+            -out attendance-recovery.cms \
+            .github/attendance-recovery-public.crt
+
+      - name: Upload one-time recovery artifact
+        id: upload_recovery
+        if: ${{ github.event_name == 'schedule' && github.event.schedule == '22 0 * * *' && hashFiles('attendance-recovery.cms') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: attendance-recovery-${{ github.run_id }}
+          path: attendance-recovery.cms
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Publish one-time recovery state
+        if: ${{ github.event_name == 'schedule' && github.event.schedule == '22 0 * * *' && steps.upload_recovery.outcome == 'success' }}
+        env:
+          RECOVERY_ARTIFACT_ID: ${{ steps.upload_recovery.outputs['artifact-id'] }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .github/attendance-state
+          cat > .github/attendance-state/recovery_2026-08-23.json <<EOF
+          {
+            "schema_version": 1,
+            "target_date": "${TARGET_DATE}",
+            "run_id": "${GITHUB_RUN_ID}",
+            "artifact_id": "${RECOVERY_ARTIFACT_ID}",
+            "artifact_name": "attendance-recovery-${GITHUB_RUN_ID}",
+            "completed_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/attendance-state/recovery_2026-08-23.json
+          git commit -m "state: attendance recovery 2026-08-23 [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
+
       - name: Encrypt result before artifact upload
         if: ${{ hashFiles('output/*.json') != '' }}
         env:
@@ -142,7 +192,7 @@ jobs:
               -pass stdin \
               -in attendance-payload.tgz \
               -out attendance-payload.tgz.enc
-          rm -rf secure-bundle output debug attendance-payload.tgz
+          rm -rf secure-bundle output debug attendance-payload.tgz attendance-recovery.cms
 
       - name: Upload encrypted attendance artifact
         id: upload_artifact

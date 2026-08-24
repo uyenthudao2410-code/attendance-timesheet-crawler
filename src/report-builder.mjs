@@ -26,10 +26,6 @@ function displayTime(isoTimestamp) {
   }).format(date);
 }
 
-function displayOptionalDate(value) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) ? displayDate(String(value)) : null;
-}
-
 function minuteOfDay(value) {
   const match = String(value || "").match(/^([01]\d|2[0-3]):([0-5]\d)$/);
   if (!match) return null;
@@ -89,7 +85,7 @@ function baseEmployee(employee) {
   };
 }
 
-function sourceReviewStatus(employee) {
+function dateNotFoundStatus(employee, noRecordStatusCode, noRecordStatusText) {
   const history = employee?.device_history && typeof employee.device_history === "object"
     ? employee.device_history
     : null;
@@ -102,7 +98,17 @@ function sourceReviewStatus(employee) {
   const earliestRecordDate = /^\d{4}-\d{2}-\d{2}$/.test(String(history?.earliest_record_date || ""))
     ? String(history.earliest_record_date)
     : null;
+  const targetDatePresent = typeof history?.target_date_present === "boolean"
+    ? history.target_date_present
+    : null;
   const interpretation = typeof history?.interpretation === "string" ? history.interpretation : null;
+  const sourceHealth = {
+    history_record_count: historyCount,
+    latest_record_date: latestRecordDate,
+    earliest_record_date: earliestRecordDate,
+    target_date_present: targetDatePresent,
+    interpretation,
+  };
 
   if (historyCount === 0 || interpretation === "device_history_empty") {
     return {
@@ -110,26 +116,23 @@ function sourceReviewStatus(employee) {
       status_text: "⚠️ Nguồn chấm công không trả lịch sử – cần cập nhật/đối soát link nguồn",
       source_issue_code: "source_history_empty",
       source_health: {
+        ...sourceHealth,
         history_record_count: historyCount ?? 0,
-        latest_record_date: latestRecordDate,
-        earliest_record_date: earliestRecordDate,
-        interpretation,
       },
     };
   }
 
-  if (historyCount > 0 && latestRecordDate) {
-    const latestDisplay = displayOptionalDate(latestRecordDate);
+  // ATTENDANCE_ROSTER_JSON is the administrator-owned canonical source mapping.
+  // If that source is readable and has history, an absent target date means there is
+  // no attendance record for that date. It can be leave/rest/no punch; the attendance
+  // crawler must not relabel it as a broken or stale link merely because the latest
+  // prior record is several days old.
+  if (employee.access_ok !== false && historyCount > 0 && targetDatePresent === false) {
     return {
-      status_code: "source_review",
-      status_text: `⚠️ Nguồn chấm công chưa có dữ liệu ngày này; lịch sử hiện dừng ở ${latestDisplay} – cần cập nhật/đối soát link nguồn`,
-      source_issue_code: "source_history_stale",
-      source_health: {
-        history_record_count: historyCount,
-        latest_record_date: latestRecordDate,
-        earliest_record_date: earliestRecordDate,
-        interpretation,
-      },
+      status_code: noRecordStatusCode,
+      status_text: noRecordStatusText,
+      source_record_state: "target_date_absent",
+      source_health: sourceHealth,
     };
   }
 
@@ -137,12 +140,7 @@ function sourceReviewStatus(employee) {
     status_code: "source_review",
     status_text: "⚠️ Nguồn chưa xác nhận được dữ liệu ngày này – cần đối soát nguồn",
     source_issue_code: "source_unresolved",
-    source_health: {
-      history_record_count: historyCount,
-      latest_record_date: latestRecordDate,
-      earliest_record_date: earliestRecordDate,
-      interpretation,
-    },
+    source_health: sourceHealth,
   };
 }
 
@@ -160,7 +158,7 @@ function buildMorningEmployee(employee) {
     return {
       ...base,
       morning: null,
-      ...sourceReviewStatus(employee),
+      ...dateNotFoundStatus(employee, "not_recorded_morning", "⚠️ Không có bản ghi chấm công ca sáng"),
     };
   }
 
@@ -249,7 +247,7 @@ function buildDailyEmployee(employee) {
       sessions: [],
       total_minutes: null,
       total_display: "—",
-      ...sourceReviewStatus(employee),
+      ...dateNotFoundStatus(employee, "not_recorded", "⚠️ Không có bản ghi chấm công"),
     };
   }
 
@@ -417,6 +415,7 @@ export function buildAttendanceBusinessReport(rawReport, slot, expectedNames) {
       source_review_count: sourceReviewRows.length,
       stale_source_count: sourceReviewRows.filter((row) => row.source_issue_code === "source_history_stale").length,
       empty_source_count: sourceReviewRows.filter((row) => row.source_issue_code === "source_history_empty").length,
+      no_target_record_count: rows.filter((row) => row.source_record_state === "target_date_absent").length,
       open_session_count: rows.filter((row) => row.status_code === "open_session").length,
       accounted_employee_count: rows.length,
     },

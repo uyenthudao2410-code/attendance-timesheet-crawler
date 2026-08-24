@@ -14,9 +14,9 @@ on:
         type: boolean
   schedule:
     # GitHub cron is UTC; Vietnam is UTC+7 year-round.
-    # Queue early to absorb GitHub scheduler delay, then wait inside the job until the business snapshot time.
-    - cron: "55 4 * * *"   # 11:55 VN queue -> snapshot at/after 12:15 for 12:30 morning report
-    - cron: "30 13 * * *"  # 20:30 VN queue -> snapshot at/after 20:50 for 21:05 daily-summary report
+    # Queue early to absorb scheduler delay, but capture only at/after the business snapshot time.
+    - cron: "55 4 * * *"   # 11:55 VN queue -> snapshot >=12:15 for 12:30 report
+    - cron: "30 13 * * *"  # 20:30 VN queue -> snapshot >=20:50 for 21:05 report
 
 permissions:
   contents: write
@@ -101,9 +101,12 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$ATTENDANCE_ROSTER_JSON" || { echo "Missing required repository secret: ATTENDANCE_ROSTER_JSON"; exit 1; }
-          fingerprint="$(node scripts/derive-artifact-material.mjs fingerprint)"
-          test "${#fingerprint}" -eq 64 || { echo "Invalid roster fingerprint"; exit 1; }
-          echo "ATTENDANCE_ROSTER_FINGERPRINT=$fingerprint" >> "$GITHUB_ENV"
+          roster_fingerprint="$(node scripts/derive-artifact-material.mjs fingerprint)"
+          identity_fingerprint="$(node scripts/derive-artifact-material.mjs identity-fingerprint)"
+          test "${#roster_fingerprint}" -eq 64 || { echo "Invalid roster fingerprint"; exit 1; }
+          test "${#identity_fingerprint}" -eq 64 || { echo "Invalid identity fingerprint"; exit 1; }
+          echo "ATTENDANCE_ROSTER_FINGERPRINT=$roster_fingerprint" >> "$GITHUB_ENV"
+          echo "ATTENDANCE_IDENTITY_FINGERPRINT=$identity_fingerprint" >> "$GITHUB_ENV"
 
       - name: Check whether browser fallback is required
         id: browser_preflight
@@ -138,8 +141,6 @@ jobs:
 
       - name: Encrypt result before artifact upload
         if: ${{ hashFiles('output/*.json') != '' }}
-        env:
-          ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
         shell: bash
         run: |
           set -euo pipefail
@@ -151,20 +152,28 @@ jobs:
             cp -R debug secure-bundle/
           fi
           tar -C secure-bundle -czf attendance-payload.tgz .
-          node scripts/derive-artifact-material.mjs key | \
-            openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
-              -pass stdin \
-              -in attendance-payload.tgz \
-              -out attendance-payload.tgz.enc
-          rm -rf secure-bundle output debug attendance-payload.tgz
+          openssl rand -hex 32 > attendance-payload.key
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
+            -pass file:attendance-payload.key \
+            -in attendance-payload.tgz \
+            -out attendance-payload.tgz.enc
+          openssl pkeyutl -encrypt -pubin \
+            -inkey .github/attendance-artifact-public.pem \
+            -pkeyopt rsa_padding_mode:oaep \
+            -pkeyopt rsa_oaep_md:sha256 \
+            -in attendance-payload.key \
+            -out attendance-payload.key.enc
+          rm -rf secure-bundle output debug attendance-payload.tgz attendance-payload.key
 
       - name: Upload encrypted attendance artifact
         id: upload_artifact
-        if: ${{ hashFiles('attendance-payload.tgz.enc') != '' }}
+        if: ${{ hashFiles('attendance-payload.tgz.enc') != '' && hashFiles('attendance-payload.key.enc') != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: attendance-encrypted-${{ github.run_id }}
-          path: attendance-payload.tgz.enc
+          path: |
+            attendance-payload.tgz.enc
+            attendance-payload.key.enc
           retention-days: 3
           if-no-files-found: error
 

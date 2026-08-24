@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "request_id": "daily-20260824-152250",
+  "request_id": "verify-20260824-153126",
   "slot": "daily_2105",
   "target_date": "2026-08-23",
-  "requested_at": "2026-08-24T15:22:50+07:00",
-  "reason": "one-time 07:50 verification after no-target-record policy fix"
+  "requested_at": "2026-08-24T15:31:26+07:00",
+  "reason": "controlled GitHub-only proof after final production hardening; do not publish Teams"
 }

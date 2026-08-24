@@ -6,7 +6,7 @@ on:
       - ".github/attendance-report-proof-trigger"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   proof:
@@ -56,14 +56,16 @@ jobs:
           ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
         run: node scripts/build-report-payload.mjs
 
-      - name: Validate report-ready contract
+      - name: Validate report-ready contract and prepare receipt
         shell: bash
         run: |
           set -euo pipefail
           node --input-type=module <<'NODE'
+          import crypto from 'node:crypto';
           import fs from 'node:fs';
           const file = `output/report-${process.env.ATTENDANCE_RUN_SLOT}-${process.env.TARGET_DATE}.json`;
-          const report = JSON.parse(fs.readFileSync(file, 'utf8'));
+          const bytes = fs.readFileSync(file);
+          const report = JSON.parse(bytes.toString('utf8'));
           if (report.schema_version !== 1) throw new Error('report schema mismatch');
           if (report.kind !== 'attendance_business_report') throw new Error('report kind mismatch');
           if (report.slot !== process.env.ATTENDANCE_RUN_SLOT) throw new Error('report slot mismatch');
@@ -71,5 +73,30 @@ jobs:
           if (report.timezone !== 'Asia/Ho_Chi_Minh') throw new Error('report timezone mismatch');
           if (report.employee_count !== 8 || report.employees?.length !== 8) throw new Error('report must account for exactly 8 employees');
           if (typeof report.teams_html !== 'string' || !report.teams_html.includes('BÁO CÁO CHẤM CÔNG CA SÁNG')) throw new Error('teams_html missing');
+          const receipt = {
+            schema_version: 1,
+            status: 'PASS',
+            date: report.date,
+            slot: report.slot,
+            employee_count: report.employee_count,
+            technical_error_count: report.quality.technical_error_count,
+            review_required_count: report.quality.review_required_count,
+            open_session_count: report.quality.open_session_count,
+            report_sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
+            source_head_sha: process.env.GITHUB_SHA,
+            generated_at: new Date().toISOString(),
+          };
+          fs.writeFileSync('.github/attendance-report-proof-result.json', `${JSON.stringify(receipt, null, 2)}\n`);
           console.log(`REPORT_PROOF=PASS employees=${report.employee_count} technical=${report.quality.technical_error_count} review=${report.quality.review_required_count}`);
           NODE
+
+      - name: Publish proof receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/attendance-report-proof-result.json
+          git commit -m "test: attendance report proof receipt [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main

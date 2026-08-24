@@ -1,0 +1,21 @@
+{
+  "schema_version": 4,
+  "run_id": "32705572673",
+  "run_attempt": 1,
+  "request_id": "daily-20260824-151730",
+  "requested_at": "2026-08-24T15:17:30+07:00",
+  "trigger_commit_sha": "c76d72c3b0e72386da977943daddbadf86669ebe",
+  "slot": "daily_2105",
+  "target_date": "2026-08-23",
+  "crawl_complete": true,
+  "crawl_employee_count": 8,
+  "crawl_completed_at": "2026-08-24T08:19:48.232Z",
+  "artifact_id": "9512158458",
+  "artifact_name": "attendance-encrypted-32705572673",
+  "roster_fingerprint": "beb5e597e4547d1f0c56b5e0037e8cfeaf614945b94133410d2221539441cb32",
+  "identity_fingerprint": "f242e02841d372b37e4f8cc4c55643f87df656df06bf6d76d3972fb1fa15febf",
+  "encryption": "rsa-oaep-sha256+aes-256-cbc-pbkdf2-200000",
+  "report_file": "output/report-daily_2105-2026-08-23.json",
+  "report_sha256": "cc0578d5bb67aecf9f5ebf522fe2bb9218fbe5cae2f8ec2c288194e89aafba9e",
+  "completed_at": "2026-08-24T08:19:49.488Z"
+}

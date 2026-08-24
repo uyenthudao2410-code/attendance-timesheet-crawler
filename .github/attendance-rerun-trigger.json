@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "request_id": "proof-morning-v7-20260824-155545",
-  "slot": "morning_1230",
-  "target_date": "2026-08-24",
-  "requested_at": "2026-08-24T15:55:45+07:00",
-  "reason": "post-cleanup proof of 13:50 flow on current production action runtime"
+  "request_id": "proof-daily-v7-20260824-155914",
+  "slot": "daily_2105",
+  "target_date": "2026-08-23",
+  "requested_at": "2026-08-24T15:59:14+07:00",
+  "reason": "post-cleanup proof of 07:50 flow on current production action runtime"
 }

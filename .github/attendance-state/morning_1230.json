@@ -1,11 +1,13 @@
 {
-  "schema_version": 1,
-  "run_id": "32621572611",
+  "schema_version": 2,
+  "run_id": "32695922495",
   "run_attempt": 1,
   "slot": "morning_1230",
-  "target_date": "2026-08-23",
-  "artifact_id": "9488510969",
-  "artifact_name": "attendance-encrypted-32621572611",
-  "roster_fingerprint": "beb5e597e4547d1f0c56b5e0037e8cfeaf614945b94133410d2221539441cb32",
-  "completed_at": "2026-08-23T05:55:44.316Z"
+  "target_date": "2026-08-24",
+  "artifact_id": "9508823048",
+  "artifact_name": "attendance-encrypted-32695922495",
+  "roster_fingerprint": "f1d72e1abb736997cd82d294a970e7a96b1195bfd0ced784e39663e5ea8b6396",
+  "identity_fingerprint": "0b4bfa0e3b0d830a48767c4c048aea6e866e57ce1635164991992609f760678e",
+  "encryption": "rsa-oaep-sha256+aes-256-cbc-pbkdf2-200000",
+  "completed_at": "2026-08-24T06:07:28.258Z"
 }

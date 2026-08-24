@@ -31,7 +31,9 @@ concurrency:
 jobs:
   crawl:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    # Timeout includes the deliberate pre-snapshot wait (up to ~25 minutes in the morning).
+    # Keep enough execution budget for npm/tests, Chromium fallback, 8-employee crawl, encryption and upload.
+    timeout-minutes: 70
     env:
       TZ: Asia/Ho_Chi_Minh
       DEBUG_MODE: ${{ github.event.inputs.debug || 'false' }}

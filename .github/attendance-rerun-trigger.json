@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "request_id": "verify-newchat-daily-20260824-160933",
+  "request_id": "daily-20260825-082700",
   "slot": "daily_2105",
-  "target_date": "2026-08-23",
-  "requested_at": "2026-08-24T16:09:33+07:00",
-  "reason": "verify production flow after Teams destination-only update"
+  "target_date": "2026-08-24",
+  "requested_at": "2026-08-25T08:27:00+07:00",
+  "reason": "one-time catch-up after missed 07:50 scheduler run"
 }

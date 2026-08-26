@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "request_id": "daily-20260826-075000",
-  "slot": "daily_2105",
-  "target_date": "2026-08-25",
-  "requested_at": "2026-08-26T07:50:00+07:00",
-  "reason": "scheduled previous-day final report 07:50"
+  "request_id": "morning-20260826-135000",
+  "slot": "morning_1230",
+  "target_date": "2026-08-26",
+  "requested_at": "2026-08-26T13:50:00+07:00",
+  "reason": "scheduled morning report 13:50"
 }

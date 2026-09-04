@@ -6,6 +6,9 @@ import { buildAttendanceBusinessReport } from "../src/report-builder.mjs";
 const TZ = "Asia/Ho_Chi_Minh";
 const slot = String(process.env.ATTENDANCE_RUN_SLOT || "").trim();
 const targetDate = String(process.env.TARGET_DATE || "").trim();
+const REPORT_NAME_OVERRIDES = new Map([
+  ["Điêu Văn Mạnh", "Điều Văn Mạnh"],
+]);
 
 if (!new Set(["morning_1230", "daily_2105"]).has(slot)) {
   throw new Error("ATTENDANCE_RUN_SLOT must be morning_1230 or daily_2105");
@@ -23,20 +26,38 @@ try {
 if (!Array.isArray(roster) || roster.length !== 8) {
   throw new Error("ATTENDANCE_ROSTER_JSON must contain exactly 8 employees");
 }
-const expectedNames = roster.map((item, index) => {
+const sourceExpectedNames = roster.map((item, index) => {
   const name = String(item?.name || "").trim();
   if (!name) throw new Error(`Roster item ${index + 1} has no name`);
   return name;
 });
-if (new Set(expectedNames).size !== expectedNames.length) throw new Error("Roster contains duplicate employee names");
+if (new Set(sourceExpectedNames).size !== sourceExpectedNames.length) throw new Error("Roster contains duplicate employee names");
 
 const rawPath = path.join("output", `attendance-${targetDate}.json`);
 const rawReport = JSON.parse(await fs.readFile(rawPath, "utf8"));
 if (rawReport.date !== targetDate || rawReport.timezone !== TZ) {
   throw new Error("Raw attendance report date/timezone does not match requested report");
 }
+if (!Array.isArray(rawReport.employees) || rawReport.employees.length !== sourceExpectedNames.length) {
+  throw new Error("Raw attendance employee count does not match source roster");
+}
+rawReport.employees.forEach((employee, index) => {
+  if (employee?.name !== sourceExpectedNames[index]) {
+    throw new Error(`Raw attendance source roster mismatch at position ${index + 1}`);
+  }
+});
 
-const businessReport = buildAttendanceBusinessReport(rawReport, slot, expectedNames);
+const expectedNames = sourceExpectedNames.map((name) => REPORT_NAME_OVERRIDES.get(name) || name);
+if (new Set(expectedNames).size !== expectedNames.length) throw new Error("Report roster contains duplicate employee names");
+const reportInput = {
+  ...rawReport,
+  employees: rawReport.employees.map((employee, index) => ({
+    ...employee,
+    name: expectedNames[index],
+  })),
+};
+
+const businessReport = buildAttendanceBusinessReport(reportInput, slot, expectedNames);
 const reportPath = path.join("output", `report-${slot}-${targetDate}.json`);
 const serialized = `${JSON.stringify(businessReport, null, 2)}\n`;
 await fs.writeFile(reportPath, serialized, "utf8");

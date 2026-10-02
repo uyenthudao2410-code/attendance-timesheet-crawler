@@ -83,7 +83,8 @@ test("morning image uses report data and stays logo-free", () => {
   assert.match(svg, /88%/);
   assert.match(svg, /Chưa có bản ghi/);
   assert.doesNotMatch(svg, /STACORP/);
-  assert.doesNotMatch(svg, /https?:\/\//);
+  assert.doesNotMatch(svg, /<image\b/i);
+  assert.doesNotMatch(svg, /(?:href|src)=["']https?:\/\//i);
 });
 
 test("daily image exposes morning, afternoon and total work clearly", () => {

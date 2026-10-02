@@ -355,6 +355,39 @@ function footer() {
     "<br>Nhân sự phát hiện sai lệch hoặc có vướng mắc cần thông tin ngay <strong>P.HC-NS</strong> để kiểm tra và điều chỉnh.";
 }
 
+function renderBar(minutes, scaleMinutes) {
+  if (!Number.isInteger(minutes) || minutes < 0) return "—";
+  const slots = 20;
+  const bounded = Math.min(minutes, scaleMinutes);
+  const filled = Math.max(0, Math.min(slots, Math.round((bounded / scaleMinutes) * slots)));
+  return "█".repeat(filled) + "░".repeat(slots - filled);
+}
+
+function renderMorningChart(rows) {
+  const body = rows.map((row) => {
+    const minutes = Number.isInteger(row?.morning?.minutes) ? row.morning.minutes : null;
+    const value = minutes == null ? escapeHtml(row.status_text) : escapeHtml(formatMinutes(minutes));
+    return `<tr><td>${escapeHtml(row.name)}</td><td>${renderBar(minutes, 300)}</td><td><strong>${value}</strong></td></tr>`;
+  }).join("");
+  return "<br><br><strong>📊 BIỂU ĐỒ CÔNG SÁNG</strong>" +
+    "<br><em>Thang trực quan: 20 ô ≈ 5 giờ; chỉ hiển thị thời lượng đã xác nhận.</em>" +
+    `<br><br><table border="1" cellpadding="6" cellspacing="0"><tr><th>Nhân sự</th><th>Biểu đồ công</th><th>Công sáng</th></tr>${body}</table>` +
+    "<br><em>Biểu đồ chỉ phục vụ đối soát trực quan, không tự đặt ngưỡng đủ/thiếu công.</em>";
+}
+
+function renderDailyChart(rows) {
+  const body = rows.map((row) => {
+    const minutes = Number.isInteger(row?.total_minutes) ? row.total_minutes : null;
+    const value = minutes == null ? escapeHtml(row.total_display || row.status_text) : escapeHtml(row.total_display);
+    return `<tr><td>${escapeHtml(row.name)}</td><td>${renderBar(minutes, 600)}</td><td><strong>${value}</strong></td></tr>`;
+  }).join("");
+  return "<br><br><strong>📊 BIỂU ĐỒ TỔNG CÔNG</strong>" +
+    "<br><em>Thang trực quan: 20 ô ≈ 10 giờ; chỉ hiển thị tổng thời lượng đã xác nhận.</em>" +
+    `<br><br><table border="1" cellpadding="6" cellspacing="0"><tr><th>Nhân sự</th><th>Biểu đồ công</th><th>Tổng công</th></tr>${body}</table>` +
+    "<br><em>Biểu đồ chỉ phục vụ đối soát trực quan, không tự đặt ngưỡng đủ/thiếu công.</em>";
+}
+
+
 function renderMorningHtml(date, updatedAt, rows) {
   const body = rows.map((row) => {
     const session = renderMorningSession(row.morning);
@@ -363,6 +396,7 @@ function renderMorningHtml(date, updatedAt, rows) {
   return `<strong>📋 BÁO CÁO CHẤM CÔNG CA SÁNG — ${displayDate(date)}</strong>` +
     `<br>Cập nhật: ${displayTime(updatedAt)}` +
     `<br><br><table border="1" cellpadding="6" cellspacing="0"><tr><th>Nhân sự</th><th>Vào sáng</th><th>Tan sáng</th><th>Công sáng</th><th>Trạng thái</th></tr>${body}</table>` +
+    renderMorningChart(rows) +
     `<br><br><strong>Đánh giá &amp; lưu ý</strong><br>${morningNotes(rows)}` + footer();
 }
 
@@ -375,6 +409,7 @@ function renderDailyHtml(date, updatedAt, rows) {
   return `<strong>📋 BÁO CÁO CHẤM CÔNG CUỐI NGÀY — ${displayDate(date)}</strong>` +
     `<br>Cập nhật: ${displayTime(updatedAt)}` +
     `<br><br><table border="1" cellpadding="6" cellspacing="0"><tr><th>Nhân sự</th><th>Ca sáng</th><th>Ca chiều</th><th>Tổng công</th><th>Trạng thái</th></tr>${body}</table>` +
+    renderDailyChart(rows) +
     `<br><br><strong>Đánh giá &amp; lưu ý</strong><br>${dailyNotes(rows)}` + footer();
 }
 

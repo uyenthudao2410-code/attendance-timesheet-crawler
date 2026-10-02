@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "v4-mockup-daily-20261001-201348",
-  "slot": "daily_2105",
-  "target_date": "2026-10-01",
-  "requested_at": "2026-10-02T20:13:48+07:00",
-  "reason": "integration test V4 mockup-fidelity attendance renderer",
+  "request_id": "v5-locked-test-morning-20261002-204057",
+  "slot": "morning_1230",
+  "target_date": "2026-10-02",
+  "requested_at": "2026-10-02T20:40:57+07:00",
+  "reason": "render V5 locked master template for TEST chat review",
   "delivery": {
     "enabled": false
   }

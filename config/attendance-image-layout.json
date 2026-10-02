@@ -1,29 +1,37 @@
 {
-  "version": "ATTENDANCE_IMAGE_V1_APPROVED_2026_10_02",
+  "version": "ATTENDANCE_IMAGE_V2_APPROVED_2026_10_02",
   "status": "approved-production",
   "locked": true,
   "canvas": {
-    "width": 1200,
-    "height": 1800,
-    "format": "PNG"
+    "width": 1600,
+    "height": 1200,
+    "format": "PNG",
+    "orientation": "landscape"
   },
   "branding": {
     "logo": false,
     "navy": "#062e62",
     "navy_dark": "#021d42",
     "blue": "#2388f2",
+    "blue_soft": "#eaf4ff",
     "gold": "#c58a22",
     "green": "#16a34a",
+    "green_soft": "#eaf8ef",
     "red": "#ef3340",
-    "paper": "#f8fbff"
+    "amber": "#d89b25",
+    "paper": "#f7fbff",
+    "ink": "#17365f",
+    "muted": "#617891"
   },
   "slots": {
     "morning_1230": {
+      "layout": "morning_v2",
       "title": "CHẤM CÔNG CA SÁNG",
       "chart_scale_minutes": 300,
       "chart_scale_label": "5 giờ"
     },
     "daily_2105": {
+      "layout": "daily_v2",
       "title": "CHẤM CÔNG CẢ NGÀY",
       "chart_scale_minutes": 600,
       "chart_scale_label": "10 giờ"
@@ -33,7 +41,9 @@
     "Render deterministic text and numbers from the canonical attendance business report only.",
     "Do not use an AI-generated logo or any logo in this approved attendance layout.",
     "Do not infer missing attendance minutes; null or unresolved values remain unconfirmed.",
-    "Morning and full-day reports use the same locked 1200x1800 visual system.",
-    "Any layout version, canvas size, slot identity, report identity, or output hash failure blocks publication."
+    "Morning and full-day reports use the locked 1600x1200 landscape visual system.",
+    "Daily layout must visually distinguish morning, afternoon and total work.",
+    "Teams captions stay concise; long operational notes live inside the image footer.",
+    "Any layout version, canvas size, slot identity, report identity, PNG dimension, or output hash failure blocks publication."
   ]
 }

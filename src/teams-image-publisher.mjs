@@ -1,28 +1,19 @@
-const DAY_NAMES = [
-  "Chủ Nhật",
-  "Thứ Hai",
-  "Thứ Ba",
-  "Thứ Tư",
-  "Thứ Năm",
-  "Thứ Sáu",
-  "Thứ Bảy",
-];
-
+const DAY_NAMES = ["Chủ Nhật","Thứ Hai","Thứ Ba","Thứ Tư","Thứ Năm","Thứ Sáu","Thứ Bảy"];
 export const TEAMS_HOSTED_CONTENT_LIMIT = 4 * 1024 * 1024;
 
 function esc(value) {
   return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#39;");
 }
 
 export function formatVietnameseDate(isoDate) {
   const match = String(isoDate || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) throw new Error("Invalid report date");
-  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  const date = new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3])));
   if (!Number.isFinite(date.getTime())) throw new Error("Invalid report date");
   return `${DAY_NAMES[date.getUTCDay()]}, ${match[3]}/${match[2]}/${match[1]}`;
 }
@@ -33,47 +24,27 @@ function slotLabel(slot) {
   throw new Error("Unsupported attendance slot");
 }
 
-export function buildTeamsHostedImagePayload({
-  report,
-  imageBase64,
-  testLabel = "",
-}) {
-  if (!report || report.kind !== "attendance_business_report") {
-    throw new Error("Invalid attendance business report");
-  }
+export function buildTeamsHostedImagePayload({report,imageBase64,mode="PRODUCTION"}) {
+  if (!report || report.kind !== "attendance_business_report") throw new Error("Invalid attendance business report");
+  if (!String(imageBase64 || "").trim()) throw new Error("Missing image base64");
+  const normalizedMode = String(mode || "PRODUCTION").trim().toUpperCase();
+  if (!["TEST","PRODUCTION"].includes(normalizedMode)) throw new Error("Unsupported Teams delivery mode");
   const label = slotLabel(report.slot);
+  const prefix = normalizedMode === "TEST" ? "[TEST] " : "";
   const dateText = formatVietnameseDate(report.date);
-  if (!String(imageBase64 || "").trim()) {
-    throw new Error("Missing image base64");
-  }
-
-  const testFooter = String(testLabel || "").trim()
-    ? `<br><span style="color:#6b7280"><i>${esc(testLabel)}</i></span>`
-    : "";
-
   const body = [
-    `<b>BÁO CÁO CHẤM CÔNG — ${label}</b>`,
+    `<b>${prefix}BÁO CÁO CHẤM CÔNG — ${label}</b>`,
     `<br><b>${esc(dateText)}</b>`,
     "<br>Tổng hợp từ hệ thống chấm công để đối soát.",
     "<br><br>",
-    `<img src="../hostedContents/1/\$value" width="900" alt="Báo cáo chấm công ${label.toLowerCase()} ${esc(report.date)}">`,
-    "<br><br>",
-    "<b>Lưu ý:</b> Số liệu phục vụ đối soát, không mặc nhiên là giá trị công chính thức. ",
-    "Nếu phát hiện sai lệch hoặc có vướng mắc, vui lòng phản hồi P.HC-NS để kiểm tra và điều chỉnh.",
-    testFooter,
+    `<img src="../hostedContents/1/\$value" width="1200" alt="Báo cáo chấm công ${label.toLowerCase()} ${esc(report.date)}">`,
   ].join("");
-
   return {
-    body: {
-      contentType: "html",
-      content: body,
-    },
-    hostedContents: [
-      {
-        "@microsoft.graph.temporaryId": "1",
-        contentBytes: String(imageBase64),
-        contentType: "image/png",
-      },
-    ],
+    body:{contentType:"html",content:body},
+    hostedContents:[{
+      "@microsoft.graph.temporaryId":"1",
+      contentBytes:String(imageBase64),
+      contentType:"image/png",
+    }],
   };
 }

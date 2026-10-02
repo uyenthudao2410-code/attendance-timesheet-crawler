@@ -17,7 +17,7 @@ const reportFile = String(process.env.ATTENDANCE_REPORT_FILE || "").trim();
 const reportSha256 = String(process.env.ATTENDANCE_REPORT_SHA256 || "").trim();
 const imageFile = String(process.env.ATTENDANCE_IMAGE_FILE || "").trim();
 const imageSha256 = String(process.env.ATTENDANCE_IMAGE_SHA256 || "").trim();
-const imageLayoutVersion = String(process.env.ATTENDANCE_IMAGE_LAYOUT_VERSION || "").trim();
+const imageLayoutVersion = String(process.env.ATTENDANCE_IMAGE_LAYOUT_VERSION || "").trim();\nconst imageWidth = Number(process.env.ATTENDANCE_IMAGE_WIDTH || "0");\nconst imageHeight = Number(process.env.ATTENDANCE_IMAGE_HEIGHT || "0");\nconst teamsMessageId = String(process.env.ATTENDANCE_TEAMS_MESSAGE_ID || "").trim();
 
 if (!ALLOWED_SLOTS.has(slot)) throw new Error("Unsupported ATTENDANCE_RUN_SLOT");
 if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) throw new Error("Invalid TARGET_DATE");

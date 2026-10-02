@@ -15,6 +15,9 @@ const fingerprint = String(process.env.ATTENDANCE_ROSTER_FINGERPRINT || "").trim
 const identityFingerprint = String(process.env.ATTENDANCE_IDENTITY_FINGERPRINT || "").trim();
 const reportFile = String(process.env.ATTENDANCE_REPORT_FILE || "").trim();
 const reportSha256 = String(process.env.ATTENDANCE_REPORT_SHA256 || "").trim();
+const imageFile = String(process.env.ATTENDANCE_IMAGE_FILE || "").trim();
+const imageSha256 = String(process.env.ATTENDANCE_IMAGE_SHA256 || "").trim();
+const imageLayoutVersion = String(process.env.ATTENDANCE_IMAGE_LAYOUT_VERSION || "").trim();
 
 if (!ALLOWED_SLOTS.has(slot)) throw new Error("Unsupported ATTENDANCE_RUN_SLOT");
 if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) throw new Error("Invalid TARGET_DATE");
@@ -32,6 +35,11 @@ if (!/^[a-f0-9]{64}$/.test(fingerprint)) throw new Error("Invalid roster fingerp
 if (!/^[a-f0-9]{64}$/.test(identityFingerprint)) throw new Error("Invalid identity fingerprint");
 if (reportFile !== `output/report-${slot}-${targetDate}.json`) throw new Error("Invalid ATTENDANCE_REPORT_FILE");
 if (!/^[a-f0-9]{64}$/.test(reportSha256)) throw new Error("Invalid ATTENDANCE_REPORT_SHA256");
+if (imageFile !== `output/attendance-${slot}-${targetDate}.png`) throw new Error("Invalid ATTENDANCE_IMAGE_FILE");
+if (!/^[a-f0-9]{64}$/.test(imageSha256)) throw new Error("Invalid ATTENDANCE_IMAGE_SHA256");
+if (imageLayoutVersion !== "ATTENDANCE_IMAGE_V1_APPROVED_2026_10_02") {
+  throw new Error("Invalid ATTENDANCE_IMAGE_LAYOUT_VERSION");
+}
 
 const state = {
   schema_version: 4,
@@ -52,6 +60,9 @@ const state = {
   encryption: "rsa-oaep-sha256+aes-256-cbc-pbkdf2-200000",
   report_file: reportFile,
   report_sha256: reportSha256,
+  image_file: imageFile,
+  image_sha256: imageSha256,
+  image_layout_version: imageLayoutVersion,
   completed_at: new Date().toISOString(),
 };
 if (!/^\d+$/.test(state.run_id)) throw new Error("Invalid GITHUB_RUN_ID");

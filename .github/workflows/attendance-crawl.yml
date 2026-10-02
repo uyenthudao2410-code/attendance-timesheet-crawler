@@ -173,6 +173,12 @@ jobs:
           ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
         run: node scripts/build-report-payload.mjs
 
+      - name: Install Chromium for approved report image rendering
+        run: npx playwright install --with-deps chromium
+
+      - name: Render approved attendance report image
+        run: node scripts/render-report-image.mjs
+
       - name: Encrypt result before artifact upload
         if: ${{ hashFiles('output/*.json') != '' }}
         shell: bash

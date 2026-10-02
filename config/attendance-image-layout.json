@@ -1,0 +1,39 @@
+{
+  "version": "ATTENDANCE_IMAGE_V1_APPROVED_2026_10_02",
+  "status": "approved-production",
+  "locked": true,
+  "canvas": {
+    "width": 1200,
+    "height": 1800,
+    "format": "PNG"
+  },
+  "branding": {
+    "logo": false,
+    "navy": "#062e62",
+    "navy_dark": "#021d42",
+    "blue": "#2388f2",
+    "gold": "#c58a22",
+    "green": "#16a34a",
+    "red": "#ef3340",
+    "paper": "#f8fbff"
+  },
+  "slots": {
+    "morning_1230": {
+      "title": "CHẤM CÔNG CA SÁNG",
+      "chart_scale_minutes": 300,
+      "chart_scale_label": "5 giờ"
+    },
+    "daily_2105": {
+      "title": "CHẤM CÔNG CẢ NGÀY",
+      "chart_scale_minutes": 600,
+      "chart_scale_label": "10 giờ"
+    }
+  },
+  "production_rules": [
+    "Render deterministic text and numbers from the canonical attendance business report only.",
+    "Do not use an AI-generated logo or any logo in this approved attendance layout.",
+    "Do not infer missing attendance minutes; null or unresolved values remain unconfirmed.",
+    "Morning and full-day reports use the same locked 1200x1800 visual system.",
+    "Any layout version, canvas size, slot identity, report identity, or output hash failure blocks publication."
+  ]
+}

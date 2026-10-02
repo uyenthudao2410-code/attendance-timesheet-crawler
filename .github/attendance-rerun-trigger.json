@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "v2-post-daily-20261001-190130",
-  "slot": "daily_2105",
-  "target_date": "2026-10-01",
-  "requested_at": "2026-10-02T19:01:30+07:00",
-  "reason": "render approved V2 daily image for Teams TEST review",
+  "request_id": "v3-mobile-morning-20261002-193401",
+  "slot": "morning_1230",
+  "target_date": "2026-10-02",
+  "requested_at": "2026-10-02T19:34:01+07:00",
+  "reason": "integration test mobile-first attendance V3",
   "delivery": {
     "enabled": false
   }

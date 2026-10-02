@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "request_id": "image-v1-daily-20261001-01",
+  "request_id": "image-v1-daily-final-20261001-01",
   "slot": "daily_2105",
   "target_date": "2026-10-01",
-  "requested_at": "2026-10-02T17:39:10+07:00",
-  "reason": "integration test approved attendance image form v1"
+  "requested_at": "2026-10-02T17:52:10+07:00",
+  "reason": "final integration test approved attendance image form v1"
 }

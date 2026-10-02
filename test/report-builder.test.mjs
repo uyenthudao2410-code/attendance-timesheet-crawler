@@ -222,3 +222,34 @@ test("daily date_not_found without source-health evidence still fails closed as 
   assert.equal(report.employees[0].source_issue_code, "source_unresolved");
   assert.equal(report.employees[0].status_text, "⚠️ Nguồn chưa xác nhận được dữ liệu ngày này – cần đối soát nguồn");
 });
+
+
+test("morning report includes a Teams-native attendance bar chart without inventing duration", () => {
+  const report = buildAttendanceBusinessReport(rawReport({
+    status: "incomplete",
+    morning: { in: "07:20", out: null, minutes: null },
+    afternoon: null,
+    sessions: [{ in: "07:20", out: null, minutes: null }],
+  }), "morning_1230", NAMES);
+
+  assert.match(report.teams_html, /BIỂU ĐỒ CÔNG SÁNG/);
+  assert.match(report.teams_html, /20 ô ≈ 5 giờ/);
+  assert.match(report.teams_html, /Đang làm việc/);
+});
+
+test("daily report includes a Teams-native total-hours bar chart from confirmed minutes", () => {
+  const report = buildAttendanceBusinessReport(rawReport({
+    status: "complete",
+    morning: { in: "08:00", out: "12:00", minutes: 240 },
+    afternoon: { in: "13:00", out: "18:00", minutes: 300 },
+    sessions: [
+      { in: "08:00", out: "12:00", minutes: 240 },
+      { in: "13:00", out: "18:00", minutes: 300 },
+    ],
+  }), "daily_2105", NAMES);
+
+  assert.equal(report.employees[0].total_display, "9h00");
+  assert.match(report.teams_html, /BIỂU ĐỒ TỔNG CÔNG/);
+  assert.match(report.teams_html, /██████████████████░░/);
+  assert.match(report.teams_html, /không tự đặt ngưỡng đủ\/thiếu công/);
+});

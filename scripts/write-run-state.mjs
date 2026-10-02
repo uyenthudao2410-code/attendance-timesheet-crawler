@@ -17,7 +17,10 @@ const reportFile = String(process.env.ATTENDANCE_REPORT_FILE || "").trim();
 const reportSha256 = String(process.env.ATTENDANCE_REPORT_SHA256 || "").trim();
 const imageFile = String(process.env.ATTENDANCE_IMAGE_FILE || "").trim();
 const imageSha256 = String(process.env.ATTENDANCE_IMAGE_SHA256 || "").trim();
-const imageLayoutVersion = String(process.env.ATTENDANCE_IMAGE_LAYOUT_VERSION || "").trim();\nconst imageWidth = Number(process.env.ATTENDANCE_IMAGE_WIDTH || "0");\nconst imageHeight = Number(process.env.ATTENDANCE_IMAGE_HEIGHT || "0");\nconst teamsMessageId = String(process.env.ATTENDANCE_TEAMS_MESSAGE_ID || "").trim();
+const imageLayoutVersion = String(process.env.ATTENDANCE_IMAGE_LAYOUT_VERSION || "").trim();
+const imageWidth = Number(process.env.ATTENDANCE_IMAGE_WIDTH || "0");
+const imageHeight = Number(process.env.ATTENDANCE_IMAGE_HEIGHT || "0");
+const teamsMessageId = String(process.env.ATTENDANCE_TEAMS_MESSAGE_ID || "").trim();
 
 if (!ALLOWED_SLOTS.has(slot)) throw new Error("Unsupported ATTENDANCE_RUN_SLOT");
 if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) throw new Error("Invalid TARGET_DATE");
@@ -37,12 +40,14 @@ if (reportFile !== `output/report-${slot}-${targetDate}.json`) throw new Error("
 if (!/^[a-f0-9]{64}$/.test(reportSha256)) throw new Error("Invalid ATTENDANCE_REPORT_SHA256");
 if (imageFile !== `output/attendance-${slot}-${targetDate}.png`) throw new Error("Invalid ATTENDANCE_IMAGE_FILE");
 if (!/^[a-f0-9]{64}$/.test(imageSha256)) throw new Error("Invalid ATTENDANCE_IMAGE_SHA256");
-if (imageLayoutVersion !== "ATTENDANCE_IMAGE_V1_APPROVED_2026_10_02") {
+if (imageLayoutVersion !== "ATTENDANCE_IMAGE_V2_APPROVED_2026_10_02") {
   throw new Error("Invalid ATTENDANCE_IMAGE_LAYOUT_VERSION");
 }
+if (imageWidth !== 1600 || imageHeight !== 1200) throw new Error("Invalid approved V2 image dimensions");
+if (teamsMessageId && !/^\d+$/.test(teamsMessageId)) throw new Error("Invalid ATTENDANCE_TEAMS_MESSAGE_ID");
 
 const state = {
-  schema_version: 4,
+  schema_version: 5,
   run_id: String(process.env.GITHUB_RUN_ID || ""),
   run_attempt: Number(process.env.GITHUB_RUN_ATTEMPT || "1"),
   request_id: requestId,
@@ -63,6 +68,9 @@ const state = {
   image_file: imageFile,
   image_sha256: imageSha256,
   image_layout_version: imageLayoutVersion,
+  image_width: imageWidth,
+  image_height: imageHeight,
+  teams_message_id: teamsMessageId || null,
   completed_at: new Date().toISOString(),
 };
 if (!/^\d+$/.test(state.run_id)) throw new Error("Invalid GITHUB_RUN_ID");

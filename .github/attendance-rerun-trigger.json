@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "v5-locked-test-daily-20261001-204245",
+  "request_id": "actual-daily-20261002-test-20261003-065407",
   "slot": "daily_2105",
-  "target_date": "2026-10-01",
-  "requested_at": "2026-10-02T20:42:45+07:00",
-  "reason": "render V5 locked master template for TEST chat review",
+  "target_date": "2026-10-02",
+  "requested_at": "2026-10-03T06:54:07+07:00",
+  "reason": "actual full-day attendance 02/10/2026 for TEST chat review on 03/10/2026",
   "delivery": {
     "enabled": false
   }

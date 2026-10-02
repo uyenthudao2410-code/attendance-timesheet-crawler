@@ -179,6 +179,14 @@ jobs:
       - name: Render approved attendance report image
         run: node scripts/render-report-image.mjs
 
+      - name: Publish approved attendance image to Teams when requested
+        env:
+          MS_TENANT_ID: ${{ secrets.MS_TENANT_ID }}
+          MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
+          MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
+          MS_REFRESH_TOKEN: ${{ secrets.MS_REFRESH_TOKEN }}
+        run: node scripts/post-report-to-teams.mjs
+
       - name: Encrypt result before artifact upload
         if: ${{ hashFiles('output/*.json') != '' }}
         shell: bash

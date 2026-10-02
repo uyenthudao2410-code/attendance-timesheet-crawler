@@ -22,9 +22,9 @@ function esc(value) {
 export function formatVietnameseDate(isoDate) {
   const match = String(isoDate || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) throw new Error("Invalid report date");
-  const date = new Date(`${isoDate}T00:00:00+07:00`);
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
   if (!Number.isFinite(date.getTime())) throw new Error("Invalid report date");
-  return `${DAY_NAMES[date.getDay()]}, ${match[3]}/${match[2]}/${match[1]}`;
+  return `${DAY_NAMES[date.getUTCDay()]}, ${match[3]}/${match[2]}/${match[1]}`;
 }
 
 function slotLabel(slot) {

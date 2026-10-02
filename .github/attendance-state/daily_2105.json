@@ -1,30 +1,34 @@
 {
-  "schema_version": 7,
-  "run_id": "37011634703",
+  "schema_version": 8,
+  "run_id": "37014851626",
   "run_attempt": 1,
-  "request_id": "v4-mockup-daily-20261001-201348",
-  "requested_at": "2026-10-02T20:13:48+07:00",
-  "trigger_commit_sha": "9e4c01f6b876837bddf447b66d2ab9c39178b1ab",
+  "request_id": "v5-locked-test-daily-20261001-204245",
+  "requested_at": "2026-10-02T20:42:45+07:00",
+  "trigger_commit_sha": "0123fc55d252215bc2ba3ef33c2c641e9d409255",
   "slot": "daily_2105",
   "target_date": "2026-10-01",
   "crawl_complete": true,
   "crawl_employee_count": 8,
-  "crawl_completed_at": "2026-10-02T13:14:15.150Z",
-  "artifact_id": "11227504828",
-  "artifact_name": "attendance-encrypted-37011634703",
+  "crawl_completed_at": "2026-10-02T13:43:21.465Z",
+  "artifact_id": "11229028488",
+  "artifact_name": "attendance-encrypted-37014851626",
   "roster_fingerprint": "beb5e597e4547d1f0c56b5e0037e8cfeaf614945b94133410d2221539441cb32",
   "identity_fingerprint": "f242e02841d372b37e4f8cc4c55643f87df656df06bf6d76d3972fb1fa15febf",
   "encryption": "rsa-oaep-sha256+aes-256-cbc-pbkdf2-200000",
   "report_file": "output/report-daily_2105-2026-10-01.json",
-  "report_sha256": "ed83350ffc09ef0a71da09f85bb4f2c6d74752872d75d63a731a6268f50d18f9",
-  "image_layout_version": "ATTENDANCE_IMAGE_V4_MOCKUP_FIDELITY_2026_10_02",
+  "report_sha256": "611f7bb7daa9e63b3c92edcfc058dc4fe5f384e1d7eddffd87612230c026c811",
+  "image_layout_version": "ATTENDANCE_IMAGE_V5_LOCKED_MASTER_2026_10_02",
+  "master_template": {
+    "id": "ATTENDANCE_V5_LOCKED_DAILY_2026_10_02",
+    "git_blob_sha": "804745bc93d429f0d2e94dd8a3f85406e69fb385"
+  },
   "image_count": 1,
   "image": {
     "file": "output/attendance-daily_2105-2026-10-01.png",
-    "sha256": "38bcd2b857cf176aa473b6d486e61b473b1b33b282d5a893da831afd7a8d5b17",
+    "sha256": "e708bab39a6bf3a487b094808f02c3f0a8dedd4e52dc4870556d31bed4790172",
     "width": 1080,
     "height": 1440
   },
   "teams_message_id": null,
-  "completed_at": "2026-10-02T13:14:40.276Z"
+  "completed_at": "2026-10-02T13:43:46.156Z"
 }

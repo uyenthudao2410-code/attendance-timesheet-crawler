@@ -1,27 +1,40 @@
 {
-  "schema_version": 5,
-  "run_id": "37004293282",
+  "schema_version": 6,
+  "run_id": "37007652214",
   "run_attempt": 1,
-  "request_id": "v2-post-daily-20261001-190130",
-  "requested_at": "2026-10-02T19:01:30+07:00",
-  "trigger_commit_sha": "b5dfc505922cbb83df5fcf61e4692189be02aa62",
+  "request_id": "v3-mobile-daily-20261001-193547",
+  "requested_at": "2026-10-02T19:35:47+07:00",
+  "trigger_commit_sha": "2a16531324a311d0d234c57ca1d742ef70b2a971",
   "slot": "daily_2105",
   "target_date": "2026-10-01",
   "crawl_complete": true,
   "crawl_employee_count": 8,
-  "crawl_completed_at": "2026-10-02T12:02:02.185Z",
-  "artifact_id": "11224663576",
-  "artifact_name": "attendance-encrypted-37004293282",
+  "crawl_completed_at": "2026-10-02T12:36:15.776Z",
+  "artifact_id": "11226351530",
+  "artifact_name": "attendance-encrypted-37007652214",
   "roster_fingerprint": "beb5e597e4547d1f0c56b5e0037e8cfeaf614945b94133410d2221539441cb32",
   "identity_fingerprint": "f242e02841d372b37e4f8cc4c55643f87df656df06bf6d76d3972fb1fa15febf",
   "encryption": "rsa-oaep-sha256+aes-256-cbc-pbkdf2-200000",
   "report_file": "output/report-daily_2105-2026-10-01.json",
-  "report_sha256": "2a326fb3f479f466954354f363ad759e3f7913fd829299de010746983a3e95c6",
-  "image_file": "output/attendance-daily_2105-2026-10-01.png",
-  "image_sha256": "b5b31b98d010906f13f8a13e28db6db718b4a81308dff38c6d0a2d493ca886e3",
-  "image_layout_version": "ATTENDANCE_IMAGE_V2_APPROVED_2026_10_02",
-  "image_width": 1600,
-  "image_height": 1200,
+  "report_sha256": "386c3557da728681bf78660b071d7a9f2de8b96aa850dd24eb18f3ec49218813",
+  "image_layout_version": "ATTENDANCE_IMAGE_V3_MOBILE_FIRST_2026_10_02",
+  "image_count": 2,
+  "images": [
+    {
+      "role": "overview",
+      "file": "output/attendance-daily_2105-2026-10-01-01-overview.png",
+      "sha256": "66f2c15310f8c409feff9c24ba4557343cae8831bf5944d8726fa3007de53c01",
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "role": "detail",
+      "file": "output/attendance-daily_2105-2026-10-01-02-detail.png",
+      "sha256": "525f2ea8b5204864f8903f401066345488ab294e589e494e9698aef606d7b14a",
+      "width": 1080,
+      "height": 1620
+    }
+  ],
   "teams_message_id": null,
-  "completed_at": "2026-10-02T12:02:29.769Z"
+  "completed_at": "2026-10-02T12:36:42.874Z"
 }

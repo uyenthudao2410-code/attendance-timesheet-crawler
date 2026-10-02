@@ -8,6 +8,7 @@ const artifactId=String(process.env.ARTIFACT_ID||"").trim(),artifactName=String(
 const rosterFingerprint=String(process.env.ATTENDANCE_ROSTER_FINGERPRINT||"").trim(),identityFingerprint=String(process.env.ATTENDANCE_IDENTITY_FINGERPRINT||"").trim();
 const reportFile=String(process.env.ATTENDANCE_REPORT_FILE||"").trim(),reportSha256=String(process.env.ATTENDANCE_REPORT_SHA256||"").trim();
 const layout=String(process.env.ATTENDANCE_IMAGE_LAYOUT_VERSION||"").trim(),count=Number(process.env.ATTENDANCE_IMAGE_COUNT||"0");
+const templateId=String(process.env.ATTENDANCE_MASTER_TEMPLATE_ID||"").trim(),templateSha=String(process.env.ATTENDANCE_MASTER_TEMPLATE_SHA||"").trim();
 const imageFile=String(process.env.ATTENDANCE_IMAGE_FILE||"").trim(),imageSha=String(process.env.ATTENDANCE_IMAGE_SHA256||"").trim();
 const width=Number(process.env.ATTENDANCE_IMAGE_WIDTH||"0"),height=Number(process.env.ATTENDANCE_IMAGE_HEIGHT||"0");
 const teamsMessageId=String(process.env.ATTENDANCE_TEAMS_MESSAGE_ID||"").trim();
@@ -15,10 +16,12 @@ if(!["morning_1230","daily_2105"].includes(slot))throw new Error("Unsupported AT
 if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!/^\d+$/.test(runId)||!/^\d+$/.test(artifactId))throw new Error("Invalid attendance state identity");
 if(crawlEmployeeCount!==8)throw new Error("Crawl barrier did not confirm 8 employees");
 if(!/^[a-f0-9]{40}$/.test(triggerCommitSha)||![rosterFingerprint,identityFingerprint,reportSha256,imageSha].every(v=>/^[a-f0-9]{64}$/.test(v)))throw new Error("Invalid attendance state hashes");
+if(!/^[a-f0-9]{40}$/.test(templateSha))throw new Error("Invalid master template fingerprint");
 if(reportFile!==`output/report-${slot}-${date}.json`)throw new Error("Invalid report file");
-if(layout!=="ATTENDANCE_IMAGE_V4_MOCKUP_FIDELITY_2026_10_02"||count!==1)throw new Error("Invalid V4 image layout");
-if(imageFile!==`output/attendance-${slot}-${date}.png`)throw new Error("Invalid V4 image file");
-if(width!==1080||height!==1440)throw new Error("Invalid V4 image dimensions");
+if(layout!=="ATTENDANCE_IMAGE_V5_LOCKED_MASTER_2026_10_02"||count!==1)throw new Error("Invalid V5 image layout");
+if(imageFile!==`output/attendance-${slot}-${date}.png`)throw new Error("Invalid V5 image file");
+if(width!==1080||height!==1440)throw new Error("Invalid V5 image dimensions");
+if(!templateId.startsWith("ATTENDANCE_V5_LOCKED_"))throw new Error("Invalid V5 template id");
 if(teamsMessageId&&!/^\d+$/.test(teamsMessageId))throw new Error("Invalid Teams message id");
-const value={schema_version:7,run_id:runId,run_attempt:runAttempt,request_id:requestId,requested_at:requestedAt,trigger_commit_sha:triggerCommitSha,slot,target_date:date,crawl_complete:true,crawl_employee_count:crawlEmployeeCount,crawl_completed_at:crawlCompletedAt,artifact_id:artifactId,artifact_name:artifactName,roster_fingerprint:rosterFingerprint,identity_fingerprint:identityFingerprint,encryption:"rsa-oaep-sha256+aes-256-cbc-pbkdf2-200000",report_file:reportFile,report_sha256:reportSha256,image_layout_version:layout,image_count:1,image:{file:imageFile,sha256:imageSha,width,height},teams_message_id:teamsMessageId||null,completed_at:new Date().toISOString()};
+const value={schema_version:8,run_id:runId,run_attempt:runAttempt,request_id:requestId,requested_at:requestedAt,trigger_commit_sha:triggerCommitSha,slot,target_date:date,crawl_complete:true,crawl_employee_count:crawlEmployeeCount,crawl_completed_at:crawlCompletedAt,artifact_id:artifactId,artifact_name:artifactName,roster_fingerprint:rosterFingerprint,identity_fingerprint:identityFingerprint,encryption:"rsa-oaep-sha256+aes-256-cbc-pbkdf2-200000",report_file:reportFile,report_sha256:reportSha256,image_layout_version:layout,master_template:{id:templateId,git_blob_sha:templateSha},image_count:1,image:{file:imageFile,sha256:imageSha,width,height},teams_message_id:teamsMessageId||null,completed_at:new Date().toISOString()};
 const dir=path.join(".github","attendance-state");await fs.mkdir(dir,{recursive:true});const out=path.join(dir,`${slot}.json`);await fs.writeFile(out,JSON.stringify(value,null,2)+"\n","utf8");process.stdout.write(out);

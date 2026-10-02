@@ -1,0 +1,170 @@
+<!-- MASTER_TEMPLATE_VERSION: ATTENDANCE_V5_LOCKED_MORNING_2026_10_02 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1440" viewBox="0 0 1080 1440">
+<defs>
+  <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".62" stop-color="#F8FCFF"/><stop offset="1" stop-color="#E7F3FB"/></linearGradient>
+  <linearGradient id="navy" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#021D42"/><stop offset="1" stop-color="#0B538E"/></linearGradient>
+  <linearGradient id="blue" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3AA2FF"/><stop offset="1" stop-color="#176ED0"/></linearGradient>
+  <linearGradient id="green" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#56C985"/><stop offset="1" stop-color="#118A4B"/></linearGradient>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#B97812"/><stop offset="1" stop-color="#E3B34A"/></linearGradient>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="6" stdDeviation="9" flood-color="#0A3155" flood-opacity=".10"/></filter>
+  <style>
+    .f{font-family:Arial,"Segoe UI","DejaVu Sans",sans-serif}
+    .ey{font-family:Arial,"Segoe UI","DejaVu Sans",sans-serif;font-size:19px;font-weight:900;letter-spacing:1.2px;fill:#B27612}
+    .title{font-family:Arial,"Segoe UI","DejaVu Sans",sans-serif;font-size:44px;font-weight:900;fill:#062E62}
+    .date{font-family:Arial,"Segoe UI","DejaVu Sans",sans-serif;font-size:22px;font-weight:850;fill:#17365F}
+    .sub{font-family:Arial,"Segoe UI","DejaVu Sans",sans-serif;font-size:15.5px;font-weight:650;fill:#617891}
+    .klabel{font-family:Arial,"Segoe UI","DejaVu Sans",sans-serif;font-size:13.5px;font-weight:800;fill:#617891}
+    .kvalue{font-family:Arial,"Segoe UI","DejaVu Sans",sans-serif;font-size:31px;font-weight:900;fill:#062E62}
+    .section{font-family:Arial,"Segoe UI","DejaVu Sans",sans-serif;font-size:19px;font-weight:900;fill:#062E62}
+    .th{font-family:Arial,"Segoe UI","DejaVu Sans",sans-serif;font-size:12.2px;font-weight:900;fill:#FFFFFF}
+    .td{font-family:Arial,"Segoe UI","DejaVu Sans",sans-serif;font-size:13.4px;font-weight:650;fill:#17365F}
+    .name{font-family:Arial,"Segoe UI","DejaVu Sans",sans-serif;font-size:13.6px;font-weight:800;fill:#17365F}
+  </style>
+</defs>
+<rect width="1080" height="1440" fill="#F7FBFF"/>
+<rect x="0" y="0" width="1080" height="250" fill="url(#paper)"/>
+<rect x="642" y="0" width="438" height="250" fill="#EEF7FC"/>
+<g opacity=".96">
+  <rect x="684" y="30" width="142" height="166" fill="#D6EAF7"/>
+  <rect x="840" y="14" width="121" height="182" fill="#E8F4FB"/>
+  <line x1="721" y1="30" x2="721" y2="196" stroke="#A7C5DA" stroke-width="2"/>
+  <line x1="769" y1="30" x2="769" y2="196" stroke="#A7C5DA" stroke-width="2"/>
+  <line x1="840" y1="60" x2="961" y2="60" stroke="#B8CFDF" stroke-width="2"/>
+  <line x1="840" y1="109" x2="961" y2="109" stroke="#B8CFDF" stroke-width="2"/>
+</g>
+<rect x="660" y="194" width="313" height="18" rx="9" fill="#C99A57"/>
+<rect x="700" y="210" width="12" height="40" fill="#8A6335"/>
+<rect x="929" y="210" width="12" height="40" fill="#8A6335"/>
+<rect x="744" y="159" width="84" height="42" rx="4" fill="#2D4259"/>
+<rect x="752" y="166" width="68" height="29" fill="#A7CCE6"/>
+<path d="M858 196 C846 153 870 123 900 111 C890 148 894 175 913 196 Z" fill="#3F916D"/>
+<path d="M898 196 C911 152 941 137 968 138 C949 162 939 182 939 196 Z" fill="#63A881"/>
+<rect x="882" y="193" width="59" height="23" rx="6" fill="#D8E5ED"/>
+<circle cx="613" cy="53" r="31" fill="#FFFFFF" stroke="#17365F" stroke-width="3"/>
+<line x1="613" y1="53" x2="613" y2="34" stroke="#17365F" stroke-width="3"/>
+<line x1="613" y1="53" x2="631" y2="62" stroke="#17365F" stroke-width="3"/>
+<path d="M984 0 L1080 0 L1080 250 L1038 250 L1068 209 L1024 209 L1072 132 Z" fill="#062E62"/>
+<path d="M947 0 L986 0 L1072 116 L1047 143 Z" fill="#C58A22" opacity=".79"/>
+<rect x="34" y="29" width="66" height="6" rx="3" fill="url(#gold)"/>
+<text x="34" y="69" class="ey">BÁO CÁO</text>
+<text x="34" y="122" class="title">CHẤM CÔNG — CA SÁNG</text>
+<text x="34" y="161" class="date">{{DATE_LABEL}}</text>
+<text x="34" y="193" class="sub">Tổng hợp từ hệ thống chấm công để đối soát.</text>
+<g filter="url(#shadow)"><rect x="858" y="32" width="158" height="116" rx="16" fill="#FFFFFF" stroke="#DCE7F0"/></g>
+<text x="888" y="93" class="f" font-size="43" font-weight="900" fill="#062E62">{{DAY}}</text>
+<text x="947" y="76" class="f" font-size="14" font-weight="800" fill="#617891">Tháng {{MONTH}}</text>
+<text x="947" y="99" class="f" font-size="14" font-weight="800" fill="#617891">{{YEAR}}</text>
+<rect x="858" y="112" width="158" height="36" fill="#F2F7FB"/>
+<text x="937" y="136" text-anchor="middle" class="f" font-size="15" font-weight="850" fill="#17365F">{{WEEKDAY}}</text>
+<g filter="url(#shadow)"><rect x="38" y="270" width="244" height="132" rx="18" fill="#FFFFFF" stroke="#DCE7F0"/></g>
+<rect x="54" y="288" width="44" height="44" rx="10" fill="#2388F2" opacity=".13"/>
+<circle cx="76" cy="310" r="12" fill="none" stroke="#2388F2" stroke-width="4"/>
+<text x="110" y="311" class="kvalue">{{KPI_TOTAL}}</text>
+<text x="54" y="350" class="klabel">Tổng nhân sự</text>
+<text x="54" y="378" class="f" font-size="12.5" font-weight="700" fill="#2388F2">roster xác nhận</text>
+<g filter="url(#shadow)"><rect x="296" y="270" width="244" height="132" rx="18" fill="#FFFFFF" stroke="#DCE7F0"/></g>
+<rect x="312" y="288" width="44" height="44" rx="10" fill="#16A34A" opacity=".13"/>
+<circle cx="334" cy="310" r="12" fill="none" stroke="#16A34A" stroke-width="4"/>
+<text x="368" y="311" class="kvalue">{{KPI_RECORDED}}</text>
+<text x="312" y="350" class="klabel">Đã chấm công</text>
+<text x="312" y="378" class="f" font-size="12.5" font-weight="700" fill="#16A34A">đối soát</text>
+<g filter="url(#shadow)"><rect x="554" y="270" width="244" height="132" rx="18" fill="#FFFFFF" stroke="#DCE7F0"/></g>
+<rect x="570" y="288" width="44" height="44" rx="10" fill="#EF3340" opacity=".13"/>
+<circle cx="592" cy="310" r="12" fill="none" stroke="#EF3340" stroke-width="4"/>
+<text x="626" y="311" class="kvalue">{{KPI_THIRD}}</text>
+<text x="570" y="350" class="klabel">Chưa chấm công</text>
+<text x="570" y="378" class="f" font-size="12.5" font-weight="700" fill="#EF3340">{{KPI_THIRD_DETAIL}}</text>
+<g filter="url(#shadow)"><rect x="812" y="270" width="244" height="132" rx="18" fill="#FFFFFF" stroke="#DCE7F0"/></g>
+<rect x="828" y="288" width="44" height="44" rx="10" fill="#16A34A" opacity=".13"/>
+<circle cx="850" cy="310" r="12" fill="none" stroke="#16A34A" stroke-width="4"/>
+<text x="884" y="311" class="kvalue">{{KPI_RATE}}</text>
+<text x="828" y="350" class="klabel">Tỷ lệ chấm công</text>
+<text x="828" y="378" class="f" font-size="12.5" font-weight="700" fill="#16A34A">tổng quan</text>
+<g filter="url(#shadow)"><rect x="38" y="430" width="680" height="335" rx="18" fill="#FFFFFF" stroke="#DCE7F0"/></g>
+<text x="60" y="468" class="section">GIỜ CÔNG CA SÁNG THEO NHÂN SỰ</text>
+<line x1="74" y1="690" x2="692" y2="690" stroke="#E6EDF4"/>
+<line x1="74" y1="637" x2="692" y2="637" stroke="#E6EDF4"/>
+<line x1="74" y1="584" x2="692" y2="584" stroke="#E6EDF4"/>
+<line x1="74" y1="530" x2="692" y2="530" stroke="#E6EDF4"/><rect x="93" y="{{BAR1_Y}}" width="49" height="{{BAR1_H}}" rx="5" fill="url(#blue)"/><text x="117.5" y="{{BAR1_LABEL_Y}}" text-anchor="middle" class="f" font-size="10.5" font-weight="850" fill="#062E62">{{BAR1_LABEL}}</text>
+<text x="117.5" y="716" text-anchor="middle" class="f" font-size="10.5" font-weight="700" fill="#17365F">{{BAR1_NAME}}</text><rect x="167" y="{{BAR2_Y}}" width="49" height="{{BAR2_H}}" rx="5" fill="url(#blue)"/><text x="191.5" y="{{BAR2_LABEL_Y}}" text-anchor="middle" class="f" font-size="10.5" font-weight="850" fill="#062E62">{{BAR2_LABEL}}</text>
+<text x="191.5" y="716" text-anchor="middle" class="f" font-size="10.5" font-weight="700" fill="#17365F">{{BAR2_NAME}}</text><rect x="241" y="{{BAR3_Y}}" width="49" height="{{BAR3_H}}" rx="5" fill="url(#blue)"/><text x="265.5" y="{{BAR3_LABEL_Y}}" text-anchor="middle" class="f" font-size="10.5" font-weight="850" fill="#062E62">{{BAR3_LABEL}}</text>
+<text x="265.5" y="716" text-anchor="middle" class="f" font-size="10.5" font-weight="700" fill="#17365F">{{BAR3_NAME}}</text><rect x="315" y="{{BAR4_Y}}" width="49" height="{{BAR4_H}}" rx="5" fill="url(#blue)"/><text x="339.5" y="{{BAR4_LABEL_Y}}" text-anchor="middle" class="f" font-size="10.5" font-weight="850" fill="#062E62">{{BAR4_LABEL}}</text>
+<text x="339.5" y="716" text-anchor="middle" class="f" font-size="10.5" font-weight="700" fill="#17365F">{{BAR4_NAME}}</text><rect x="389" y="{{BAR5_Y}}" width="49" height="{{BAR5_H}}" rx="5" fill="url(#blue)"/><text x="413.5" y="{{BAR5_LABEL_Y}}" text-anchor="middle" class="f" font-size="10.5" font-weight="850" fill="#062E62">{{BAR5_LABEL}}</text>
+<text x="413.5" y="716" text-anchor="middle" class="f" font-size="10.5" font-weight="700" fill="#17365F">{{BAR5_NAME}}</text><rect x="463" y="{{BAR6_Y}}" width="49" height="{{BAR6_H}}" rx="5" fill="url(#blue)"/><text x="487.5" y="{{BAR6_LABEL_Y}}" text-anchor="middle" class="f" font-size="10.5" font-weight="850" fill="#062E62">{{BAR6_LABEL}}</text>
+<text x="487.5" y="716" text-anchor="middle" class="f" font-size="10.5" font-weight="700" fill="#17365F">{{BAR6_NAME}}</text><rect x="537" y="{{BAR7_Y}}" width="49" height="{{BAR7_H}}" rx="5" fill="url(#blue)"/><text x="561.5" y="{{BAR7_LABEL_Y}}" text-anchor="middle" class="f" font-size="10.5" font-weight="850" fill="#062E62">{{BAR7_LABEL}}</text>
+<text x="561.5" y="716" text-anchor="middle" class="f" font-size="10.5" font-weight="700" fill="#17365F">{{BAR7_NAME}}</text><rect x="611" y="{{BAR8_Y}}" width="49" height="{{BAR8_H}}" rx="5" fill="url(#blue)"/><text x="635.5" y="{{BAR8_LABEL_Y}}" text-anchor="middle" class="f" font-size="10.5" font-weight="850" fill="#062E62">{{BAR8_LABEL}}</text>
+<text x="635.5" y="716" text-anchor="middle" class="f" font-size="10.5" font-weight="700" fill="#17365F">{{BAR8_NAME}}</text>
+<g filter="url(#shadow)"><rect x="738" y="430" width="304" height="335" rx="18" fill="#FFFFFF" stroke="#DCE7F0"/></g>
+<text x="758" y="468" class="section">TỔNG QUAN CA SÁNG</text>
+<circle cx="825" cy="558" r="51" fill="none" stroke="#EEF2F6" stroke-width="18"/>
+<circle cx="825" cy="558" r="51" fill="none" stroke="#16A34A" stroke-width="18" stroke-linecap="round" transform="rotate(-90 825 558)" stroke-dasharray="{{DONUT_DASH}}"/>
+<text x="825" y="567" text-anchor="middle" class="f" font-size="30" font-weight="900" fill="#0D7541">{{KPI_RATE}}</text>
+<circle cx="920" cy="524" r="7" fill="#16A34A"/><text x="936" y="529" class="f" font-size="12.5" font-weight="700" fill="#17365F">Đã chấm công</text><text x="1018" y="529" text-anchor="end" class="f" font-size="13" font-weight="900" fill="#062E62">{{SUMMARY_RECORDED}}</text>
+<circle cx="920" cy="555" r="7" fill="{{REVIEW_DOT}}"/><text x="936" y="560" class="f" font-size="12.5" font-weight="700" fill="#17365F">Cần đối soát</text><text x="1018" y="560" text-anchor="end" class="f" font-size="13" font-weight="900" fill="#062E62">{{SUMMARY_REVIEW}}</text>
+<rect x="760" y="635" width="258" height="96" rx="14" fill="{{SUMMARY_BG}}"/>
+<text x="780" y="666" class="f" font-size="12.5" font-weight="900" fill="{{SUMMARY_ACCENT}}">{{SUMMARY_TITLE}}</text>
+<text x="780" y="692" class="f" font-size="13" font-weight="700" fill="#17365F">{{SUMMARY_TEXT}}</text>
+<text x="780" y="714" class="f" font-size="12" font-weight="650" fill="#617891">{{SUMMARY_SUB}}</text><text x="38" y="814" class="section">CHI TIẾT CHẤM CÔNG CA SÁNG</text>
+<g filter="url(#shadow)"><rect x="38" y="832" width="1004" height="452" rx="16" fill="#FFFFFF" stroke="#DCE7F0"/></g><rect x="38" y="832" width="48" height="44" fill="#062E62"/><text x="62" y="860" text-anchor="middle" class="th">STT</text><rect x="86" y="832" width="220" height="44" fill="#062E62"/><text x="196" y="860" text-anchor="middle" class="th">HỌ VÀ TÊN</text><rect x="306" y="832" width="160" height="44" fill="#062E62"/><text x="386" y="860" text-anchor="middle" class="th">TRẠNG THÁI</text><rect x="466" y="832" width="92" height="44" fill="#062E62"/><text x="512" y="860" text-anchor="middle" class="th">GIỜ VÀO</text><rect x="558" y="832" width="92" height="44" fill="#062E62"/><text x="604" y="860" text-anchor="middle" class="th">GIỜ RA</text><rect x="650" y="832" width="110" height="44" fill="#062E62"/><text x="705" y="860" text-anchor="middle" class="th">THỜI LƯỢNG</text><rect x="760" y="832" width="282" height="44" fill="#062E62"/><text x="901" y="860" text-anchor="middle" class="th">MỨC CÔNG</text><rect x="38" y="876" width="1004" height="51" fill="#FFFFFF"/><line x1="38" y1="927" x2="1042" y2="927" stroke="#E6EDF4"/>
+<text x="62" y="907" text-anchor="middle" class="td">1</text>
+<text x="98" y="907" class="name">{{ROW1_NAME}}</text>
+<rect x="316" y="887" width="140" height="29" rx="15" fill="{{ROW1_STATUS_BG}}"/><circle cx="332" cy="901" r="7" fill="{{ROW1_STATUS_DOT}}"/><text x="346" y="906" class="f" font-size="11.5" font-weight="850" fill="{{ROW1_STATUS_FG}}">{{ROW1_STATUS}}</text>
+<text x="512" y="907" text-anchor="middle" class="td">{{ROW1_IN}}</text>
+<text x="604" y="907" text-anchor="middle" class="td">{{ROW1_OUT}}</text>
+<text x="711" y="907" text-anchor="middle" class="td">{{ROW1_DURATION}}</text>
+<rect x="775" y="893" width="190" height="15" rx="7" fill="#E3EAF1"/><rect x="775" y="893" width="{{ROW1_WORK_BAR}}" height="15" rx="7" fill="url(#blue)"/><text x="985" y="906" class="f" font-size="11.5" font-weight="900" fill="#176DCE">{{ROW1_WORK_PCT}}</text><rect x="38" y="927" width="1004" height="51" fill="#F8FBFE"/><line x1="38" y1="978" x2="1042" y2="978" stroke="#E6EDF4"/>
+<text x="62" y="958" text-anchor="middle" class="td">2</text>
+<text x="98" y="958" class="name">{{ROW2_NAME}}</text>
+<rect x="316" y="938" width="140" height="29" rx="15" fill="{{ROW2_STATUS_BG}}"/><circle cx="332" cy="952" r="7" fill="{{ROW2_STATUS_DOT}}"/><text x="346" y="957" class="f" font-size="11.5" font-weight="850" fill="{{ROW2_STATUS_FG}}">{{ROW2_STATUS}}</text>
+<text x="512" y="958" text-anchor="middle" class="td">{{ROW2_IN}}</text>
+<text x="604" y="958" text-anchor="middle" class="td">{{ROW2_OUT}}</text>
+<text x="711" y="958" text-anchor="middle" class="td">{{ROW2_DURATION}}</text>
+<rect x="775" y="944" width="190" height="15" rx="7" fill="#E3EAF1"/><rect x="775" y="944" width="{{ROW2_WORK_BAR}}" height="15" rx="7" fill="url(#blue)"/><text x="985" y="957" class="f" font-size="11.5" font-weight="900" fill="#176DCE">{{ROW2_WORK_PCT}}</text><rect x="38" y="978" width="1004" height="51" fill="#FFFFFF"/><line x1="38" y1="1029" x2="1042" y2="1029" stroke="#E6EDF4"/>
+<text x="62" y="1009" text-anchor="middle" class="td">3</text>
+<text x="98" y="1009" class="name">{{ROW3_NAME}}</text>
+<rect x="316" y="989" width="140" height="29" rx="15" fill="{{ROW3_STATUS_BG}}"/><circle cx="332" cy="1003" r="7" fill="{{ROW3_STATUS_DOT}}"/><text x="346" y="1008" class="f" font-size="11.5" font-weight="850" fill="{{ROW3_STATUS_FG}}">{{ROW3_STATUS}}</text>
+<text x="512" y="1009" text-anchor="middle" class="td">{{ROW3_IN}}</text>
+<text x="604" y="1009" text-anchor="middle" class="td">{{ROW3_OUT}}</text>
+<text x="711" y="1009" text-anchor="middle" class="td">{{ROW3_DURATION}}</text>
+<rect x="775" y="995" width="190" height="15" rx="7" fill="#E3EAF1"/><rect x="775" y="995" width="{{ROW3_WORK_BAR}}" height="15" rx="7" fill="url(#blue)"/><text x="985" y="1008" class="f" font-size="11.5" font-weight="900" fill="#176DCE">{{ROW3_WORK_PCT}}</text><rect x="38" y="1029" width="1004" height="51" fill="#F8FBFE"/><line x1="38" y1="1080" x2="1042" y2="1080" stroke="#E6EDF4"/>
+<text x="62" y="1060" text-anchor="middle" class="td">4</text>
+<text x="98" y="1060" class="name">{{ROW4_NAME}}</text>
+<rect x="316" y="1040" width="140" height="29" rx="15" fill="{{ROW4_STATUS_BG}}"/><circle cx="332" cy="1054" r="7" fill="{{ROW4_STATUS_DOT}}"/><text x="346" y="1059" class="f" font-size="11.5" font-weight="850" fill="{{ROW4_STATUS_FG}}">{{ROW4_STATUS}}</text>
+<text x="512" y="1060" text-anchor="middle" class="td">{{ROW4_IN}}</text>
+<text x="604" y="1060" text-anchor="middle" class="td">{{ROW4_OUT}}</text>
+<text x="711" y="1060" text-anchor="middle" class="td">{{ROW4_DURATION}}</text>
+<rect x="775" y="1046" width="190" height="15" rx="7" fill="#E3EAF1"/><rect x="775" y="1046" width="{{ROW4_WORK_BAR}}" height="15" rx="7" fill="url(#blue)"/><text x="985" y="1059" class="f" font-size="11.5" font-weight="900" fill="#176DCE">{{ROW4_WORK_PCT}}</text><rect x="38" y="1080" width="1004" height="51" fill="#FFFFFF"/><line x1="38" y1="1131" x2="1042" y2="1131" stroke="#E6EDF4"/>
+<text x="62" y="1111" text-anchor="middle" class="td">5</text>
+<text x="98" y="1111" class="name">{{ROW5_NAME}}</text>
+<rect x="316" y="1091" width="140" height="29" rx="15" fill="{{ROW5_STATUS_BG}}"/><circle cx="332" cy="1105" r="7" fill="{{ROW5_STATUS_DOT}}"/><text x="346" y="1110" class="f" font-size="11.5" font-weight="850" fill="{{ROW5_STATUS_FG}}">{{ROW5_STATUS}}</text>
+<text x="512" y="1111" text-anchor="middle" class="td">{{ROW5_IN}}</text>
+<text x="604" y="1111" text-anchor="middle" class="td">{{ROW5_OUT}}</text>
+<text x="711" y="1111" text-anchor="middle" class="td">{{ROW5_DURATION}}</text>
+<rect x="775" y="1097" width="190" height="15" rx="7" fill="#E3EAF1"/><rect x="775" y="1097" width="{{ROW5_WORK_BAR}}" height="15" rx="7" fill="url(#blue)"/><text x="985" y="1110" class="f" font-size="11.5" font-weight="900" fill="#176DCE">{{ROW5_WORK_PCT}}</text><rect x="38" y="1131" width="1004" height="51" fill="#F8FBFE"/><line x1="38" y1="1182" x2="1042" y2="1182" stroke="#E6EDF4"/>
+<text x="62" y="1162" text-anchor="middle" class="td">6</text>
+<text x="98" y="1162" class="name">{{ROW6_NAME}}</text>
+<rect x="316" y="1142" width="140" height="29" rx="15" fill="{{ROW6_STATUS_BG}}"/><circle cx="332" cy="1156" r="7" fill="{{ROW6_STATUS_DOT}}"/><text x="346" y="1161" class="f" font-size="11.5" font-weight="850" fill="{{ROW6_STATUS_FG}}">{{ROW6_STATUS}}</text>
+<text x="512" y="1162" text-anchor="middle" class="td">{{ROW6_IN}}</text>
+<text x="604" y="1162" text-anchor="middle" class="td">{{ROW6_OUT}}</text>
+<text x="711" y="1162" text-anchor="middle" class="td">{{ROW6_DURATION}}</text>
+<rect x="775" y="1148" width="190" height="15" rx="7" fill="#E3EAF1"/><rect x="775" y="1148" width="{{ROW6_WORK_BAR}}" height="15" rx="7" fill="url(#blue)"/><text x="985" y="1161" class="f" font-size="11.5" font-weight="900" fill="#176DCE">{{ROW6_WORK_PCT}}</text><rect x="38" y="1182" width="1004" height="51" fill="#FFFFFF"/><line x1="38" y1="1233" x2="1042" y2="1233" stroke="#E6EDF4"/>
+<text x="62" y="1213" text-anchor="middle" class="td">7</text>
+<text x="98" y="1213" class="name">{{ROW7_NAME}}</text>
+<rect x="316" y="1193" width="140" height="29" rx="15" fill="{{ROW7_STATUS_BG}}"/><circle cx="332" cy="1207" r="7" fill="{{ROW7_STATUS_DOT}}"/><text x="346" y="1212" class="f" font-size="11.5" font-weight="850" fill="{{ROW7_STATUS_FG}}">{{ROW7_STATUS}}</text>
+<text x="512" y="1213" text-anchor="middle" class="td">{{ROW7_IN}}</text>
+<text x="604" y="1213" text-anchor="middle" class="td">{{ROW7_OUT}}</text>
+<text x="711" y="1213" text-anchor="middle" class="td">{{ROW7_DURATION}}</text>
+<rect x="775" y="1199" width="190" height="15" rx="7" fill="#E3EAF1"/><rect x="775" y="1199" width="{{ROW7_WORK_BAR}}" height="15" rx="7" fill="url(#blue)"/><text x="985" y="1212" class="f" font-size="11.5" font-weight="900" fill="#176DCE">{{ROW7_WORK_PCT}}</text><rect x="38" y="1233" width="1004" height="51" fill="#F8FBFE"/><line x1="38" y1="1284" x2="1042" y2="1284" stroke="#E6EDF4"/>
+<text x="62" y="1264" text-anchor="middle" class="td">8</text>
+<text x="98" y="1264" class="name">{{ROW8_NAME}}</text>
+<rect x="316" y="1244" width="140" height="29" rx="15" fill="{{ROW8_STATUS_BG}}"/><circle cx="332" cy="1258" r="7" fill="{{ROW8_STATUS_DOT}}"/><text x="346" y="1263" class="f" font-size="11.5" font-weight="850" fill="{{ROW8_STATUS_FG}}">{{ROW8_STATUS}}</text>
+<text x="512" y="1264" text-anchor="middle" class="td">{{ROW8_IN}}</text>
+<text x="604" y="1264" text-anchor="middle" class="td">{{ROW8_OUT}}</text>
+<text x="711" y="1264" text-anchor="middle" class="td">{{ROW8_DURATION}}</text>
+<rect x="775" y="1250" width="190" height="15" rx="7" fill="#E3EAF1"/><rect x="775" y="1250" width="{{ROW8_WORK_BAR}}" height="15" rx="7" fill="url(#blue)"/><text x="985" y="1263" class="f" font-size="11.5" font-weight="900" fill="#176DCE">{{ROW8_WORK_PCT}}</text>
+<rect x="0" y="1320" width="1080" height="120" fill="url(#navy)"/>
+<path d="M0 1320 L155 1320 L70 1440 L0 1440 Z" fill="#D5A13A"/><path d="M935 1440 L1080 1440 L1080 1320 Z" fill="#D5A13A"/>
+<circle cx="48" cy="1361" r="19" fill="#D9ECFF"/><text x="48" y="1368" text-anchor="middle" class="f" font-size="21" font-weight="900" fill="#176FC6">i</text>
+<text x="82" y="1352" class="f" font-size="13.5" font-weight="850" fill="#FFFFFF">Lưu ý:</text>
+<text x="82" y="1377" class="f" font-size="12.5" font-weight="650" fill="#E4EFF8">Số liệu phục vụ đối soát, không mặc nhiên là giá trị công chính thức.</text>
+<text x="82" y="1401" class="f" font-size="12.5" font-weight="650" fill="#E4EFF8">Sai lệch hoặc vướng mắc vui lòng phản hồi P.HC-NS để kiểm tra và điều chỉnh.</text></svg>

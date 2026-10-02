@@ -13,17 +13,18 @@ async function token(){
 }
 const trigger=JSON.parse(fs.readFileSync(".github/attendance-rerun-trigger.json","utf8")),delivery=trigger?.delivery||{};
 if(delivery.enabled!==true){console.log("TEAMS_DELIVERY=SKIPPED");process.exit(0);}
-const mode=String(delivery.mode||"").toUpperCase();if(mode!=="TEST")throw new Error("Attendance Teams delivery remains locked to TEST mode until V4 approval");
+const mode=String(delivery.mode||"").toUpperCase();
+if(mode!=="TEST")throw new Error("Attendance Teams delivery remains locked to TEST mode until V5 template approval");
 if(delivery.target_type!=="chat"||String(delivery.chat_id||"")!==TEST_CHAT_ID)throw new Error("Attendance TEST target mismatch");
 const slot=String(process.env.ATTENDANCE_RUN_SLOT||"").trim(),date=String(process.env.TARGET_DATE||"").trim();
 const report=JSON.parse(fs.readFileSync(path.join("output",`report-${slot}-${date}.json`),"utf8"));
 const image=fs.readFileSync(path.join("output",`attendance-${slot}-${date}.png`));
-if(image.length<=0||image.length>TEAMS_HOSTED_CONTENT_LIMIT)throw new Error("V4 image violates hosted-content limit");
-if(image.subarray(0,8).toString("hex")!=="89504e470d0a1a0a")throw new Error("V4 image is not PNG");
-if(image.readUInt32BE(16)!==1080||image.readUInt32BE(20)!==1440)throw new Error("V4 image dimensions mismatch");
+if(image.length<=0||image.length>TEAMS_HOSTED_CONTENT_LIMIT)throw new Error("V5 image violates hosted-content limit");
+if(image.subarray(0,8).toString("hex")!=="89504e470d0a1a0a")throw new Error("V5 image is not PNG");
+if(image.readUInt32BE(16)!==1080||image.readUInt32BE(20)!==1440)throw new Error("V5 image dimensions mismatch");
 const payload=buildTeamsHostedImagePayload({report,imageBase64:image.toString("base64"),mode});
 const res=await fetch(`${GRAPH}/chats/${encodeURIComponent(TEST_CHAT_ID)}/messages`,{method:"POST",headers:{Authorization:`Bearer ${await token()}`,"Content-Type":"application/json"},body:JSON.stringify(payload)});
-if(!res.ok)throw new Error(`Teams V4 hosted-image post failed: HTTP ${res.status} ${(await res.text()).slice(0,1000)}`);
-const id=String((await res.json())?.id||"").trim();if(!id)throw new Error("Teams V4 post returned no message id");
+if(!res.ok)throw new Error(`Teams V5 hosted-image post failed: HTTP ${res.status} ${(await res.text()).slice(0,1000)}`);
+const id=String((await res.json())?.id||"").trim();if(!id)throw new Error("Teams V5 post returned no message id");
 console.log(`TEAMS_MESSAGE_ID=${id}`);
 if(process.env.GITHUB_ENV)fs.appendFileSync(process.env.GITHUB_ENV,`ATTENDANCE_TEAMS_MESSAGE_ID=${id}\n`,"utf8");

@@ -1,36 +1,29 @@
 {
-  "version": "ATTENDANCE_IMAGE_V4_MOCKUP_FIDELITY_2026_10_02",
+  "version": "ATTENDANCE_IMAGE_V5_LOCKED_MASTER_2026_10_02",
   "status": "approved-test",
   "locked": true,
-  "strategy": "mockup-fidelity-mobile-first",
+  "strategy": "locked-master-template",
   "canvas": { "width": 1080, "height": 1440, "format": "PNG", "ratio": "3:4" },
-  "branding": {
-    "logo": false,
-    "navy": "#062E62",
-    "navy_dark": "#021D42",
-    "blue": "#2388F2",
-    "blue_soft": "#EAF4FF",
-    "green": "#16A34A",
-    "green_soft": "#EAF8EF",
-    "gold": "#C58A22",
-    "gold_soft": "#FFF6E2",
-    "red": "#EF3340",
-    "paper": "#F7FBFF",
-    "ink": "#17365F",
-    "muted": "#617891"
+  "templates": {
+    "morning_1230": {
+      "file": "assets/attendance-v5/morning-master.svg",
+      "template_id": "ATTENDANCE_V5_LOCKED_MORNING_2026_10_02",
+      "git_blob_sha": "c706e8e58c423e8bf75859eb41a98f73cbc3a805"
+    },
+    "daily_2105": {
+      "file": "assets/attendance-v5/daily-master.svg",
+      "template_id": "ATTENDANCE_V5_LOCKED_DAILY_2026_10_02",
+      "git_blob_sha": "804745bc93d429f0d2e94dd8a3f85406e69fb385"
+    }
   },
-  "slots": {
-    "morning_1230": { "title": "CHẤM CÔNG — CA SÁNG", "scale_minutes": 300 },
-    "daily_2105": { "title": "CHẤM CÔNG — CẢ NGÀY", "scale_minutes": 600 }
-  },
+  "dynamic_fields_only": true,
   "production_rules": [
-    "Render exactly one 1080x1440 PNG per report so Teams shows one complete page like the approved mockup.",
-    "Header, KPI cards, chart block, donut block, detail table and footer must all live on the same page.",
-    "Morning and full-day variants share the same visual grammar but may use different decorative header scenes.",
-    "Daily table must visually distinguish morning in blue and afternoon in green.",
-    "All names, times, durations, totals and statuses come only from the canonical attendance business report.",
-    "Missing or unresolved values are never inferred.",
-    "No external images, remote fonts, AI-generated text or logo are used in the deterministic renderer.",
-    "Teams delivery uses the exact rendered PNG as a native hostedContent and only scales it proportionally."
+    "The approved SVG master template is immutable for a layout version.",
+    "Each run may replace only approved placeholder values: date, KPI values, employee names, attendance times, durations, status colors/text, chart bars and percentages.",
+    "Header artwork, office background, card geometry, typography, spacing, chart containers, table geometry and footer are fixed in the master template.",
+    "The renderer verifies the Git blob SHA of the master template before rendering. A background/layout edit without a version change blocks publication.",
+    "Render exactly one 1080x1440 PNG per report.",
+    "Teams sends exactly that PNG through native hostedContent and may only scale it proportionally.",
+    "All attendance values come only from the canonical business report; missing values are never inferred."
   ]
 }

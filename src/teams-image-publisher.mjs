@@ -5,15 +5,18 @@ export function formatVietnameseDate(iso){const m=String(iso||"").match(/^(\d{4}
 function slotLabel(slot){if(slot==="morning_1230")return"CA SÁNG";if(slot==="daily_2105")return"CẢ NGÀY";throw new Error("Unsupported attendance slot");}
 export function buildTeamsHostedImagePayload({report,imageBase64,mode="PRODUCTION"}){
   if(!report||report.kind!=="attendance_business_report")throw new Error("Invalid attendance business report");
-  if(!String(imageBase64||"").trim())throw new Error("V4 Teams delivery requires one image");
-  const normalized=String(mode||"PRODUCTION").trim().toUpperCase();if(!["TEST","PRODUCTION"].includes(normalized))throw new Error("Unsupported Teams delivery mode");
+  if(!String(imageBase64||"").trim())throw new Error("V5 Teams delivery requires one locked-template image");
+  const normalized=String(mode||"PRODUCTION").trim().toUpperCase();
+  if(!["TEST","PRODUCTION"].includes(normalized))throw new Error("Unsupported Teams delivery mode");
   const label=slotLabel(report.slot),prefix=normalized==="TEST"?"[TEST] ":"",date=formatVietnameseDate(report.date);
-  const body=[
-    `<b>${prefix}BÁO CÁO CHẤM CÔNG — ${label}</b>`,
-    `<br><b>${esc(date)}</b>`,
-    "<br>Tổng hợp từ hệ thống chấm công để đối soát.",
-    "<br><br>",
-    `<img src="../hostedContents/1/\$value" width="900" alt="Báo cáo chấm công ${esc(report.date)}">`
-  ].join("");
-  return{body:{contentType:"html",content:body},hostedContents:[{"@microsoft.graph.temporaryId":"1",contentBytes:String(imageBase64),contentType:"image/png"}]};
+  return{
+    body:{contentType:"html",content:[
+      `<b>${prefix}BÁO CÁO CHẤM CÔNG — ${label}</b>`,
+      `<br><b>${esc(date)}</b>`,
+      "<br>Tổng hợp từ hệ thống chấm công để đối soát.",
+      "<br><br>",
+      `<img src="../hostedContents/1/\$value" width="900" alt="Báo cáo chấm công ${esc(report.date)}">`
+    ].join("")},
+    hostedContents:[{"@microsoft.graph.temporaryId":"1",contentBytes:String(imageBase64),contentType:"image/png"}]
+  };
 }

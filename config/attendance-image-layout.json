@@ -1,39 +1,36 @@
 {
-  "version": "ATTENDANCE_IMAGE_V3_MOBILE_FIRST_2026_10_02",
+  "version": "ATTENDANCE_IMAGE_V4_MOCKUP_FIDELITY_2026_10_02",
   "status": "approved-test",
   "locked": true,
-  "strategy": "mobile-first",
-  "outputs": {
-    "overview": { "width": 1080, "height": 1350, "format": "PNG" },
-    "detail": { "width": 1080, "height": 1620, "format": "PNG" }
-  },
+  "strategy": "mockup-fidelity-mobile-first",
+  "canvas": { "width": 1080, "height": 1440, "format": "PNG", "ratio": "3:4" },
   "branding": {
     "logo": false,
-    "navy": "#052E63",
-    "navy_dark": "#021B3D",
-    "blue": "#2D8CFF",
+    "navy": "#062E62",
+    "navy_dark": "#021D42",
+    "blue": "#2388F2",
     "blue_soft": "#EAF4FF",
-    "green": "#19A660",
-    "green_soft": "#EAF8F0",
+    "green": "#16A34A",
+    "green_soft": "#EAF8EF",
     "gold": "#C58A22",
     "gold_soft": "#FFF6E2",
-    "red": "#EA4050",
-    "paper": "#F5FAFE",
-    "ink": "#163454",
-    "muted": "#667E96"
+    "red": "#EF3340",
+    "paper": "#F7FBFF",
+    "ink": "#17365F",
+    "muted": "#617891"
   },
   "slots": {
-    "morning_1230": { "title": "CHẤM CÔNG CA SÁNG", "scale_minutes": 300 },
-    "daily_2105": { "title": "CHẤM CÔNG CẢ NGÀY", "scale_minutes": 600 }
+    "morning_1230": { "title": "CHẤM CÔNG — CA SÁNG", "scale_minutes": 300 },
+    "daily_2105": { "title": "CHẤM CÔNG — CẢ NGÀY", "scale_minutes": 600 }
   },
   "production_rules": [
-    "One attendance report renders exactly two images: overview first, detail second.",
-    "Overview prioritizes large KPI cards, a large attendance-rate visual, and large horizontal work-hour bars.",
-    "Detail uses one full-width employee card per person so names and shift data remain readable on mobile.",
-    "Daily detail visually separates morning in blue and afternoon in green.",
+    "Render exactly one 1080x1440 PNG per report so Teams shows one complete page like the approved mockup.",
+    "Header, KPI cards, chart block, donut block, detail table and footer must all live on the same page.",
+    "Morning and full-day variants share the same visual grammar but may use different decorative header scenes.",
+    "Daily table must visually distinguish morning in blue and afternoon in green.",
     "All names, times, durations, totals and statuses come only from the canonical attendance business report.",
     "Missing or unresolved values are never inferred.",
-    "No external images, remote fonts, AI-generated text, or logo are used by the deterministic renderer.",
-    "Teams delivery uses two native hostedContents in the same message."
+    "No external images, remote fonts, AI-generated text or logo are used in the deterministic renderer.",
+    "Teams delivery uses the exact rendered PNG as a native hostedContent and only scales it proportionally."
   ]
 }

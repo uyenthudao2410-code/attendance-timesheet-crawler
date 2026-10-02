@@ -1,8 +1,14 @@
 {
   "schema_version": 1,
-  "request_id": "image-v1-daily-final-20261001-01",
-  "slot": "daily_2105",
-  "target_date": "2026-10-01",
-  "requested_at": "2026-10-02T17:52:10+07:00",
-  "reason": "final integration test approved attendance image form v1"
+  "request_id": "teams-hosted-morning-20261002-181218",
+  "slot": "morning_1230",
+  "target_date": "2026-10-02",
+  "requested_at": "2026-10-02T18:12:18+07:00",
+  "reason": "test native Teams hosted-content attendance image",
+  "delivery": {
+    "enabled": true,
+    "mode": "TEST",
+    "target_type": "chat",
+    "chat_id": "19:0e02d613cded448892f27d74cff19d63@thread.v2"
+  }
 }

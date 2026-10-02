@@ -201,7 +201,7 @@ function renderMorningTable(rows) {
 function renderDailyTable(rows) {
   const x = 40;
   const y = 650;
-  const widths = [50, 220, 260, 260, 130, 200];
+  const widths = [50, 210, 245, 245, 120, 250];
   const headers = ["#", "HỌ VÀ TÊN", "CA SÁNG", "CA CHIỀU", "TỔNG CÔNG", "TRẠNG THÁI"];
   const out = [];
   out.push('<g filter="url(#softShadow)"><rect x="' + x + '" y="' + y + '" width="1120" height="548" rx="16" fill="#fff" stroke="#d9e5ef"/></g>');
@@ -222,18 +222,18 @@ function renderDailyTable(rows) {
     const afternoon = sessionLabel(split.afternoon);
     const status = compactStatus(row, "daily_2105");
     const tone = toneColor(status.tone);
-    const cellX = [x, x + 50, x + 270, x + 530, x + 790, x + 920];
+    const cellX = [x, x + 50, x + 260, x + 505, x + 750, x + 870];
     out.push('<rect x="' + x + '" y="' + ry + '" width="1120" height="61" fill="' + fill + '"/>');
     out.push('<line x1="' + x + '" y1="' + (ry + 61) + '" x2="' + (x + 1120) + '" y2="' + (ry + 61) + '" stroke="#e5edf4"/>');
     out.push('<text x="' + (cellX[0] + 25) + '" y="' + (ry + 38) + '" text-anchor="middle" class="td">' + (index + 1) + '</text>');
     out.push('<text x="' + (cellX[1] + 14) + '" y="' + (ry + 38) + '" class="td name">' + esc(shorten(row.name, 24)) + '</text>');
-    out.push('<text x="' + (cellX[2] + 130) + '" y="' + (ry + 38) + '" text-anchor="middle" font-size="' + (morning.length > 26 ? 13 : 15) + '" font-weight="650" fill="#17365f">' + esc(shorten(morning, 34)) + '</text>');
-    out.push('<text x="' + (cellX[3] + 130) + '" y="' + (ry + 38) + '" text-anchor="middle" font-size="' + (afternoon.length > 26 ? 13 : 15) + '" font-weight="650" fill="#17365f">' + esc(shorten(afternoon, 34)) + '</text>');
-    out.push('<text x="' + (cellX[4] + 65) + '" y="' + (ry + 39) + '" text-anchor="middle" font-size="24" font-weight="850" fill="#062e62">' + esc(row.total_display || "—") + '</text>');
-    out.push('<rect x="' + (cellX[5] + 12) + '" y="' + (ry + 14) + '" width="176" height="34" rx="17" fill="' + tone.fill + '"/>');
+    out.push('<text x="' + (cellX[2] + 122.5) + '" y="' + (ry + 38) + '" text-anchor="middle" font-size="' + (morning.length > 26 ? 13 : 15) + '" font-weight="650" fill="#17365f">' + esc(shorten(morning, 34)) + '</text>');
+    out.push('<text x="' + (cellX[3] + 122.5) + '" y="' + (ry + 38) + '" text-anchor="middle" font-size="' + (afternoon.length > 26 ? 13 : 15) + '" font-weight="650" fill="#17365f">' + esc(shorten(afternoon, 34)) + '</text>');
+    out.push('<text x="' + (cellX[4] + 60) + '" y="' + (ry + 39) + '" text-anchor="middle" font-size="24" font-weight="850" fill="#062e62">' + esc(row.total_display || "—") + '</text>');
+    out.push('<rect x="' + (cellX[5] + 12) + '" y="' + (ry + 14) + '" width="226" height="34" rx="17" fill="' + tone.fill + '"/>');
     out.push('<circle cx="' + (cellX[5] + 30) + '" cy="' + (ry + 31) + '" r="10" fill="' + tone.dot + '"/>');
     out.push('<text x="' + (cellX[5] + 30) + '" y="' + (ry + 36) + '" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">' + (status.tone === "ok" ? "✓" : "!") + '</text>');
-    out.push('<text x="' + (cellX[5] + 46) + '" y="' + (ry + 37) + '" font-size="14" font-weight="750" fill="' + tone.ink + '">' + esc(shorten(status.text, 20)) + '</text>');
+    out.push('<text x="' + (cellX[5] + 46) + '" y="' + (ry + 37) + '" font-size="13.5" font-weight="750" fill="' + tone.ink + '">' + esc(shorten(status.text, 28)) + '</text>');
   });
   return out.join("");
 }

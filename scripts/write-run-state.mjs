@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 const slot=String(process.env.ATTENDANCE_RUN_SLOT||"").trim(),date=String(process.env.TARGET_DATE||"").trim();
 const requestId=String(process.env.ATTENDANCE_REQUEST_ID||"").trim(),requestedAt=String(process.env.ATTENDANCE_REQUESTED_AT||"").trim();
+const snapshotId=String(process.env.ATTENDANCE_SNAPSHOT_ID||"").trim(),freshnessValidatedAt=String(process.env.ATTENDANCE_FRESHNESS_VALIDATED_AT||"").trim(),publicationValidatedAt=String(process.env.ATTENDANCE_PUBLICATION_VALIDATED_AT||"").trim();
 const crawlCompletedAt=String(process.env.ATTENDANCE_CRAWL_COMPLETED_AT||"").trim(),crawlEmployeeCount=Number(process.env.ATTENDANCE_CRAWL_EMPLOYEE_COUNT||"0");
 const runId=String(process.env.GITHUB_RUN_ID||"").trim(),runAttempt=Number(process.env.GITHUB_RUN_ATTEMPT||"1"),triggerCommitSha=String(process.env.GITHUB_SHA||"").trim();
 const artifactId=String(process.env.ARTIFACT_ID||"").trim(),artifactName=String(process.env.ARTIFACT_NAME||"").trim();
@@ -13,6 +14,8 @@ const imageFile=String(process.env.ATTENDANCE_IMAGE_FILE||"").trim(),imageSha=St
 const width=Number(process.env.ATTENDANCE_IMAGE_WIDTH||"0"),height=Number(process.env.ATTENDANCE_IMAGE_HEIGHT||"0");
 const teamsMessageId=String(process.env.ATTENDANCE_TEAMS_MESSAGE_ID||"").trim();
 if(!["morning_1230","daily_2105"].includes(slot))throw new Error("Unsupported ATTENDANCE_RUN_SLOT");
+if(!snapshotId.startsWith(requestId+":"))throw new Error("Attendance snapshot id is not correlated to current request");
+if(!Number.isFinite(Date.parse(freshnessValidatedAt)))throw new Error("Attendance freshness validation timestamp is invalid");
 if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!/^\d+$/.test(runId)||!/^\d+$/.test(artifactId))throw new Error("Invalid attendance state identity");
 if(crawlEmployeeCount!==8)throw new Error("Crawl barrier did not confirm 8 employees");
 if(!/^[a-f0-9]{40}$/.test(triggerCommitSha)||![rosterFingerprint,identityFingerprint,reportSha256,imageSha].every(v=>/^[a-f0-9]{64}$/.test(v)))throw new Error("Invalid attendance state hashes");
@@ -23,5 +26,5 @@ if(imageFile!==`output/attendance-${slot}-${date}.png`)throw new Error("Invalid 
 if(width!==1080||height!==1440)throw new Error("Invalid V5 image dimensions");
 if(!templateId.startsWith("ATTENDANCE_V5_LOCKED_"))throw new Error("Invalid V5 template id");
 if(teamsMessageId&&!/^\d+$/.test(teamsMessageId))throw new Error("Invalid Teams message id");
-const value={schema_version:8,run_id:runId,run_attempt:runAttempt,request_id:requestId,requested_at:requestedAt,trigger_commit_sha:triggerCommitSha,slot,target_date:date,crawl_complete:true,crawl_employee_count:crawlEmployeeCount,crawl_completed_at:crawlCompletedAt,artifact_id:artifactId,artifact_name:artifactName,roster_fingerprint:rosterFingerprint,identity_fingerprint:identityFingerprint,encryption:"rsa-oaep-sha256+aes-256-cbc-pbkdf2-200000",report_file:reportFile,report_sha256:reportSha256,image_layout_version:layout,master_template:{id:templateId,git_blob_sha:templateSha},image_count:1,image:{file:imageFile,sha256:imageSha,width,height},teams_message_id:teamsMessageId||null,completed_at:new Date().toISOString()};
+const value={schema_version:9,run_id:runId,run_attempt:runAttempt,request_id:requestId,requested_at:requestedAt,snapshot_id:snapshotId,freshness_validated_at:freshnessValidatedAt,publication_validated_at:publicationValidatedAt||null,trigger_commit_sha:triggerCommitSha,slot,target_date:date,crawl_complete:true,crawl_employee_count:crawlEmployeeCount,crawl_completed_at:crawlCompletedAt,artifact_id:artifactId,artifact_name:artifactName,roster_fingerprint:rosterFingerprint,identity_fingerprint:identityFingerprint,encryption:"rsa-oaep-sha256+aes-256-cbc-pbkdf2-200000",report_file:reportFile,report_sha256:reportSha256,image_layout_version:layout,master_template:{id:templateId,git_blob_sha:templateSha},image_count:1,image:{file:imageFile,sha256:imageSha,width,height},teams_message_id:teamsMessageId||null,completed_at:new Date().toISOString()};
 const dir=path.join(".github","attendance-state");await fs.mkdir(dir,{recursive:true});const out=path.join(dir,`${slot}.json`);await fs.writeFile(out,JSON.stringify(value,null,2)+"\n","utf8");process.stdout.write(out);

@@ -62,6 +62,7 @@ jobs:
 
             request_id="schedule-${run_slot}-${target_date}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
+            REQUEST_ID="$request_id" RUN_SLOT="$run_slot" SCHEDULE_TARGET_DATE="$target_date" REQUESTED_AT="$requested_at" \
             node --input-type=module <<'NODE'
           import fs from 'node:fs';
           const triggerPath = '.github/attendance-rerun-trigger.json';
@@ -118,11 +119,6 @@ jobs:
             echo "ATTENDANCE_REQUESTED_AT=$requested_at" >> "$GITHUB_ENV"
             echo "Attendance push request accepted: slot=$run_slot target_date=$target_date request_id=$request_id"
           fi
-        env:
-          REQUEST_ID: schedule-placeholder
-          RUN_SLOT: schedule-placeholder
-          SCHEDULE_TARGET_DATE: 1970-01-01
-          REQUESTED_AT: 1970-01-01T00:00:00Z
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund

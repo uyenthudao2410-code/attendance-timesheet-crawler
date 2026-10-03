@@ -1,0 +1,37 @@
+{
+  "version": "ATTENDANCE_AI_VISUAL_V1_2026_10_03",
+  "status": "test-only",
+  "production_enabled": false,
+  "render_mode": "reference_based_full_rerender",
+  "canvas": { "width": 1080, "height": 1440, "format": "PNG", "ratio": "3:4" },
+  "reference_assets": {
+    "morning_1230": "attendance-ai-reference-morning-v1.png",
+    "daily_2105": "attendance-ai-reference-daily-v1.png"
+  },
+  "style_rules": [
+    "Use the approved reference image as the primary visual reference.",
+    "Re-render the entire infographic as one unified image; do not paste text on top of the reference.",
+    "Preserve the approved information hierarchy: header, date card, 4 KPI cards, chart, overview panel, detail table, footer.",
+    "Keep a bright premium corporate office/city-view aesthetic with navy, blue, green and gold accents.",
+    "Optimize for mobile first while remaining sharp on desktop.",
+    "All Vietnamese names, dates, times, durations, statuses and KPI values must come from the validated request only.",
+    "Do not invent attendance values or employee names.",
+    "The generated image is test-only until the visual QA gate confirms every displayed value."
+  ],
+  "daily_status_labels": {
+    "recorded": "Đã ghi nhận",
+    "open_session": "Chưa chốt",
+    "not_recorded": "Chưa có bản ghi",
+    "review_required": "Cần đối soát",
+    "source_review": "Cần đối soát",
+    "technical_error": "Lỗi nguồn"
+  },
+  "morning_status_labels": {
+    "recorded": "Đã chấm công",
+    "working": "Đang làm việc",
+    "not_recorded_morning": "Chưa chấm công",
+    "review_required": "Cần đối soát",
+    "source_review": "Cần đối soát",
+    "technical_error": "Lỗi nguồn"
+  }
+}

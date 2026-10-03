@@ -1,22 +1,25 @@
 {
-  "schema_version": 8,
-  "run_id": "37095571189",
+  "schema_version": 9,
+  "run_id": "37105004827",
   "run_attempt": 1,
-  "request_id": "ai-visual-morning-20261003-110849",
-  "requested_at": "2026-10-03T11:08:49+07:00",
-  "trigger_commit_sha": "c1dc468e35ef082abf57771d09baec866c6092f3",
+  "request_id": "fresh-morning-artifact-20261003-140157",
+  "requested_at": "2026-10-03T14:01:57+07:00",
+  "snapshot_id": "fresh-morning-artifact-20261003-140157:2026-10-03T07:03:39.575Z",
+  "freshness_validated_at": "2026-10-03T07:03:43.900Z",
+  "publication_validated_at": null,
+  "trigger_commit_sha": "cf3ad2d26a3639778735c287ee07c4c99524b97b",
   "slot": "morning_1230",
   "target_date": "2026-10-03",
   "crawl_complete": true,
   "crawl_employee_count": 8,
-  "crawl_completed_at": "2026-10-03T04:10:23.823Z",
-  "artifact_id": "11264276471",
-  "artifact_name": "attendance-encrypted-37095571189",
+  "crawl_completed_at": "2026-10-03T07:03:39.575Z",
+  "artifact_id": "11267761195",
+  "artifact_name": "attendance-encrypted-37105004827",
   "roster_fingerprint": "beb5e597e4547d1f0c56b5e0037e8cfeaf614945b94133410d2221539441cb32",
   "identity_fingerprint": "f242e02841d372b37e4f8cc4c55643f87df656df06bf6d76d3972fb1fa15febf",
   "encryption": "rsa-oaep-sha256+aes-256-cbc-pbkdf2-200000",
   "report_file": "output/report-morning_1230-2026-10-03.json",
-  "report_sha256": "a71af9a243bcce91d21eaf826ab1920a3a07ae35fbda80a10692af29c9839cb6",
+  "report_sha256": "ffab62ed6bd08df836b144af8a9c037b133178eabc8e078f8a8c21bc7c6e8958",
   "image_layout_version": "ATTENDANCE_IMAGE_V5_LOCKED_MASTER_2026_10_02",
   "master_template": {
     "id": "ATTENDANCE_V5_LOCKED_MORNING_2026_10_02",
@@ -25,10 +28,10 @@
   "image_count": 1,
   "image": {
     "file": "output/attendance-morning_1230-2026-10-03.png",
-    "sha256": "5f04e388700012c001b7524fd3cb0d04977fbc853650e3deea1721c1efadc33e",
+    "sha256": "69f355710735a99d3659cc433043d5c2ccbff10797144600e9434560c0b2ccff",
     "width": 1080,
     "height": 1440
   },
   "teams_message_id": null,
-  "completed_at": "2026-10-03T04:10:27.402Z"
+  "completed_at": "2026-10-03T07:03:45.651Z"
 }

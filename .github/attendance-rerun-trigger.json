@@ -1,11 +1,14 @@
 {
   "schema_version": 1,
-  "request_id": "ai-visual-daily-20261002-110956",
-  "slot": "daily_2105",
-  "target_date": "2026-10-02",
-  "requested_at": "2026-10-03T11:09:56+07:00",
-  "reason": "AI visual test bundle for full-day attendance 02/10/2026 before broad rollout",
+  "request_id": "fresh-morning-test-20261003-135837",
+  "slot": "morning_1230",
+  "target_date": "2026-10-03",
+  "requested_at": "2026-10-03T13:58:37+07:00",
+  "reason": "fresh snapshot end-to-end TEST chat verification",
   "delivery": {
-    "enabled": false
+    "enabled": true,
+    "mode": "TEST",
+    "target_type": "chat",
+    "chat_id": "19:0e02d613cded448892f27d74cff19d63@thread.v2"
   }
 }

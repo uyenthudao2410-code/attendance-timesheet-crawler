@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
-  "enabled": false,
+  "enabled": true,
   "mode": "TEST",
   "target_type": "chat",
   "chat_id": "19:0e02d613cded448892f27d74cff19d63@thread.v2",
   "slot": "morning_1230",
-  "target_date": "1970-01-01",
-  "drive_id": "",
-  "item_id": "",
-  "file_name": "",
-  "requested_at": "1970-01-01T00:00:00Z",
-  "source_handoff_message_id": ""
+  "target_date": "2026-10-03",
+  "drive_id": "b!N9dX9HCS6UKEq613WrbxKk_yEmeHt5dCip15hTbDIxd3jbbX-vE9Q4aki4Fvh5Mc",
+  "item_id": "013N4NZ66VAVQEEGJYWNC33NIMWRRPF6OU",
+  "file_name": "attendance-ai-test-2026-10-03.png",
+  "requested_at": "2026-10-03T14:21:18.112Z",
+  "source_handoff_message_id": "manual-test-current-conversation"
 }

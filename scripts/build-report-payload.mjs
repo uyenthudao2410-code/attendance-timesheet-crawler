@@ -6,6 +6,8 @@ import { buildAttendanceBusinessReport } from "../src/report-builder.mjs";
 const TZ = "Asia/Ho_Chi_Minh";
 const slot = String(process.env.ATTENDANCE_RUN_SLOT || "").trim();
 const targetDate = String(process.env.TARGET_DATE || "").trim();
+const requestId = String(process.env.ATTENDANCE_REQUEST_ID || "").trim();
+const requestedAt = String(process.env.ATTENDANCE_REQUESTED_AT || "").trim();
 const REPORT_NAME_OVERRIDES = new Map([
   ["Điều Văn Mạnh", "Điêu Văn Mạnh"],
   ["Điêu Văn Mạnh", "Điêu Văn Mạnh"],
@@ -15,6 +17,9 @@ if (!new Set(["morning_1230", "daily_2105"]).has(slot)) {
   throw new Error("ATTENDANCE_RUN_SLOT must be morning_1230 or daily_2105");
 }
 if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) throw new Error("TARGET_DATE must be YYYY-MM-DD");
+if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{5,127}$/.test(requestId)) throw new Error("ATTENDANCE_REQUEST_ID is invalid");
+const requestedAtMs = Date.parse(requestedAt);
+if (!Number.isFinite(requestedAtMs)) throw new Error("ATTENDANCE_REQUESTED_AT is invalid");
 
 const rosterRaw = process.env.ATTENDANCE_ROSTER_JSON;
 if (!rosterRaw) throw new Error("Missing repository secret ATTENDANCE_ROSTER_JSON");
@@ -39,6 +44,12 @@ const rawReport = JSON.parse(await fs.readFile(rawPath, "utf8"));
 if (rawReport.date !== targetDate || rawReport.timezone !== TZ) {
   throw new Error("Raw attendance report date/timezone does not match requested report");
 }
+const rawGeneratedAtMs = Date.parse(String(rawReport.generated_at || ""));
+if (!Number.isFinite(rawGeneratedAtMs)) throw new Error("Raw attendance generated_at is invalid");
+if (rawGeneratedAtMs + 1000 < requestedAtMs) throw new Error("Raw attendance snapshot predates current request");
+const nowMs = Date.now();
+if (rawGeneratedAtMs > nowMs + 2 * 60 * 1000) throw new Error("Raw attendance snapshot is unexpectedly in the future");
+if (nowMs - rawGeneratedAtMs > 10 * 60 * 1000) throw new Error("Raw attendance snapshot is stale");
 if (!Array.isArray(rawReport.employees) || rawReport.employees.length !== sourceExpectedNames.length) {
   throw new Error("Raw attendance employee count does not match source roster");
 }
@@ -59,6 +70,9 @@ const reportInput = {
 };
 
 const businessReport = buildAttendanceBusinessReport(reportInput, slot, expectedNames);
+businessReport.request_id = requestId;
+businessReport.requested_at = requestedAt;
+businessReport.snapshot_id = `${requestId}:${rawReport.generated_at}`;
 const reportPath = path.join("output", `report-${slot}-${targetDate}.json`);
 const serialized = `${JSON.stringify(businessReport, null, 2)}\n`;
 await fs.writeFile(reportPath, serialized, "utf8");
@@ -68,7 +82,7 @@ const githubEnv = process.env.GITHUB_ENV;
 if (githubEnv) {
   await fs.appendFile(
     githubEnv,
-    `ATTENDANCE_REPORT_FILE=${reportPath}\nATTENDANCE_REPORT_SHA256=${reportSha256}\n`,
+    `ATTENDANCE_REPORT_FILE=${reportPath}\nATTENDANCE_REPORT_SHA256=${reportSha256}\nATTENDANCE_SNAPSHOT_ID=${businessReport.snapshot_id}\n`,
     "utf8",
   );
 }

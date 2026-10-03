@@ -163,6 +163,13 @@ jobs:
           if (generatedAtMs + 1000 < requestedAtMs) {
             throw new Error('Crawler output predates the current attendance request');
           }
+          const nowMs = Date.now();
+          if (generatedAtMs > nowMs + 2 * 60 * 1000) {
+            throw new Error('Crawler output timestamp is unexpectedly in the future');
+          }
+          if (nowMs - generatedAtMs > 10 * 60 * 1000) {
+            throw new Error('Crawler output is stale; refusing to build or publish');
+          }
 
           fs.appendFileSync(process.env.GITHUB_ENV, `ATTENDANCE_CRAWL_COMPLETED_AT=${raw.generated_at}\nATTENDANCE_CRAWL_EMPLOYEE_COUNT=8\n`);
           console.log(`Crawl completion barrier passed: request_id=${process.env.ATTENDANCE_REQUEST_ID} employees=8 generated_at=${raw.generated_at}`);
@@ -172,6 +179,9 @@ jobs:
         env:
           ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
         run: node scripts/build-report-payload.mjs
+
+      - name: Validate same-request fresh snapshot before visual generation
+        run: node scripts/validate-publication-freshness.mjs report
 
       - name: Build approved AI visual request bundle
         run: node scripts/build-ai-visual-request.mjs
@@ -184,6 +194,9 @@ jobs:
 
       - name: Render approved attendance report image
         run: node scripts/render-report-image.mjs
+
+      - name: Validate same-run fresh snapshot before Teams publication
+        run: node scripts/validate-publication-freshness.mjs post
 
       - name: Publish approved attendance image to Teams when requested
         env:

@@ -229,6 +229,20 @@ function crossesMidday(session) {
   return start != null && end != null && start < MIDDAY_SPLIT_MINUTE && end >= MIDDAY_SPLIT_MINUTE;
 }
 
+function isSupersededOpenInput(session, sessions) {
+  if (!session?.in || session?.out || session.source !== "table_open_in") return false;
+  const start = minuteOfDay(session.in);
+  const period = sessionPeriod(session);
+  if (start == null || period === "unknown") return false;
+
+  return sessions.some((candidate) => {
+    if (!candidate?.in || !candidate?.out || !Number.isInteger(candidate.minutes)) return false;
+    if (sessionPeriod(candidate) !== period) return false;
+    const candidateStart = minuteOfDay(candidate.in);
+    return candidateStart != null && candidateStart > start;
+  });
+}
+
 function buildDailyEmployee(employee) {
   const base = baseEmployee(employee);
   if (employee.access_ok === false || employee.status === "technical_error") {
@@ -285,19 +299,22 @@ function buildDailyEmployee(employee) {
     };
   }
 
-  const openSessions = sessions.filter((session) => !session.in || !session.out);
+  const supersededOpenSessions = sessions.filter((session) => isSupersededOpenInput(session, sessions));
+  const effectiveSessions = sessions.filter((session) => !supersededOpenSessions.includes(session));
+  const openSessions = effectiveSessions.filter((session) => !session.in || !session.out);
   if (openSessions.length) {
     return {
       ...base,
-      sessions,
+      sessions: effectiveSessions,
       total_minutes: null,
       total_display: "Chưa chốt",
       status_code: "open_session",
       status_text: `Chưa chốt – ${openSessions.map(missingEndpointText).join("; ")}`,
+      ignored_superseded_open_session_count: supersededOpenSessions.length,
     };
   }
 
-  const completeSessions = sessions.filter(
+  const completeSessions = effectiveSessions.filter(
     (session) => session.in && session.out && Number.isInteger(session.minutes),
   );
   const totalMinutes = completeSessions.reduce((sum, session) => sum + session.minutes, 0);
@@ -306,11 +323,12 @@ function buildDailyEmployee(employee) {
     : `Đã ghi nhận ${completeSessions.length} ca/phiên`;
   return {
     ...base,
-    sessions,
+    sessions: effectiveSessions,
     total_minutes: totalMinutes,
     total_display: formatMinutes(totalMinutes),
     status_code: "recorded",
     status_text: statusText,
+    ignored_superseded_open_session_count: supersededOpenSessions.length,
   };
 }
 

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "enabled": false,
+  "mode": "TEST",
+  "target_type": "chat",
+  "chat_id": "19:0e02d613cded448892f27d74cff19d63@thread.v2",
+  "slot": "morning_1230",
+  "target_date": "1970-01-01",
+  "drive_id": "",
+  "item_id": "",
+  "file_name": "",
+  "requested_at": "1970-01-01T00:00:00Z",
+  "source_handoff_message_id": ""
+}

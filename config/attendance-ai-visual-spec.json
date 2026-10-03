@@ -1,22 +1,32 @@
 {
-  "version": "ATTENDANCE_AI_VISUAL_V1_2026_10_03",
+  "version": "ATTENDANCE_AI_VISUAL_V2_2026_10_03",
   "status": "test-only",
   "production_enabled": false,
-  "render_mode": "reference_based_full_rerender",
-  "canvas": { "width": 1080, "height": 1440, "format": "PNG", "ratio": "3:4" },
+  "render_mode": "prompt_locked_full_rerender",
+  "canvas": {
+    "width": 1080,
+    "height": 1440,
+    "format": "PNG",
+    "ratio": "3:4"
+  },
   "reference_assets": {
-    "morning_1230": "attendance-ai-reference-morning-v1.png",
-    "daily_2105": "attendance-ai-reference-daily-v1.png"
+    "morning_1230": null,
+    "daily_2105": null
   },
   "style_rules": [
-    "Use the approved reference image as the primary visual reference.",
-    "Re-render the entire infographic as one unified image; do not paste text on top of the reference.",
-    "Preserve the approved information hierarchy: header, date card, 4 KPI cards, chart, overview panel, detail table, footer.",
-    "Keep a bright premium corporate office/city-view aesthetic with navy, blue, green and gold accents.",
-    "Optimize for mobile first while remaining sharp on desktop.",
-    "All Vietnamese names, dates, times, durations, statuses and KPI values must come from the validated request only.",
-    "Do not invent attendance values or employee names.",
-    "The generated image is test-only until the visual QA gate confirms every displayed value."
+    "Create exactly one vertical 1080x1440 PNG in a premium Vietnamese corporate HR infographic style.",
+    "Use fresh bright green as the primary positive accent, supported by deep navy, professional blue, restrained gold, white/light-blue surfaces, and red only for missing/error states.",
+    "Keep the visual mood energetic, motivating, disciplined and business-like; never playful, neon, crowded or cartoonish.",
+    "Preserve the fixed information order: header/title/date/update time; 4 KPI cards; confirmed-hours strip; chart plus overview; 8-row detail table; footer note.",
+    "Use a bright modern office atmosphere with daylight, plants and subtle business objects only as secondary decoration.",
+    "Use modern sans-serif typography with crisp Vietnamese diacritics. Reduce font size or wrap cleanly instead of omitting text.",
+    "Show all 8 employees exactly once and in the validated order.",
+    "All names, dates, times, durations, statuses, KPI values and session strings must come only from the validated request.",
+    "Never infer or fabricate missing attendance values. Missing values must display as an em dash.",
+    "Confirmed states use fresh green, review/open states use amber/gold, missing/error states use red.",
+    "Charts must visually match the validated duration values; missing/error rows must not receive positive bars.",
+    "Do not invent logos, slogans, quotes, employee names or English body text.",
+    "The generated image remains test-only until pixel/text QA confirms all displayed business data."
   ],
   "daily_status_labels": {
     "recorded": "Đã ghi nhận",

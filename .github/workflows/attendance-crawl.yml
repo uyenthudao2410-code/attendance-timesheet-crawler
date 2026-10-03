@@ -2,10 +2,11 @@ name: Attendance Crawl
 
 on:
   schedule:
-    # GitHub cron uses UTC. 00:15 UTC = 07:15 Asia/Ho_Chi_Minh.
-    - cron: "15 0 * * *"
-    # GitHub cron uses UTC. 06:50 UTC = 13:50 Asia/Ho_Chi_Minh.
-    - cron: "50 6 * * *"
+    # Producer runs 10 minutes before the ChatGPT publication task.
+    # 00:05 UTC = 07:05 Asia/Ho_Chi_Minh.
+    - cron: "5 0 * * *"
+    # 06:40 UTC = 13:40 Asia/Ho_Chi_Minh.
+    - cron: "40 6 * * *"
   push:
     paths:
       - ".github/attendance-rerun-trigger.json"
@@ -44,13 +45,13 @@ jobs:
             requested_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
             case "$cron" in
-              "50 6 * * *")
-                # 13:50 Vietnam time: report the current day's morning shift.
+              "40 6 * * *")
+                # 13:40 Vietnam time: prepare data for the 13:50 ChatGPT morning report.
                 run_slot="morning_1230"
                 target_date="$(TZ=Asia/Ho_Chi_Minh date +%F)"
                 ;;
-              "15 0 * * *")
-                # 07:15 Vietnam time: report the complete previous work day.
+              "5 0 * * *")
+                # 07:05 Vietnam time: prepare data for the 07:15 ChatGPT previous-day report.
                 run_slot="daily_2105"
                 target_date="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"
                 ;;
@@ -74,10 +75,10 @@ jobs:
             target_date: process.env.SCHEDULE_TARGET_DATE,
             requested_at: process.env.REQUESTED_AT,
             reason: process.env.RUN_SLOT === 'morning_1230'
-              ? 'scheduled 13:50 Asia/Ho_Chi_Minh morning-shift attendance report'
-              : 'scheduled 07:15 Asia/Ho_Chi_Minh previous-day attendance report',
+              ? 'scheduled 13:40 producer for 13:50 ChatGPT morning attendance report'
+              : 'scheduled 07:05 producer for 07:15 ChatGPT previous-day attendance report',
             delivery: {
-              enabled: true,
+              enabled: false,
               mode: 'TEST',
               target_type: 'chat',
               chat_id: '19:0e02d613cded448892f27d74cff19d63@thread.v2',
@@ -249,22 +250,13 @@ jobs:
       - name: Validate AI visual request against canonical report
         run: node scripts/validate-ai-visual-request.mjs
 
-      - name: Install Chromium for approved report image rendering
-        run: npx playwright install --with-deps chromium
-
-      - name: Render approved attendance report image
-        run: node scripts/render-report-image.mjs
-
-      - name: Validate same-run fresh snapshot before Teams publication
-        run: node scripts/validate-publication-freshness.mjs post
-
-      - name: Publish approved attendance image to Teams when requested
+      - name: Send validated AI prompt to private Teams self-chat
         env:
           MS_TENANT_ID: ${{ secrets.MS_TENANT_ID }}
           MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
           MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
           MS_REFRESH_TOKEN: ${{ secrets.MS_REFRESH_TOKEN }}
-        run: node scripts/post-report-to-teams.mjs
+        run: node scripts/post-ai-handoff-to-self-chat.mjs
 
       - name: Encrypt result before artifact upload
         if: ${{ hashFiles('output/*.json') != '' }}
@@ -312,7 +304,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          state_path="$(node scripts/write-run-state.mjs)"
+          state_path="$(node scripts/write-producer-state.mjs)"
           git checkout -- .github/attendance-rerun-trigger.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

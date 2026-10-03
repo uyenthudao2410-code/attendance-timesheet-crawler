@@ -122,6 +122,44 @@ test("daily report never totals across an open session", () => {
   assert.match(report.employees[0].status_text, /thiếu giờ ra sau 13:00/);
 });
 
+test("daily report ignores a stale table_open_in when a later completed session closes the same period", () => {
+  const report = buildAttendanceBusinessReport(rawReport({
+    status: "incomplete",
+    morning: { in: "07:03", out: "11:26", minutes: 263, source: "table_records" },
+    afternoon: { in: "16:23", out: "19:32", minutes: 189, source: "table_records" },
+    sessions: [
+      { in: "07:03", out: "11:26", minutes: 263, source: "table_records" },
+      { in: "13:45", out: null, minutes: null, source: "table_open_in" },
+      { in: "16:23", out: "19:32", minutes: 189, source: "table_records" },
+      { in: "19:32", out: "19:33", minutes: 1, source: "table_records" },
+    ],
+  }), "daily_2105", NAMES);
+
+  assert.equal(report.employees[0].status_code, "recorded");
+  assert.equal(report.employees[0].total_minutes, 453);
+  assert.equal(report.employees[0].total_display, "7h33");
+  assert.equal(report.employees[0].ignored_superseded_open_session_count, 1);
+  assert.equal(report.employees[0].sessions.some((session) => session.in === "13:45" && !session.out), false);
+});
+
+test("daily report ignores a near-duplicate table_open_in before a later completed session", () => {
+  const report = buildAttendanceBusinessReport(rawReport({
+    status: "incomplete",
+    morning: { in: "06:27", out: "10:51", minutes: 264, source: "table_records" },
+    afternoon: { in: "14:54", out: "19:12", minutes: 258, source: "table_records" },
+    sessions: [
+      { in: "06:27", out: "10:51", minutes: 264, source: "table_records" },
+      { in: "14:48", out: null, minutes: null, source: "table_open_in" },
+      { in: "14:54", out: "19:12", minutes: 258, source: "table_records" },
+    ],
+  }), "daily_2105", NAMES);
+
+  assert.equal(report.employees[0].status_code, "recorded");
+  assert.equal(report.employees[0].total_minutes, 522);
+  assert.equal(report.employees[0].total_display, "8h42");
+  assert.equal(report.employees[0].ignored_superseded_open_session_count, 1);
+});
+
 test("healthy canonical source with history but no target date is no attendance record, not source failure", () => {
   const report = buildAttendanceBusinessReport(rawReport({
     status: "date_not_found",

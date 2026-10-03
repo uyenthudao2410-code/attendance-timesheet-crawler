@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "fresh-morning-20261003-143246",
+  "request_id": "consumer-test-morning-20261003-1702",
   "slot": "morning_1230",
   "target_date": "2026-10-03",
-  "requested_at": "2026-10-03T14:32:46+07:00",
-  "reason": "fresh current morning attendance snapshot for TEST chat verification",
+  "requested_at": "2026-10-03T17:02:00+07:00",
+  "reason": "fresh attendance producer run for external Teams consumer TEST verification",
   "delivery": {
     "enabled": false
   }

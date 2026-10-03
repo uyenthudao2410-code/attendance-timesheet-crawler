@@ -1,22 +1,22 @@
 {
   "schema_version": 8,
-  "run_id": "37014651832",
+  "run_id": "37095571189",
   "run_attempt": 1,
-  "request_id": "v5-locked-test-morning-20261002-204057",
-  "requested_at": "2026-10-02T20:40:57+07:00",
-  "trigger_commit_sha": "a715383d327d0522b1e26b17312b8391ac1b3aa9",
+  "request_id": "ai-visual-morning-20261003-110849",
+  "requested_at": "2026-10-03T11:08:49+07:00",
+  "trigger_commit_sha": "c1dc468e35ef082abf57771d09baec866c6092f3",
   "slot": "morning_1230",
-  "target_date": "2026-10-02",
+  "target_date": "2026-10-03",
   "crawl_complete": true,
   "crawl_employee_count": 8,
-  "crawl_completed_at": "2026-10-02T13:42:21.552Z",
-  "artifact_id": "11228839407",
-  "artifact_name": "attendance-encrypted-37014651832",
+  "crawl_completed_at": "2026-10-03T04:10:23.823Z",
+  "artifact_id": "11264276471",
+  "artifact_name": "attendance-encrypted-37095571189",
   "roster_fingerprint": "beb5e597e4547d1f0c56b5e0037e8cfeaf614945b94133410d2221539441cb32",
   "identity_fingerprint": "f242e02841d372b37e4f8cc4c55643f87df656df06bf6d76d3972fb1fa15febf",
   "encryption": "rsa-oaep-sha256+aes-256-cbc-pbkdf2-200000",
-  "report_file": "output/report-morning_1230-2026-10-02.json",
-  "report_sha256": "5ab8c09172d536bcb3b2905feb9552d6c996a1a12b29398fe2c180b4dfa4f63a",
+  "report_file": "output/report-morning_1230-2026-10-03.json",
+  "report_sha256": "a71af9a243bcce91d21eaf826ab1920a3a07ae35fbda80a10692af29c9839cb6",
   "image_layout_version": "ATTENDANCE_IMAGE_V5_LOCKED_MASTER_2026_10_02",
   "master_template": {
     "id": "ATTENDANCE_V5_LOCKED_MORNING_2026_10_02",
@@ -24,11 +24,11 @@
   },
   "image_count": 1,
   "image": {
-    "file": "output/attendance-morning_1230-2026-10-02.png",
-    "sha256": "5e0206890aabe1ec78c1ae053a40b9555e13915f0cc5c7c624e855fbcd2cd7e2",
+    "file": "output/attendance-morning_1230-2026-10-03.png",
+    "sha256": "5f04e388700012c001b7524fd3cb0d04977fbc853650e3deea1721c1efadc33e",
     "width": 1080,
     "height": 1440
   },
   "teams_message_id": null,
-  "completed_at": "2026-10-02T13:42:26.934Z"
+  "completed_at": "2026-10-03T04:10:27.402Z"
 }

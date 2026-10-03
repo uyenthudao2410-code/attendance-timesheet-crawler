@@ -1,22 +1,22 @@
 {
   "schema_version": 8,
-  "run_id": "37079767026",
+  "run_id": "37095633254",
   "run_attempt": 1,
-  "request_id": "actual-daily-20261002-test-20261003-065407",
-  "requested_at": "2026-10-03T06:54:07+07:00",
-  "trigger_commit_sha": "038a93a1542504e5e70c8502aef30f6905b56602",
+  "request_id": "ai-visual-daily-20261002-110956",
+  "requested_at": "2026-10-03T11:09:56+07:00",
+  "trigger_commit_sha": "cb7662fbc11893de58cad8998d1bc01f71800f54",
   "slot": "daily_2105",
   "target_date": "2026-10-02",
   "crawl_complete": true,
   "crawl_employee_count": 8,
-  "crawl_completed_at": "2026-10-02T23:55:54.328Z",
-  "artifact_id": "11257843902",
-  "artifact_name": "attendance-encrypted-37079767026",
+  "crawl_completed_at": "2026-10-03T04:11:33.456Z",
+  "artifact_id": "11263862406",
+  "artifact_name": "attendance-encrypted-37095633254",
   "roster_fingerprint": "beb5e597e4547d1f0c56b5e0037e8cfeaf614945b94133410d2221539441cb32",
   "identity_fingerprint": "f242e02841d372b37e4f8cc4c55643f87df656df06bf6d76d3972fb1fa15febf",
   "encryption": "rsa-oaep-sha256+aes-256-cbc-pbkdf2-200000",
   "report_file": "output/report-daily_2105-2026-10-02.json",
-  "report_sha256": "3b69265ab4f394250291396d230a60470af258eb6f65a65d5305d1d79019500e",
+  "report_sha256": "fdcf35fd315af78cb78a670f003aa08aaba4312b04995a3b06ede8d570664d56",
   "image_layout_version": "ATTENDANCE_IMAGE_V5_LOCKED_MASTER_2026_10_02",
   "master_template": {
     "id": "ATTENDANCE_V5_LOCKED_DAILY_2026_10_02",
@@ -25,10 +25,10 @@
   "image_count": 1,
   "image": {
     "file": "output/attendance-daily_2105-2026-10-02.png",
-    "sha256": "c6b5f1adea5c4c0a0a0502702f222d6f38e26f628a3c0f21abc4b4210c98ac38",
+    "sha256": "68fc28e49bd8d7699b239939c51f5c549cc7ebb08df3ac3c0443e496c10f5f9e",
     "width": 1080,
     "height": 1440
   },
   "teams_message_id": null,
-  "completed_at": "2026-10-02T23:55:59.332Z"
+  "completed_at": "2026-10-03T04:11:38.594Z"
 }

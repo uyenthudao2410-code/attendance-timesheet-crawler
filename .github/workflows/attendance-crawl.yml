@@ -173,6 +173,12 @@ jobs:
           ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
         run: node scripts/build-report-payload.mjs
 
+      - name: Build approved AI visual request bundle
+        run: node scripts/build-ai-visual-request.mjs
+
+      - name: Validate AI visual request against canonical report
+        run: node scripts/validate-ai-visual-request.mjs
+
       - name: Install Chromium for approved report image rendering
         run: npx playwright install --with-deps chromium
 

@@ -1,14 +1,11 @@
 {
   "schema_version": 1,
-  "request_id": "fresh-morning-test-20261003-135837",
+  "request_id": "fresh-morning-artifact-20261003-140157",
   "slot": "morning_1230",
   "target_date": "2026-10-03",
-  "requested_at": "2026-10-03T13:58:37+07:00",
-  "reason": "fresh snapshot end-to-end TEST chat verification",
+  "requested_at": "2026-10-03T14:01:57+07:00",
+  "reason": "fresh morning snapshot for AI visual TEST chat publication",
   "delivery": {
-    "enabled": true,
-    "mode": "TEST",
-    "target_type": "chat",
-    "chat_id": "19:0e02d613cded448892f27d74cff19d63@thread.v2"
+    "enabled": false
   }
 }

@@ -4,7 +4,7 @@ import {
   APPROVED_LAYOUT_VERSION,CANVAS,MASTER_TEMPLATE_IDS,MASTER_TEMPLATE_BLOB_SHAS,
   buildAttendanceReportSvg,getMasterTemplateFingerprint
 } from "../src/attendance-image.mjs";
-const N=["Điều Văn Mạnh","Nguyễn Thị Thục Anh","Vũ Đình Tuệ","Bùi Duy Hoàng","Nguyễn Thành Long","Trần Thanh Bình","Lê Thị Phương Linh","Lê Đăng Hiếu"];
+const N=["Điêu Văn Mạnh","Nguyễn Thị Thục Anh","Vũ Đình Tuệ","Bùi Duy Hoàng","Nguyễn Thành Long","Trần Thanh Bình","Lê Thị Phương Linh","Lê Đăng Hiếu"];
 function morning(){return{kind:"attendance_business_report",slot:"morning_1230",date:"2026-10-02",timezone:"Asia/Ho_Chi_Minh",employees:N.map((name,i)=>i===7?{name,morning:null,status_code:"not_recorded_morning"}:{name,morning:{in:"08:00",out:"12:00",minutes:240},status_code:"recorded"})};}
 function daily(){return{kind:"attendance_business_report",slot:"daily_2105",date:"2026-10-01",timezone:"Asia/Ho_Chi_Minh",employees:N.map(name=>({name,sessions:[{in:"08:00",out:"12:00",minutes:240},{in:"13:30",out:"18:30",minutes:300}],total_minutes:540,total_display:"9h00",status_code:"recorded"}))};}
 test("V5 locks one fixed 3:4 master template per slot",()=>{
@@ -18,7 +18,7 @@ test("morning V5 changes values without changing fixed form",()=>{
   assert.match(svg,/CHẤM CÔNG — CA SÁNG/);
   assert.match(svg,/GIỜ CÔNG CA SÁNG THEO NHÂN SỰ/);
   assert.match(svg,/CHI TIẾT CHẤM CÔNG CA SÁNG/);
-  assert.match(svg,/Điều Văn Mạnh/);
+  assert.match(svg,/Điêu Văn Mạnh/);
   assert.doesNotMatch(svg,/\{\{/);
 });
 test("daily V5 keeps fixed morning afternoon columns",()=>{

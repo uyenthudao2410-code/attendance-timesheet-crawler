@@ -1,25 +1,25 @@
 {
   "schema_version": 9,
-  "run_id": "37106715651",
+  "run_id": "37115076661",
   "run_attempt": 1,
-  "request_id": "fresh-morning-20261003-143246",
-  "requested_at": "2026-10-03T14:32:46+07:00",
-  "snapshot_id": "fresh-morning-20261003-143246:2026-10-03T07:34:36.345Z",
-  "freshness_validated_at": "2026-10-03T07:34:40.315Z",
+  "request_id": "consumer-test-morning-20261003-1702",
+  "requested_at": "2026-10-03T17:02:00+07:00",
+  "snapshot_id": "consumer-test-morning-20261003-1702:2026-10-03T10:04:12.543Z",
+  "freshness_validated_at": "2026-10-03T10:04:16.278Z",
   "publication_validated_at": null,
-  "trigger_commit_sha": "785be94745566a108fae788f3715564674b99a06",
+  "trigger_commit_sha": "af5535354cbba5b30de658efe3164ee4b8346ff7",
   "slot": "morning_1230",
   "target_date": "2026-10-03",
   "crawl_complete": true,
   "crawl_employee_count": 8,
-  "crawl_completed_at": "2026-10-03T07:34:36.345Z",
-  "artifact_id": "11268375600",
-  "artifact_name": "attendance-encrypted-37106715651",
+  "crawl_completed_at": "2026-10-03T10:04:12.543Z",
+  "artifact_id": "11270358639",
+  "artifact_name": "attendance-encrypted-37115076661",
   "roster_fingerprint": "beb5e597e4547d1f0c56b5e0037e8cfeaf614945b94133410d2221539441cb32",
   "identity_fingerprint": "f242e02841d372b37e4f8cc4c55643f87df656df06bf6d76d3972fb1fa15febf",
   "encryption": "rsa-oaep-sha256+aes-256-cbc-pbkdf2-200000",
   "report_file": "output/report-morning_1230-2026-10-03.json",
-  "report_sha256": "1afce5fc7b98bf33c3a1efbfa64d5281f95a4989713db9936688c397bc580a27",
+  "report_sha256": "fad4bb159cbb6d70bdd680e4a3414e1f9ebe18a64d4783bac5490599e123684a",
   "image_layout_version": "ATTENDANCE_IMAGE_V5_LOCKED_MASTER_2026_10_02",
   "master_template": {
     "id": "ATTENDANCE_V5_LOCKED_MORNING_2026_10_02",
@@ -33,5 +33,5 @@
     "height": 1440
   },
   "teams_message_id": null,
-  "completed_at": "2026-10-03T07:34:41.904Z"
+  "completed_at": "2026-10-03T10:04:17.448Z"
 }

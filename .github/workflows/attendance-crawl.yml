@@ -76,7 +76,12 @@ jobs:
             reason: process.env.RUN_SLOT === 'morning_1230'
               ? 'scheduled 13:50 Asia/Ho_Chi_Minh morning-shift attendance report'
               : 'scheduled 07:15 Asia/Ho_Chi_Minh previous-day attendance report',
-            delivery: current?.delivery ?? { enabled: false },
+            delivery: {
+              enabled: true,
+              mode: 'TEST',
+              target_type: 'chat',
+              chat_id: '19:0e02d613cded448892f27d74cff19d63@thread.v2',
+            },
           };
           fs.writeFileSync(triggerPath, JSON.stringify(next, null, 2) + '\n', 'utf8');
           NODE

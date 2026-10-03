@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "fresh-morning-artifact-20261003-140157",
+  "request_id": "fresh-morning-20261003-143246",
   "slot": "morning_1230",
   "target_date": "2026-10-03",
-  "requested_at": "2026-10-03T14:01:57+07:00",
-  "reason": "fresh morning snapshot for AI visual TEST chat publication",
+  "requested_at": "2026-10-03T14:32:46+07:00",
+  "reason": "fresh current morning attendance snapshot for TEST chat verification",
   "delivery": {
     "enabled": false
   }

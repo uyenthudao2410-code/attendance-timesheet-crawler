@@ -7,7 +7,8 @@ const TZ = "Asia/Ho_Chi_Minh";
 const slot = String(process.env.ATTENDANCE_RUN_SLOT || "").trim();
 const targetDate = String(process.env.TARGET_DATE || "").trim();
 const REPORT_NAME_OVERRIDES = new Map([
-  ["Điêu Văn Mạnh", "Điều Văn Mạnh"],
+  ["Điều Văn Mạnh", "Điêu Văn Mạnh"],
+  ["Điêu Văn Mạnh", "Điêu Văn Mạnh"],
 ]);
 
 if (!new Set(["morning_1230", "daily_2105"]).has(slot)) {

@@ -34,7 +34,7 @@ test("daily AI visual request is exact-data test-only and uses canonical name",(
   assert.equal(request.data.total_hours_text,"63h00");
 });
 
-test("morning AI visual request uses approved morning reference and exact roster",()=>{
+test("morning AI visual request is locked to approved V7 full form",()=>{
   const report=morningReport();
   const request=buildAiVisualRequest(report);
   assert.equal(validateAiVisualRequest(request,report),true);
@@ -42,4 +42,13 @@ test("morning AI visual request uses approved morning reference and exact roster
   assert.equal(request.data.recorded_count,7);
   assert.equal(request.data.missing_count,1);
   assert.equal(request.data.attendance_rate,88);
+  assert.match(request.prompt,/APPROVED MORNING FORM V7/);
+  assert.match(request.prompt,/THỜI LƯỢNG CA SÁNG THEO NHÂN SỰ/);
+  assert.match(request.prompt,/TỔNG QUAN/);
+  assert.match(request.prompt,/CHI TIẾT CHẤM CÔNG CA SÁNG/);
+  assert.match(request.prompt,/STT \| Họ và tên \| Trạng thái \| Giờ vào \| Giờ ra \| Thời lượng \| Mức công/);
+  assert.match(request.prompt,/Điêu Văn Mạnh/);
+  assert.doesNotMatch(request.prompt,/Điều Văn Mạnh/);
+  assert.match(request.prompt,/ABSOLUTELY NO LOGO/);
+  assert.match(request.prompt,/Exactly 8 employee rows must be visible/);
 });

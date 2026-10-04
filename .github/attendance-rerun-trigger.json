@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "eval-current-morning-20261004-120915",
+  "request_id": "eval-current-v5-morning-20261004-121753",
   "slot": "morning_1230",
   "target_date": "2026-10-04",
-  "requested_at": "2026-10-04T12:09:15.052Z",
-  "reason": "manual current-data direct ChatGPT Image evaluation",
+  "requested_at": "2026-10-04T12:17:53.353Z",
+  "reason": "manual current-data V5 direct-safe ChatGPT Image evaluation",
   "delivery": {
     "enabled": false
   }

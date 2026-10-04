@@ -24,20 +24,33 @@ export function validateChatGptDirectImageTrigger(trigger) {
     throw new Error("AI post TEST target mismatch");
   }
 
-  if (String(trigger.image_origin || "") !== "chatgpt_image") {
-    throw new Error("Attendance publication accepts ChatGPT Image output only");
-  }
-  if (trigger.direct_output !== true) {
-    throw new Error("Final attendance image must be the direct ChatGPT Image output");
-  }
-  if (trigger.edited_after_generation !== false) {
-    throw new Error("Editing, overlaying, cropping, compositing, or re-rendering after ChatGPT generation is forbidden");
-  }
-  if (trigger.fallback_renderer_used !== false) {
-    throw new Error("Fallback renderer is forbidden for attendance publication");
-  }
-  if (String(trigger.qa_status || "") !== "passed") {
-    throw new Error("Direct ChatGPT Image exact-data QA has not passed");
+  const transportTest = trigger.transport_test === true;
+  if (transportTest) {
+    if (String(trigger.image_origin || "") !== "transport_test_fixture") {
+      throw new Error("Transport test must use the explicit transport-test fixture origin");
+    }
+    if (trigger.direct_output !== false || trigger.fallback_renderer_used !== true) {
+      throw new Error("Transport test flags are inconsistent");
+    }
+    if (String(trigger.qa_status || "") !== "transport_only") {
+      throw new Error("Transport test must use qa_status=transport_only");
+    }
+  } else {
+    if (String(trigger.image_origin || "") !== "chatgpt_image") {
+      throw new Error("Attendance publication accepts ChatGPT Image output only");
+    }
+    if (trigger.direct_output !== true) {
+      throw new Error("Final attendance image must be the direct ChatGPT Image output");
+    }
+    if (trigger.edited_after_generation !== false) {
+      throw new Error("Editing, overlaying, cropping, compositing, or re-rendering after ChatGPT generation is forbidden");
+    }
+    if (trigger.fallback_renderer_used !== false) {
+      throw new Error("Fallback renderer is forbidden for attendance publication");
+    }
+    if (String(trigger.qa_status || "") !== "passed") {
+      throw new Error("Direct ChatGPT Image exact-data QA has not passed");
+    }
   }
 
   if (String(trigger.source_handoff_chat_id || "") !== ATTENDANCE_AI_HANDOFF_CHAT_ID) {
@@ -57,9 +70,9 @@ export function validateChatGptDirectImageTrigger(trigger) {
   if (!["morning_1230", "daily_2105"].includes(slot)) throw new Error("Invalid AI post slot");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Invalid AI post target date");
 
-  const expectedName = slot === "morning_1230"
-    ? `attendance-morning-${date}-chatgpt-direct.png`
-    : `attendance-daily-${date}-chatgpt-direct.png`;
+  const expectedName = transportTest
+    ? (slot === "morning_1230" ? `attendance-morning-${date}-transport-test.png` : `attendance-daily-${date}-transport-test.png`)
+    : (slot === "morning_1230" ? `attendance-morning-${date}-chatgpt-direct.png` : `attendance-daily-${date}-chatgpt-direct.png`);
 
   if (fileName !== expectedName) {
     throw new Error(`AI image filename must identify the untouched direct ChatGPT output: ${expectedName}`);
@@ -95,5 +108,5 @@ export function validateChatGptDirectImageTrigger(trigger) {
     throw new Error("Missing publication total hours text");
   }
 
-  return { enabled: true, slot, date, fileName, summary };
+  return { enabled: true, slot, date, fileName, summary, transportTest };
 }

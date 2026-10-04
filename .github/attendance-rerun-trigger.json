@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "route-test-morning-20261004-105757",
-  "slot": "morning_1230",
-  "target_date": "2026-10-04",
-  "requested_at": "2026-10-04T10:57:57.352Z",
-  "reason": "verify isolated technical handoff routing; no Teams TEST publication",
+  "request_id": "manual-daily-20261003-v3-111811",
+  "slot": "daily_2105",
+  "target_date": "2026-10-03",
+  "requested_at": "2026-10-04T11:18:11.307Z",
+  "reason": "manual V3 ChatGPT Image full-day report verification",
   "delivery": {
     "enabled": false
   }

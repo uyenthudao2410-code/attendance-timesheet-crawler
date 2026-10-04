@@ -31,7 +31,7 @@ export function buildTeamsHostedImagePayload({report,imageBase64,mode="PRODUCTIO
   if(!["TEST","PRODUCTION"].includes(normalized)) throw new Error("Unsupported Teams delivery mode");
 
   const label=slotLabel(report.slot);
-  const prefix=normalized==="TEST"?"[TEST] ":"";
+  const prefix=normalized==="TEST"?(report.transport_test===true?"[TEST VẬN CHUYỂN] ":"[TEST] "):"";
   const date=formatVietnameseDate(report.date);
   const s=report.summary&&typeof report.summary==="object"?report.summary:null;
 

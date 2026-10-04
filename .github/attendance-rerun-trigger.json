@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "full-teams-test-20261004-123759",
+  "request_id": "full-chatgpt-post-20261004-125247",
   "slot": "morning_1230",
   "target_date": "2026-10-04",
-  "requested_at": "2026-10-04T12:37:59.900Z",
-  "reason": "full end-to-end Teams post validation with V6 summary direct image",
+  "requested_at": "2026-10-04T12:52:47.908Z",
+  "reason": "fresh data for final direct ChatGPT Image Teams TEST publication",
   "delivery": {
     "enabled": false
   }

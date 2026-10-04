@@ -1,8 +1,8 @@
 {
-  "version": "ATTENDANCE_AI_VISUAL_V6_SUMMARY_TEST_2026_10_04",
-  "status": "test-only",
-  "production_enabled": false,
-  "render_mode": "chatgpt_image_direct_summary_test",
+  "version": "ATTENDANCE_AI_VISUAL_V7_MORNING_APPROVED_2026_10_04",
+  "status": "slot-scoped",
+  "production_enabled": true,
+  "render_mode": "chatgpt_image_direct_output",
   "canvas": {
     "width": 1440,
     "height": 1920,
@@ -14,16 +14,20 @@
     "daily_2105": "attendance-ai-reference-daily-v1.png"
   },
   "style_rules": [
-    "Create exactly one premium vertical 3:4 Vietnamese corporate HR attendance summary infographic using ChatGPT Image.",
+    "MORNING_1230 is approved for production; DAILY_2105 remains test-only until separately approved.",
+    "Create exactly one premium vertical 1440x1920 Vietnamese corporate HR attendance infographic using ChatGPT Image direct output.",
+    "Approved morning form order is fixed: office/greenery header; four KPI cards; gold total-duration strip; chart + overview row; full 8-row detail table; blue footer note.",
+    "Use fresh bright green, deep navy, professional blue, warm gold, white/light-blue surfaces, and red only for missing/attention states.",
+    "Header art uses a bright modern office with natural daylight, glass partitions, abundant plants and tasteful greenery; no people faces.",
     "ABSOLUTELY NO LOGO, no company-name mark, no tagline, no slogan, no motivational quote and no extra decorative text.",
-    "Use fresh green, deep navy, professional blue, restrained gold and white/light-blue surfaces.",
-    "Summary-only TEST layout: title/date/update time; 4 KPI cards; confirmed-hours strip; one attention note; short reconciliation footer.",
-    "Do not show employee names, detail table or quantitative chart in this transport-validation test.",
-    "All displayed date, update time, KPI values and total duration must come only from the validated report.",
+    "Morning chart must preserve the exact 8-person order; recorded rows use solid blue/green bars, missing rows use dashed red empty outlines.",
+    "Morning detail table columns are fixed: STT | Họ và tên | Trạng thái | Giờ vào | Giờ ra | Thời lượng | Mức công.",
+    "All names, dates, times, durations, statuses, work rates and KPI values must come only from the validated report.",
     "Never infer, recalculate, paraphrase or fabricate attendance values inside the generated image.",
-    "After image generation, visually QA the date, update time, 4 KPI values and total duration against the handoff.",
+    "Missing values display exactly as an em dash.",
+    "After generation, visually QA all KPI values, all 8 rows and every displayed attendance value against the handoff.",
     "Do not edit, overlay, crop, composite or re-render the generated image after generation.",
-    "Do not publish an image that fails exact-data QA."
+    "If QA fails, discard and regenerate with ChatGPT Image; do not patch the failed image."
   ],
   "daily_status_labels": {
     "recorded": "Đã ghi nhận",
@@ -40,5 +44,13 @@
     "review_required": "Cần đối soát",
     "source_review": "Cần đối soát",
     "technical_error": "Lỗi nguồn"
+  },
+  "approval": {
+    "morning_1230": "approved",
+    "daily_2105": "test-only"
+  },
+  "reference_form": {
+    "morning_1230": "APPROVED_GREEN_OFFICE_MORNING_FORM_2026_10_04",
+    "daily_2105": null
   }
 }

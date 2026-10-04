@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const GRAPH="https://graph.microsoft.com/v1.0";
-const HANDOFF_CHAT_ID=String(process.env.ATTENDANCE_AI_HANDOFF_CHAT_ID||"19:0e02d613cded448892f27d74cff19d63@thread.v2").trim();
+const HANDOFF_CHAT_ID=String(process.env.ATTENDANCE_AI_HANDOFF_CHAT_ID||"19:64f12f1f-291b-4ebe-a65a-7b38c4847c06_6cef3469-c1b3-4ec7-ab60-961d0308feac@unq.gbl.spaces").trim();
 
 function required(name){
   const value=String(process.env[name]||"").trim();

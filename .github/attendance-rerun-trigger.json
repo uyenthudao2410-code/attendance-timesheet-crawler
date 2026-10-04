@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "manual-morning-20261004-prof-103523",
+  "request_id": "manual-morning-20261004-chatgpt-104731",
   "slot": "morning_1230",
   "target_date": "2026-10-04",
-  "requested_at": "2026-10-04T10:35:23.080Z",
-  "reason": "professional rerun morning report with fresh data",
+  "requested_at": "2026-10-04T10:47:31.224Z",
+  "reason": "rerun with corrected ChatGPT Image handoff workflow",
   "delivery": {
     "enabled": false
   }

@@ -279,57 +279,123 @@ function buildMorningPrompt(request) {
 function buildDailyPrompt(request) {
   const d = request.data;
   const attention = d.open_session_count + d.no_record_count + d.review_count;
-  const recordedRows = d.employees.filter((row) => row.status_code === "recorded");
-  const openRows = d.employees.filter((row) => row.status_code === "open_session");
-  const missingRows = d.employees.filter((row) => row.status_code === "not_recorded");
-  const reviewRows = d.employees.filter((row) => !["recorded","open_session","not_recorded"].includes(row.status_code));
+  const rows = d.employees;
 
-  const recordedLines = recordedRows.map((row) => `• ${row.name}: tổng ${row.total_display}`);
-  const openLines = openRows.map((row) => `• ${row.name}: ${row.status}`);
-  const missingLines = missingRows.map((row) => `• ${row.name}`);
-  const reviewLines = reviewRows.map((row) => `• ${row.name}: ${row.status}`);
+  const chartRows = rows.map((row, index) => {
+    const morningMinutes = row.morning_sessions.reduce((sum, s) => sum + (Number.isInteger(s?.minutes) ? s.minutes : 0), 0);
+    const afternoonMinutes = row.afternoon_sessions.reduce((sum, s) => sum + (Number.isInteger(s?.minutes) ? s.minutes : 0), 0);
+    return `${index + 1}. ${row.name} | ca sáng: ${fmtMinutes(morningMinutes)} | ca chiều: ${fmtMinutes(afternoonMinutes)} | tổng: ${row.total_display} | trạng thái: ${row.status}`;
+  });
+
+  const tableRows = rows.map((row, index) =>
+    `${index + 1}. ${row.name} | ca sáng: ${row.morning_text} | ca chiều: ${row.afternoon_text} | tổng công: ${row.total_display} | trạng thái: ${row.status}`
+  );
 
   return [
-    "Create ONE premium Vietnamese corporate HR attendance infographic for CẢ NGÀY.",
-    "DIRECT-OUTPUT SAFE LAYOUT: vertical 1440x1920 PNG, 3:4 ratio, one unified composition, high-resolution for Microsoft Teams.",
-    "ABSOLUTELY NO LOGO, NO COMPANY NAME, NO BRAND MARK, NO TAGLINE, NO SLOGAN, NO MOTIVATIONAL QUOTE, NO EXTRA TEXT.",
-    "STYLE: premium bright modern office atmosphere with natural daylight, glass-office depth, fresh green plants and refined desk elements; fresh bright green + deep navy + professional blue + restrained gold; generous white space; rounded cards; subtle shadows; crisp Vietnamese typography.",
-    "IMPORTANT: do NOT draw a detailed table and do NOT draw quantitative bar charts. Use simple cards and lists only so every supplied value remains exact.",
-    "DATA FIDELITY IS ABSOLUTE: copy all supplied names, totals, date and KPIs EXACTLY; never infer or recalculate values; never rename employees.",
+    "Create ONE premium Vietnamese corporate HR attendance infographic for CẢ NGÀY using the APPROVED FULL-DAY FORM V8.",
+    "This prompt is a layout lock. Follow the approved composition exactly; do not simplify it into a different dashboard and do not invent additional sections.",
     "",
+    "CANVAS / OUTPUT:",
+    "- Vertical 1440x1920 PNG, exact 3:4 ratio, one single-page composition.",
+    "- Optimized for Microsoft Teams on mobile and desktop; all Vietnamese text must remain crisp and readable.",
+    "- Use direct ChatGPT Image output only.",
+    "",
+    "APPROVED VISUAL IDENTITY:",
+    "- fresh bright green is the main positive color; combine with deep navy, professional blue, clean white/light-blue surfaces, warm gold for time/rate highlights, and red only for missing/attention states.",
+    "- Premium bright modern office background with natural daylight, glass partitions, abundant fresh green plants and refined desk elements.",
+    "- The office scene must feel energetic, fresh, business-like and professional, never playful or cartoonish.",
+    "- Use generous white space, rounded cards, subtle depth/shadows and clean modern sans-serif typography.",
+    "- Add tasteful greenery at the lower edge / corners to echo the approved morning form without covering data.",
+    "",
+    "BRANDING LOCK:",
+    "- ABSOLUTELY NO LOGO.",
+    "- NO COMPANY NAME MARK.",
+    "- NO TAGLINE OR SLOGAN.",
+    "- NO motivational quote.",
+    "- NO invented decorative text.",
+    "",
+    "FIXED LAYOUT — DO NOT CHANGE THE ORDER:",
+    "1) HEADER AREA: office + greenery visual, green eyebrow pill, large title, subtitle, date chip, update-time chip.",
+    "2) KPI ROW: four equal cards in one row.",
+    "3) GOLD SUMMARY STRIP: total confirmed working time on the left, average confirmed time on the right.",
+    "4) MIDDLE ROW: left = total-hours chart by employee (about 65% width); right = full-day overview card (about 35% width).",
+    "5) DETAIL TABLE: full-width 8-row table.",
+    "6) FOOTER NOTE: full-width blue information note.",
+    "",
+    "HEADER — COPY EXACTLY:",
     'EYEBROW: "BÁO CÁO NHÂN SỰ"',
     'TITLE: "BÁO CÁO CHẤM CÔNG — CẢ NGÀY"',
-    `DATE: "${request.date_text}"`,
-    `UPDATE TIME: "Cập nhật dữ liệu: ${request.updated_time_text}"`,
     'SUBTITLE: "Tổng hợp dữ liệu chấm công cả ngày để đối soát"',
+    `DATE CHIP: "${request.date_text}"`,
+    `UPDATE CHIP: "Cập nhật dữ liệu: ${request.updated_time_text}"`,
     "",
-    "FOUR KPI CARDS — COPY EXACTLY:",
-    `1) Tổng nhân sự: ${d.total_employees}`,
-    `2) Có dữ liệu chấm công: ${d.with_record_count}`,
-    `3) Đã chốt đủ dữ liệu: ${d.recorded_count}`,
-    `4) Tỷ lệ có bản ghi: ${d.attendance_rate}%`,
+    "KPI ROW — COPY EXACTLY:",
+    `CARD 1 / blue: "Tổng nhân sự" = ${d.total_employees}`,
+    `CARD 2 / green: "Có dữ liệu chấm công" = ${d.with_record_count}`,
+    `CARD 3 / green: "Đã chốt đủ dữ liệu" = ${d.recorded_count}`,
+    `CARD 4 / gold: "Tỷ lệ có bản ghi" = ${d.attendance_rate}%`,
     "",
-    `HIGHLIGHT STRIP: "Tổng giờ công đã xác nhận: ${d.total_hours_text}"`,
-    `SECONDARY TEXT: "Trung bình ${d.average_hours_text}/người (trên ${d.recorded_count} người đã chốt)"`,
+    "GOLD SUMMARY STRIP — COPY EXACTLY:",
+    `LEFT: "Tổng giờ công đã xác nhận: ${d.total_hours_text}"`,
+    `RIGHT: "Trung bình ${d.average_hours_text}/người"`,
+    `RIGHT SMALL: "(trên ${d.recorded_count} người đã chốt)"`,
     "",
-    'SECTION A TITLE: "ĐÃ GHI NHẬN ĐẦY ĐỦ"',
-    "Show exactly these employee cards with name and exact total duration:",
-    ...recordedLines,
-    ...(openLines.length ? ["", 'SECTION B TITLE: "CHƯA CHỐT"', ...openLines] : []),
-    ...(missingLines.length ? ["", 'SECTION C TITLE: "CHƯA CÓ BẢN GHI"', ...missingLines] : []),
-    ...(reviewLines.length ? ["", 'SECTION D TITLE: "CẦN ĐỐI SOÁT"', ...reviewLines] : []),
+    'LEFT MIDDLE PANEL TITLE: "TỔNG GIỜ CÔNG THEO NHÂN SỰ"',
+    'UNIT: "Đơn vị: giờ"',
+    "CHART RULES:",
+    "- Use horizontal stacked bars exactly in the approved visual style.",
+    "- Morning duration = professional blue segment.",
+    "- Afternoon duration = fresh green segment.",
+    "- Open/unclosed sessions use amber outline or amber badge.",
+    "- No-record/error rows use red dashed empty outlines and zero positive bar.",
+    "- Preserve employee order exactly.",
+    "- The total visual length must correspond to the exact supplied morning + afternoon durations.",
+    "CHART ROWS — COPY EXACTLY:",
+    ...chartRows,
     "",
-    `STATUS NOTE: "Có ${attention} nhân sự cần kiểm tra/đối soát dữ liệu cả ngày."`,
+    'RIGHT MIDDLE PANEL TITLE: "TỔNG QUAN CẢ NGÀY"',
+    `ROW 1 / green check: "Đã ghi nhận đầy đủ" = ${d.recorded_count}`,
+    `ROW 2 / amber: "Chưa chốt" = ${d.open_session_count}`,
+    `ROW 3 / red x: "Chưa có bản ghi" = ${d.no_record_count}`,
+    `ROW 4 / gray/amber: "Cần đối soát/lỗi nguồn" = ${d.review_count}`,
+    `ROW 5 / gold percent: "Tỷ lệ có bản ghi" = ${d.attendance_rate}%`,
+    `RED ATTENTION BOX: "Có ${attention} nhân sự cần kiểm tra/đối soát dữ liệu cả ngày."`,
+    "",
+    'DETAIL TABLE TITLE: "CHI TIẾT CHẤM CÔNG CẢ NGÀY"',
+    "TABLE COLUMNS — KEEP THIS ORDER:",
+    "STT | Họ và tên | Ca sáng | Ca chiều | Tổng công | Trạng thái",
+    "TABLE STYLE:",
+    "- Green table header consistent with the approved morning form.",
+    "- Light blue/white alternating rows.",
+    "- Morning session cell uses professional blue accent.",
+    "- Afternoon session cell uses fresh green accent.",
+    "- Completed status uses green pill.",
+    "- Open/review status uses amber/gold pill.",
+    "- Missing/error rows use subtle warm red/pink emphasis and red status pill.",
+    "- Preserve every supplied session string exactly.",
+    "- Missing values must display exactly as '—'.",
+    "TABLE ROWS — COPY EXACTLY, DO NOT ALTER:",
+    ...tableRows,
     "",
     'FOOTER: "Lưu ý: Số liệu phục vụ đối soát, không mặc nhiên là giá trị công chính thức. Sai lệch hoặc vướng mắc vui lòng phản hồi P.HC-NS để kiểm tra và điều chỉnh."',
+    "",
+    "DATA FIDELITY IS ABSOLUTE:",
+    "- Copy every supplied employee name, Vietnamese accent, date, session time, session duration, total duration, status and KPI EXACTLY.",
+    "- Never calculate new values inside the image.",
+    "- Never correct, infer or fabricate missing attendance values.",
+    "- Show all 8 employees exactly once and in the supplied order.",
+    "- Preserve the canonical employee spelling exactly as supplied, including 'Điêu Văn Mạnh'.",
+    "- If any text is long, reduce font size or wrap cleanly; never omit or paraphrase.",
     "",
     "QUALITY GATE BEFORE OUTPUT:",
     `- KPI must read exactly ${d.total_employees} / ${d.with_record_count} / ${d.recorded_count} / ${d.attendance_rate}%.`,
     `- Total confirmed hours must read exactly ${d.total_hours_text}.`,
-    `- Exactly ${d.total_employees} employee names must appear once each.`,
-    "- Recorded employee total durations must exactly match the supplied cards.",
-    "- No logo, no company name, no slogan, no motivational quote, no extra decorative words.",
-    "- No detailed table, no numeric bar chart.",
+    `- Average must read exactly ${d.average_hours_text}/người.`,
+    `- Date must be exactly ${request.date_text}.`,
+    `- Update time must be exactly ${request.updated_time_text}.`,
+    "- Exactly 8 employee rows must be visible in the table.",
+    "- Every displayed morning session, afternoon session, total duration and status must exactly match the supplied row data.",
+    "- No logo, no company name, no slogan, no extra decorative wording.",
     "OUTPUT ONLY: one polished 1440x1920 vertical infographic image.",
   ].join("\n");
 }
@@ -388,6 +454,9 @@ export function validateAiVisualRequest(request, report) {
   if (request.slot === "morning_1230" && !request.prompt.includes("CHI TIẾT CHẤM CÔNG CA SÁNG")) throw new Error("Morning prompt is missing approved detail table");
   if (request.slot === "morning_1230" && !request.prompt.includes("THỜI LƯỢNG CA SÁNG THEO NHÂN SỰ")) throw new Error("Morning prompt is missing approved chart section");
   if (request.slot === "morning_1230" && !request.prompt.includes("APPROVED MORNING FORM V7")) throw new Error("Morning prompt is not locked to approved V7 form");
+  if (request.slot === "daily_2105" && !request.prompt.includes("APPROVED FULL-DAY FORM V8")) throw new Error("Daily prompt is not locked to approved V8 form");
+  if (request.slot === "daily_2105" && !request.prompt.includes("TỔNG GIỜ CÔNG THEO NHÂN SỰ")) throw new Error("Daily prompt is missing approved chart section");
+  if (request.slot === "daily_2105" && !request.prompt.includes("CHI TIẾT CHẤM CÔNG CẢ NGÀY")) throw new Error("Daily prompt is missing approved detail table");
   if (!request.prompt.includes("fresh bright green")) throw new Error("Prompt is missing approved fresh-green visual direction");
   return true;
 }

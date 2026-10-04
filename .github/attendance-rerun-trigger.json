@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "manual-morning-20261004-091045",
+  "request_id": "manual-morning-20261004-rerun-091454",
   "slot": "morning_1230",
   "target_date": "2026-10-04",
-  "requested_at": "2026-10-04T09:10:45.569Z",
-  "reason": "manual end-to-end TEST after MS_REFRESH_TOKEN setup",
+  "requested_at": "2026-10-04T09:14:54.616Z",
+  "reason": "manual end-to-end TEST after readable Teams handoff patch",
   "delivery": {
     "enabled": false
   }

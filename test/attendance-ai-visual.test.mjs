@@ -22,11 +22,18 @@ function morningReport(){
   };
 }
 
-test("daily AI visual request is exact-data test-only and uses canonical name",()=>{
+test("daily AI visual request is locked to approved V8 full-day form",()=>{
   const report=dailyReport();
   const request=buildAiVisualRequest(report);
   assert.equal(validateAiVisualRequest(request,report),true);
   assert.equal(request.reference_asset,"attendance-ai-reference-daily-v1.png");
+  assert.match(request.prompt,/APPROVED FULL-DAY FORM V8/);
+  assert.match(request.prompt,/TỔNG GIỜ CÔNG THEO NHÂN SỰ/);
+  assert.match(request.prompt,/TỔNG QUAN CẢ NGÀY/);
+  assert.match(request.prompt,/CHI TIẾT CHẤM CÔNG CẢ NGÀY/);
+  assert.match(request.prompt,/STT \| Họ và tên \| Ca sáng \| Ca chiều \| Tổng công \| Trạng thái/);
+  assert.match(request.prompt,/Morning duration = professional blue segment/);
+  assert.match(request.prompt,/Afternoon duration = fresh green segment/);
   assert.match(request.prompt,/Điêu Văn Mạnh/);
   assert.doesNotMatch(request.prompt,/Điều Văn Mạnh/);
   assert.equal(request.data.recorded_count,7);

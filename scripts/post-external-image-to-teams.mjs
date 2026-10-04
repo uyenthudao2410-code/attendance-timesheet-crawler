@@ -44,6 +44,15 @@ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Invalid AI post target da
 if(!driveId||!itemId) throw new Error("Missing SharePoint/OneDrive drive or item id");
 
 const token=await accessToken();
+const meResponse=await fetch(`${GRAPH}/me?$select=id,displayName,userPrincipalName,mail`,{headers:{Authorization:`Bearer ${token}`}});
+if(meResponse.ok){
+  const me=await meResponse.json();
+  console.log(`GRAPH_DELEGATED_USER=${String(me.userPrincipalName||me.mail||me.displayName||me.id||"unknown")}`);
+}
+try{
+  const jwtPayload=JSON.parse(Buffer.from(token.split(".")[1],"base64url").toString("utf8"));
+  console.log(`GRAPH_SCOPES=${String(jwtPayload.scp||"")}`);
+}catch{}
 const fileResponse=await fetch(
   `${GRAPH}/drives/${encodeURIComponent(driveId)}/items/${encodeURIComponent(itemId)}/content`,
   {headers:{Authorization:`Bearer ${token}`}},

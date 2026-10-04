@@ -61,6 +61,15 @@ export function validateChatGptImageTrigger(trigger) {
   for (const key of ["recorded_count", "attention_count", "attendance_rate"]) {
     if (!Number.isFinite(Number(summary[key]))) throw new Error(`Invalid publication summary field: ${key}`);
   }
+  if (slot === "daily_2105" && !Number.isFinite(Number(summary.with_record_count))) {
+    throw new Error("Daily publication summary is missing with_record_count");
+  }
+  const recorded = Number(summary.recorded_count);
+  const attention = Number(summary.attention_count);
+  const rate = Number(summary.attendance_rate);
+  if (recorded < 0 || recorded > 8 || attention < 0 || attention > 8 || rate < 0 || rate > 100) {
+    throw new Error("Attendance publication summary values are out of range");
+  }
   if (!String(summary.total_hours_text || "").trim()) {
     throw new Error("Missing publication total hours text");
   }

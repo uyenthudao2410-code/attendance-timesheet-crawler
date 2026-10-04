@@ -2,6 +2,7 @@ export const ATTENDANCE_TEST_CHAT_ID = "19:0e02d613cded448892f27d74cff19d63@thre
 export const ATTENDANCE_AI_HANDOFF_CHAT_ID = "19:6050abd65a654287b59619ee92ff6cd3@thread.v2";
 export const ATTENDANCE_AI_HANDOFF_MARKER = "ATTENDANCE_AI_HANDOFF_V3";
 export const ATTENDANCE_EXPECTED_GRAPH_USER = "info@stacorp.net";
+export const ATTENDANCE_DIRECT_IMAGE_SCHEMA_VERSION = 3;
 
 export function assertAttendanceRouteIsolation() {
   if (ATTENDANCE_AI_HANDOFF_CHAT_ID === ATTENDANCE_TEST_CHAT_ID) {
@@ -10,8 +11,10 @@ export function assertAttendanceRouteIsolation() {
   return true;
 }
 
-export function validateChatGptImageTrigger(trigger) {
-  if (!trigger || trigger.schema_version !== 2) throw new Error("Invalid AI post trigger schema");
+export function validateChatGptDirectImageTrigger(trigger) {
+  if (!trigger || trigger.schema_version !== ATTENDANCE_DIRECT_IMAGE_SCHEMA_VERSION) {
+    throw new Error("Invalid direct ChatGPT Image post trigger schema");
+  }
   if (trigger.enabled !== true) return { enabled: false };
 
   if (String(trigger.mode || "").toUpperCase() !== "TEST") {
@@ -20,12 +23,23 @@ export function validateChatGptImageTrigger(trigger) {
   if (trigger.target_type !== "chat" || String(trigger.chat_id || "") !== ATTENDANCE_TEST_CHAT_ID) {
     throw new Error("AI post TEST target mismatch");
   }
+
   if (String(trigger.image_origin || "") !== "chatgpt_image") {
     throw new Error("Attendance publication accepts ChatGPT Image output only");
   }
-  if (String(trigger.qa_status || "") !== "passed") {
-    throw new Error("ChatGPT Image exact-data QA has not passed");
+  if (trigger.direct_output !== true) {
+    throw new Error("Final attendance image must be the direct ChatGPT Image output");
   }
+  if (trigger.edited_after_generation !== false) {
+    throw new Error("Editing, overlaying, cropping, compositing, or re-rendering after ChatGPT generation is forbidden");
+  }
+  if (trigger.fallback_renderer_used !== false) {
+    throw new Error("Fallback renderer is forbidden for attendance publication");
+  }
+  if (String(trigger.qa_status || "") !== "passed") {
+    throw new Error("Direct ChatGPT Image exact-data QA has not passed");
+  }
+
   if (String(trigger.source_handoff_chat_id || "") !== ATTENDANCE_AI_HANDOFF_CHAT_ID) {
     throw new Error("AI post source must be the isolated technical handoff chat");
   }
@@ -39,14 +53,18 @@ export function validateChatGptImageTrigger(trigger) {
   const slot = String(trigger.slot || "").trim();
   const date = String(trigger.target_date || "").trim();
   const fileName = String(trigger.file_name || "").trim();
+
   if (!["morning_1230", "daily_2105"].includes(slot)) throw new Error("Invalid AI post slot");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Invalid AI post target date");
+
   const expectedName = slot === "morning_1230"
-    ? `attendance-morning-${date}-chatgpt.png`
-    : `attendance-daily-${date}-chatgpt.png`;
+    ? `attendance-morning-${date}-chatgpt-direct.png`
+    : `attendance-daily-${date}-chatgpt-direct.png`;
+
   if (fileName !== expectedName) {
-    throw new Error(`AI image filename must be exact ChatGPT final filename: ${expectedName}`);
+    throw new Error(`AI image filename must identify the untouched direct ChatGPT output: ${expectedName}`);
   }
+
   if (!String(trigger.drive_id || "").trim() || !String(trigger.item_id || "").trim()) {
     throw new Error("Missing SharePoint/OneDrive drive or item id");
   }
@@ -59,11 +77,14 @@ export function validateChatGptImageTrigger(trigger) {
     throw new Error("Attendance publication summary must contain exactly 8 employees");
   }
   for (const key of ["recorded_count", "attention_count", "attendance_rate"]) {
-    if (!Number.isFinite(Number(summary[key]))) throw new Error(`Invalid publication summary field: ${key}`);
+    if (!Number.isFinite(Number(summary[key]))) {
+      throw new Error(`Invalid publication summary field: ${key}`);
+    }
   }
   if (slot === "daily_2105" && !Number.isFinite(Number(summary.with_record_count))) {
     throw new Error("Daily publication summary is missing with_record_count");
   }
+
   const recorded = Number(summary.recorded_count);
   const attention = Number(summary.attention_count);
   const rate = Number(summary.attendance_rate);

@@ -2,10 +2,10 @@ name: Attendance Crawl
 
 on:
   schedule:
-    # Producer runs 10 minutes before the ChatGPT publication task.
-    # 00:05 UTC = 07:05 Asia/Ho_Chi_Minh.
-    - cron: "5 0 * * *"
-    # 06:40 UTC = 13:40 Asia/Ho_Chi_Minh.
+    # Producer runs 10 minutes before each ChatGPT publication task.
+    # 23:40 UTC = 06:40 Asia/Ho_Chi_Minh (next local day), for the 06:50 previous-day report.
+    - cron: "40 23 * * *"
+    # 06:40 UTC = 13:40 Asia/Ho_Chi_Minh, for the 13:50 morning report.
     - cron: "40 6 * * *"
   push:
     paths:
@@ -50,8 +50,8 @@ jobs:
                 run_slot="morning_1230"
                 target_date="$(TZ=Asia/Ho_Chi_Minh date +%F)"
                 ;;
-              "5 0 * * *")
-                # 07:05 Vietnam time: prepare data for the 07:15 ChatGPT previous-day report.
+              "40 23 * * *")
+                # 06:40 Vietnam time: prepare data for the 06:50 ChatGPT previous-day report.
                 run_slot="daily_2105"
                 target_date="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"
                 ;;
@@ -76,7 +76,7 @@ jobs:
             requested_at: process.env.REQUESTED_AT,
             reason: process.env.RUN_SLOT === 'morning_1230'
               ? 'scheduled 13:40 producer for 13:50 ChatGPT morning attendance report'
-              : 'scheduled 07:05 producer for 07:15 ChatGPT previous-day attendance report',
+              : 'scheduled 06:40 producer for 06:50 ChatGPT previous-day attendance report',
             delivery: {
               enabled: false,
             },

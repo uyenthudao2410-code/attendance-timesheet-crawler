@@ -161,7 +161,7 @@ function buildMorningPrompt(request) {
   return [
     "Create ONE premium Vietnamese corporate HR attendance summary infographic for CA SÁNG.",
     "FORMAT: vertical 1440x1920 PNG, 3:4 ratio, one unified composition, crisp and readable on Microsoft Teams.",
-    "STYLE: clean premium corporate editorial, bright white/light-blue background, deep navy, professional blue, fresh green, restrained gold, subtle office-inspired abstract shapes only.",
+    "STYLE: clean premium corporate editorial, bright white/light-blue background, deep navy, professional blue, fresh bright green, restrained gold, subtle office-inspired abstract shapes only.",
     "ABSOLUTELY NO LOGO, NO COMPANY NAME, NO BRAND MARK, NO TAGLINE, NO SLOGAN, NO MOTIVATIONAL QUOTE, NO EMPLOYEE NAMES, NO TABLE, NO BAR CHART, NO EXTRA TEXT.",
     "DATA FIDELITY IS ABSOLUTE: copy only the exact supplied date, update time, KPI numbers and total duration. Never infer, recalculate, paraphrase or add values.",
     "",

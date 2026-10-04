@@ -1,9 +1,18 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import {
+  ATTENDANCE_AI_HANDOFF_CHAT_ID,
+  ATTENDANCE_AI_HANDOFF_MARKER,
+  ATTENDANCE_TEST_CHAT_ID,
+  assertAttendanceRouteIsolation,
+} from "../src/attendance-routing.mjs";
 
 const GRAPH="https://graph.microsoft.com/v1.0";
-const HANDOFF_CHAT_ID=String(process.env.ATTENDANCE_AI_HANDOFF_CHAT_ID||"19:64f12f1f-291b-4ebe-a65a-7b38c4847c06_6cef3469-c1b3-4ec7-ab60-961d0308feac@unq.gbl.spaces").trim();
+assertAttendanceRouteIsolation();
+if (ATTENDANCE_AI_HANDOFF_CHAT_ID === ATTENDANCE_TEST_CHAT_ID) {
+  throw new Error("Refusing to send attendance AI handoff to TEST publication chat");
+}
 
 function required(name){
   const value=String(process.env[name]||"").trim();
@@ -51,7 +60,7 @@ const promptSha=crypto.createHash("sha256").update(prompt,"utf8").digest("hex");
 const createdAt=new Date().toISOString();
 
 const text=[
-  "ATTENDANCE_AI_HANDOFF_V2",
+  ATTENDANCE_AI_HANDOFF_MARKER,
   `REQUEST_ID=${requestId}`,
   `SLOT=${slot}`,
   `TARGET_DATE=${date}`,
@@ -64,9 +73,9 @@ const text=[
 
 if(Buffer.byteLength(text,"utf8")>24000) throw new Error("AI handoff message exceeds safe Teams message size");
 
-const html=`<div style="font-family:Segoe UI,Arial,sans-serif;white-space:pre-wrap"><b>ATTENDANCE_AI_HANDOFF_V2</b><br>${esc(text.slice("ATTENDANCE_AI_HANDOFF_V2".length+1)).replaceAll("\n","<br>")}</div>`;
+const html=`<div style="font-family:Segoe UI,Arial,sans-serif;white-space:pre-wrap"><b>${ATTENDANCE_AI_HANDOFF_MARKER}</b><br>${esc(text.slice(ATTENDANCE_AI_HANDOFF_MARKER.length+1)).replaceAll("\n","<br>")}</div>`;
 const response=await fetch(
-  `${GRAPH}/chats/${encodeURIComponent(HANDOFF_CHAT_ID)}/messages`,
+  `${GRAPH}/chats/${encodeURIComponent(ATTENDANCE_AI_HANDOFF_CHAT_ID)}/messages`,
   {
     method:"POST",
     headers:{Authorization:`Bearer ${await accessToken()}`,"Content-Type":"application/json"},
@@ -78,6 +87,8 @@ const body=await response.json();
 const messageId=String(body?.id||"").trim();
 if(!messageId) throw new Error("Teams AI handoff returned no message id");
 console.log(`ATTENDANCE_AI_HANDOFF_MESSAGE_ID=${messageId}`);
+console.log(`ATTENDANCE_AI_HANDOFF_CHAT_ID=${ATTENDANCE_AI_HANDOFF_CHAT_ID}`);
+console.log(`ATTENDANCE_AI_HANDOFF_MARKER=${ATTENDANCE_AI_HANDOFF_MARKER}`);
 console.log(`ATTENDANCE_AI_HANDOFF_PROMPT_SHA256=${promptSha}`);
 if(process.env.GITHUB_ENV){
   fs.appendFileSync(process.env.GITHUB_ENV,

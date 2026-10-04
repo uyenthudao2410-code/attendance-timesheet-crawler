@@ -260,7 +260,7 @@ function buildMorningPrompt(request) {
     "- Never calculate new values inside the image.",
     "- Never correct, infer or fabricate missing attendance values.",
     "- Show all 8 employees exactly once and in the supplied order.",
-    "- The canonical spelling is 'Điêu Văn Mạnh'; never write 'Điều Văn Mạnh'.",
+    "- Preserve the canonical employee spelling exactly as supplied, including 'Điêu Văn Mạnh'.",
     "- If any text is long, reduce font size or wrap cleanly; never omit or paraphrase.",
     "",
     "QUALITY GATE BEFORE OUTPUT:",

@@ -65,7 +65,7 @@ const width=image.readUInt32BE(16),height=image.readUInt32BE(20);
 const ratio=width/height;
 if(width<900||height<1200||Math.abs(ratio-0.75)>0.03) throw new Error(`AI image dimensions/aspect are outside approved range: ${width}x${height}`);
 
-const report={kind:"attendance_business_report",slot,date};
+const report={kind:"attendance_business_report",slot,date,summary:trigger.summary||null};
 const payload=buildTeamsHostedImagePayload({report,imageBase64:image.toString("base64"),mode:"TEST"});
 const post=await fetch(
   `${GRAPH}/chats/${encodeURIComponent(TEST_CHAT_ID)}/messages`,

@@ -18,12 +18,14 @@ const promptPath=path.join("output",`ai-visual-prompt-${slot}-${date}.txt`);
 const serialized=JSON.stringify(request,null,2)+"\n";
 await fs.writeFile(jsonPath,serialized,"utf8");
 await fs.writeFile(promptPath,request.prompt+"\n","utf8");
-const sha=crypto.createHash("sha256").update(serialized,"utf8").digest("hex");\nconst promptSha=crypto.createHash("sha256").update(request.prompt,"utf8").digest("hex");
+const sha=crypto.createHash("sha256").update(serialized,"utf8").digest("hex");
+const promptSha=crypto.createHash("sha256").update(request.prompt,"utf8").digest("hex");
 if(process.env.GITHUB_ENV){
   await fs.appendFile(process.env.GITHUB_ENV,[
     "ATTENDANCE_AI_VISUAL_REQUEST_FILE="+jsonPath,
     "ATTENDANCE_AI_VISUAL_PROMPT_FILE="+promptPath,
-    "ATTENDANCE_AI_VISUAL_REQUEST_SHA256="+sha,\n    "ATTENDANCE_AI_VISUAL_PROMPT_SHA256="+promptSha,
+    "ATTENDANCE_AI_VISUAL_REQUEST_SHA256="+sha,
+    "ATTENDANCE_AI_VISUAL_PROMPT_SHA256="+promptSha,
     "ATTENDANCE_AI_VISUAL_SPEC_VERSION="+request.spec_version,
     "",
   ].join("\n"),"utf8");

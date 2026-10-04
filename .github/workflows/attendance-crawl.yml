@@ -79,9 +79,6 @@ jobs:
               : 'scheduled 07:05 producer for 07:15 ChatGPT previous-day attendance report',
             delivery: {
               enabled: false,
-              mode: 'TEST',
-              target_type: 'chat',
-              chat_id: '19:0e02d613cded448892f27d74cff19d63@thread.v2',
             },
           };
           fs.writeFileSync(triggerPath, JSON.stringify(next, null, 2) + '\n', 'utf8');
@@ -250,7 +247,7 @@ jobs:
       - name: Validate AI visual request against canonical report
         run: node scripts/validate-ai-visual-request.mjs
 
-      - name: Send validated AI prompt to private Teams self-chat
+      - name: Send validated AI prompt to isolated technical handoff chat
         env:
           MS_TENANT_ID: ${{ secrets.MS_TENANT_ID }}
           MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}

@@ -142,7 +142,7 @@ function promptHeader(spec, slot) {
     "FORMAT LOCK: vertical 1440x1920 PNG, 3:4 ratio, one unified composition, high-resolution and sharp for Microsoft Teams on mobile and desktop.",
     "VISUAL IDENTITY: energetic and premium business style; fresh bright green (#27C86F / #52D985) as the main positive accent, deep corporate navy (#0B2E66), professional blue (#1F6FCE), warm gold (#D9A62E), white/light-blue surfaces, and red (#E5484D) only for missing/error states.",
     "MOOD: optimistic, disciplined, motivating, confident, modern, highly professional. Do not look playful, childish, neon, cluttered, or like a generic web dashboard screenshot.",
-    "HEADER DESIGN: clean premium vector business header using pale fresh-green and light-blue gradients, subtle abstract growth/chart geometry and generous white space. Do not use office photography, people, company logos, brand marks, slogans or decorative text.",
+    "HEADER ART DIRECTION: premium bright modern office scene with natural daylight, glass partitions, subtle city-office depth, fresh green plants and refined desk elements. The office imagery should create energy and business depth but stay secondary to the data. No people faces, no company logo, no brand mark, no tagline, no slogan.",
     "TYPOGRAPHY: modern premium sans-serif, strong hierarchy, crisp Vietnamese diacritics, large readable numbers, no warped letters. If a line is long, reduce font size or wrap cleanly; NEVER omit, paraphrase, or invent text.",
     "FIXED INFORMATION ORDER: 1) header/title/date/update time, 2) four KPI cards, 3) full-width confirmed-hours summary strip, 4) chart + overview panel, 5) detailed 8-row table, 6) footer note.",
     "LAYOUT: generous white space, rounded premium cards, subtle depth/shadows, consistent spacing, no overlapping blocks, no cropped text, no tiny unreadable labels.",
@@ -150,7 +150,7 @@ function promptHeader(spec, slot) {
     "MISSING DATA RULE: render missing values exactly as '—'. Do not guess. Missing/error rows must remain visually distinct using warm red; review/open-session rows use amber/gold; confirmed rows use fresh green.",
     "ROW LOCK: show all 8 employees exactly once, in the supplied order. Never duplicate, omit, rename, reorder, or merge rows.",
     "CHART LOCK: chart values must visually correspond to the supplied duration values. Missing rows must not receive a positive bar.",
-    "BRANDING LOCK: ABSOLUTELY NO LOGO, NO COMPANY NAME MARK, NO TAGLINE, NO SLOGAN. Use only neutral HR/business icons and abstract business geometry.",
+    "BRANDING LOCK: ABSOLUTELY NO LOGO, NO COMPANY NAME MARK, NO TAGLINE, NO SLOGAN. Use neutral HR/business icons plus tasteful office/plant imagery only.",
     `PROMPT SPEC VERSION: ${spec.version}`,
   ];
 }

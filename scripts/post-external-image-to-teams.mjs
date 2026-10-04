@@ -43,7 +43,7 @@ if (!validated.enabled) {
   process.exit(0);
 }
 
-const { slot, date, summary } = validated;
+const { slot, date, summary, transportTest } = validated;
 const driveId = String(trigger.drive_id).trim();
 const itemId = String(trigger.item_id).trim();
 
@@ -87,6 +87,7 @@ const report = {
   slot,
   date,
   summary,
+  transport_test: transportTest === true,
 };
 const payload = buildTeamsHostedImagePayload({
   report,
@@ -118,6 +119,7 @@ console.log(JSON.stringify({
   edited_after_generation: trigger.edited_after_generation,
   fallback_renderer_used: trigger.fallback_renderer_used,
   qa_status: trigger.qa_status,
+  transport_test: transportTest === true,
   width,
   height,
   bytes: image.length,

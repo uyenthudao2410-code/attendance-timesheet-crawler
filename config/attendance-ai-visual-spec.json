@@ -1,6 +1,6 @@
 {
-  "version": "ATTENDANCE_AI_VISUAL_V7_MORNING_APPROVED_2026_10_04",
-  "status": "slot-scoped",
+  "version": "ATTENDANCE_AI_VISUAL_V8_FULL_DAY_APPROVED_2026_10_04",
+  "status": "approved",
   "production_enabled": true,
   "render_mode": "chatgpt_image_direct_output",
   "canvas": {
@@ -14,15 +14,15 @@
     "daily_2105": "attendance-ai-reference-daily-v1.png"
   },
   "style_rules": [
-    "MORNING_1230 is approved for production; DAILY_2105 remains test-only until separately approved.",
+    "MORNING_1230 and DAILY_2105 are approved production visual forms.",
     "Create exactly one premium vertical 1440x1920 Vietnamese corporate HR attendance infographic using ChatGPT Image direct output.",
-    "Approved morning form order is fixed: office/greenery header; four KPI cards; gold total-duration strip; chart + overview row; full 8-row detail table; blue footer note.",
+    "Shared visual language: bright modern office and greenery header, four KPI cards, warm-gold time summary strip, chart + overview row, full detail table, blue reconciliation footer.",
     "Use fresh bright green, deep navy, professional blue, warm gold, white/light-blue surfaces, and red only for missing/attention states.",
-    "Header art uses a bright modern office with natural daylight, glass partitions, abundant plants and tasteful greenery; no people faces.",
     "ABSOLUTELY NO LOGO, no company-name mark, no tagline, no slogan, no motivational quote and no extra decorative text.",
-    "Morning chart must preserve the exact 8-person order; recorded rows use solid blue/green bars, missing rows use dashed red empty outlines.",
-    "Morning detail table columns are fixed: STT | Họ và tên | Trạng thái | Giờ vào | Giờ ra | Thời lượng | Mức công.",
-    "All names, dates, times, durations, statuses, work rates and KPI values must come only from the validated report.",
+    "Morning form: horizontal duration chart plus 8-row table with columns STT | Họ và tên | Trạng thái | Giờ vào | Giờ ra | Thời lượng | Mức công.",
+    "Full-day form: horizontal stacked chart where morning is blue and afternoon is green; detail table columns STT | Họ và tên | Ca sáng | Ca chiều | Tổng công | Trạng thái.",
+    "Missing rows use red dashed empty chart placeholders and subtle red/pink table emphasis.",
+    "All names, dates, sessions, durations, statuses, work rates and KPI values must come only from the validated report.",
     "Never infer, recalculate, paraphrase or fabricate attendance values inside the generated image.",
     "Missing values display exactly as an em dash.",
     "After generation, visually QA all KPI values, all 8 rows and every displayed attendance value against the handoff.",
@@ -47,10 +47,10 @@
   },
   "approval": {
     "morning_1230": "approved",
-    "daily_2105": "test-only"
+    "daily_2105": "approved"
   },
   "reference_form": {
     "morning_1230": "APPROVED_GREEN_OFFICE_MORNING_FORM_2026_10_04",
-    "daily_2105": null
+    "daily_2105": "APPROVED_GREEN_OFFICE_FULL_DAY_FORM_2026_10_04"
   }
 }

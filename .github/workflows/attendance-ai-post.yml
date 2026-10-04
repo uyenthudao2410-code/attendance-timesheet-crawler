@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Post ChatGPT-generated attendance image to Teams
+      - name: Post untouched direct ChatGPT Image output to Teams
         env:
           MS_TENANT_ID: ${{ secrets.MS_TENANT_ID }}
           MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}

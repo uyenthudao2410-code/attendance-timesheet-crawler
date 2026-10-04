@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const GRAPH="https://graph.microsoft.com/v1.0";
-const SELF_CHAT_ID="48:notes";
+const HANDOFF_CHAT_ID=String(process.env.ATTENDANCE_AI_HANDOFF_CHAT_ID||"19:0e02d613cded448892f27d74cff19d63@thread.v2").trim();
 
 function required(name){
   const value=String(process.env[name]||"").trim();
@@ -66,17 +66,17 @@ if(Buffer.byteLength(text,"utf8")>24000) throw new Error("AI handoff message exc
 
 const html=`<div style="font-family:Segoe UI,Arial,sans-serif;white-space:pre-wrap"><b>ATTENDANCE_AI_HANDOFF_V2</b><br>${esc(text.slice("ATTENDANCE_AI_HANDOFF_V2".length+1)).replaceAll("\n","<br>")}</div>`;
 const response=await fetch(
-  `${GRAPH}/chats/${encodeURIComponent(SELF_CHAT_ID)}/messages`,
+  `${GRAPH}/chats/${encodeURIComponent(HANDOFF_CHAT_ID)}/messages`,
   {
     method:"POST",
     headers:{Authorization:`Bearer ${await accessToken()}`,"Content-Type":"application/json"},
     body:JSON.stringify({body:{contentType:"html",content:html}}),
   },
 );
-if(!response.ok) throw new Error(`Teams self-chat AI handoff failed: HTTP ${response.status} ${(await response.text()).slice(0,1000)}`);
+if(!response.ok) throw new Error(`Teams AI handoff failed: HTTP ${response.status} ${(await response.text()).slice(0,1000)}`);
 const body=await response.json();
 const messageId=String(body?.id||"").trim();
-if(!messageId) throw new Error("Teams self-chat handoff returned no message id");
+if(!messageId) throw new Error("Teams AI handoff returned no message id");
 console.log(`ATTENDANCE_AI_HANDOFF_MESSAGE_ID=${messageId}`);
 console.log(`ATTENDANCE_AI_HANDOFF_PROMPT_SHA256=${promptSha}`);
 if(process.env.GITHUB_ENV){

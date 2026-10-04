@@ -183,7 +183,7 @@ function buildMorningPrompt(request) {
     "- Use direct ChatGPT Image output only.",
     "",
     "APPROVED VISUAL IDENTITY:",
-    "- Fresh bright green is the main positive color; combine with deep navy, professional blue, clean white/light-blue surfaces, warm gold for time/rate highlights, and red only for missing/attention states.",
+    "- fresh bright green is the main positive color; combine with deep navy, professional blue, clean white/light-blue surfaces, warm gold for time/rate highlights, and red only for missing/attention states.",
     "- Premium bright modern office background with natural daylight, glass partitions, abundant fresh green plants and refined desk elements.",
     "- The office scene must feel energetic, fresh, business-like and professional, never playful or cartoonish.",
     "- Use generous white space, rounded cards, subtle depth/shadows and clean modern sans-serif typography.",

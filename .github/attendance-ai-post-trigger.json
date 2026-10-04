@@ -4,18 +4,19 @@
   "mode": "TEST",
   "target_type": "chat",
   "chat_id": "19:0e02d613cded448892f27d74cff19d63@thread.v2",
-  "slot": "morning_1230",
-  "target_date": "2026-10-04",
+  "slot": "daily_2105",
+  "target_date": "2026-10-03",
   "drive_id": "b!N9dX9HCS6UKEq613WrbxKk_yEmeHt5dCip15hTbDIxd3jbbX-vE9Q4aki4Fvh5Mc",
-  "item_id": "013N4NZ6ZY6WYR5OVOWZH3FFNGS6Z7C7HZ",
-  "file_name": "attendance-morning-2026-10-04-professional.png",
-  "requested_at": "2026-10-04T10:41:44.341Z",
-  "source_handoff_message_id": "1791110319984",
+  "item_id": "013N4NZ63PZCPJRKRUIVDJ76C7BGWFIJCF",
+  "file_name": "attendance-daily-2026-10-03-professional.png",
+  "requested_at": "2026-10-04T10:42:17.265Z",
+  "source_handoff_message_id": "1791110143399",
   "summary": {
     "total_employees": 8,
-    "recorded_count": 3,
-    "attention_count": 5,
-    "attendance_rate": 38,
-    "total_hours_text": "10h44"
+    "with_record_count": 6,
+    "recorded_count": 6,
+    "attention_count": 2,
+    "attendance_rate": 75,
+    "total_hours_text": "47h54"
   }
 }

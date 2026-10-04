@@ -1,10 +1,13 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "enabled": false,
   "mode": "TEST",
   "target_type": "chat",
   "chat_id": "19:0e02d613cded448892f27d74cff19d63@thread.v2",
   "image_origin": "chatgpt_image",
+  "direct_output": true,
+  "edited_after_generation": false,
+  "fallback_renderer_used": false,
   "qa_status": "pending",
   "source_handoff_chat_id": "19:6050abd65a654287b59619ee92ff6cd3@thread.v2",
   "source_handoff_marker": "ATTENDANCE_AI_HANDOFF_V3",
@@ -15,7 +18,7 @@
   "drive_id": "",
   "item_id": "",
   "file_name": "",
-  "requested_at": "2026-10-04T11:28:41.450Z",
+  "requested_at": "2026-10-04T11:52:38.431Z",
   "summary": {
     "total_employees": 8,
     "recorded_count": 0,

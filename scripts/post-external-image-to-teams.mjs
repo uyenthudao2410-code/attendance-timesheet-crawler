@@ -78,8 +78,8 @@ if (image.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") {
 const width = image.readUInt32BE(16);
 const height = image.readUInt32BE(20);
 const ratio = width / height;
-if (width < 900 || height < 1200 || Math.abs(ratio - 0.75) > 0.03) {
-  throw new Error(`ChatGPT final image dimensions/aspect are outside approved range: ${width}x${height}`);
+if (width < 900 || height < 1400 || ratio < 0.55 || ratio > 0.78) {
+  throw new Error(`ChatGPT final image dimensions/aspect are outside approved mobile portrait range: ${width}x${height}`);
 }
 
 const report = {

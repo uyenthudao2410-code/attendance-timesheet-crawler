@@ -1,8 +1,8 @@
 {
-  "version": "ATTENDANCE_AI_VISUAL_V3_2026_10_04",
+  "version": "ATTENDANCE_AI_VISUAL_V4_2026_10_04",
   "status": "test-only",
   "production_enabled": false,
-  "render_mode": "exact_data_professional_vector",
+  "render_mode": "chatgpt_image_exact_data",
   "canvas": {
     "width": 1440,
     "height": 1920,
@@ -14,18 +14,18 @@
     "daily_2105": "attendance-ai-reference-daily-v1.png"
   },
   "style_rules": [
-    "Create exactly one vertical 1440x1920 PNG in a premium Vietnamese corporate HR infographic style.",
-    "No logo, no company-name mark, no tagline and no slogan anywhere in the image.",
+    "Create exactly one premium vertical 3:4 Vietnamese corporate HR attendance infographic using ChatGPT Image.",
+    "ABSOLUTELY NO LOGO, no company-name mark, no tagline and no slogan.",
     "Use fresh bright green as the primary positive accent with deep navy, professional blue, restrained gold, white/light-blue surfaces, and red only for missing/error states.",
-    "Use a clean vector business header with pale green/light-blue gradients, subtle abstract growth geometry, generous white space and neutral business icons; do not use people or office photography.",
-    "Keep the information order fixed: title/date/update time; four KPI cards; confirmed-hours strip; chart plus overview; exact 8-row detail table; reconciliation footer.",
+    "Use a bright modern office atmosphere with natural daylight, glass-office depth, green plants and refined business desk elements to create visual energy and professionalism.",
+    "Keep office imagery secondary to the data; use premium rounded cards, layered depth, subtle shadows and strong hierarchy.",
+    "Fixed information order: title/date/update time; 4 KPI cards; confirmed-hours strip; chart plus overview; exact 8-row detail table; reconciliation footer.",
     "All employee names, dates, times, durations, statuses, KPIs and session strings must come only from the validated report.",
-    "Never infer, recalculate, paraphrase or fabricate attendance values inside the visual layer.",
+    "Never infer, recalculate, paraphrase or fabricate attendance values inside the generated image.",
     "Missing values display exactly as an em dash.",
     "Show all 8 employees exactly once in the validated order.",
-    "Charts must visually match exact validated durations; missing rows receive no positive bar.",
-    "Typography must remain crisp and readable on Teams mobile and desktop.",
-    "The final publication image must pass exact-data QA before Teams posting."
+    "After image generation, visually QA all KPIs and all 8 rows against the handoff; regenerate/edit with ChatGPT Image if any mismatch is found.",
+    "Do not publish an image that fails exact-data QA."
   ],
   "daily_status_labels": {
     "recorded": "Đã ghi nhận",

@@ -7,8 +7,15 @@
   "slot": "morning_1230",
   "target_date": "2026-10-04",
   "drive_id": "b!N9dX9HCS6UKEq613WrbxKk_yEmeHt5dCip15hTbDIxd3jbbX-vE9Q4aki4Fvh5Mc",
-  "item_id": "013N4NZ63JPUNEA2MQCZAYBJET62XZ6VRG",
-  "file_name": "attendance-ai-morning-2026-10-04.png",
-  "requested_at": "2026-10-04T10:33:04.691Z",
-  "source_handoff_message_id": "1791105220488"
+  "item_id": "013N4NZ6ZY6WYR5OVOWZH3FFNGS6Z7C7HZ",
+  "file_name": "attendance-morning-2026-10-04-professional.png",
+  "requested_at": "2026-10-04T10:41:44.341Z",
+  "source_handoff_message_id": "1791110319984",
+  "summary": {
+    "total_employees": 8,
+    "recorded_count": 3,
+    "attention_count": 5,
+    "attendance_rate": 38,
+    "total_hours_text": "10h44"
+  }
 }

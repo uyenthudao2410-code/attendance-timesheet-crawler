@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "manual-morning-20261004-final-091828",
-  "slot": "morning_1230",
-  "target_date": "2026-10-04",
-  "requested_at": "2026-10-04T09:18:28.236Z",
-  "reason": "final end-to-end TEST after prompt hash syntax fix",
+  "request_id": "manual-daily-20261003-103408",
+  "slot": "daily_2105",
+  "target_date": "2026-10-03",
+  "requested_at": "2026-10-04T10:34:08.048Z",
+  "reason": "manual end-to-end TEST full-day report after Microsoft token validation",
   "delivery": {
     "enabled": false
   }

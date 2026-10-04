@@ -3,7 +3,7 @@ import { TEAMS_HOSTED_CONTENT_LIMIT, buildTeamsHostedImagePayload } from "../src
 import {
   ATTENDANCE_EXPECTED_GRAPH_USER,
   ATTENDANCE_TEST_CHAT_ID,
-  validateChatGptImageTrigger,
+  validateChatGptDirectImageTrigger,
 } from "../src/attendance-routing.mjs";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
@@ -37,7 +37,7 @@ async function accessToken() {
 }
 
 const trigger = JSON.parse(fs.readFileSync(triggerPath, "utf8"));
-const validated = validateChatGptImageTrigger(trigger);
+const validated = validateChatGptDirectImageTrigger(trigger);
 if (!validated.enabled) {
   console.log("ATTENDANCE_AI_POST=SKIPPED");
   process.exit(0);
@@ -114,6 +114,9 @@ console.log(JSON.stringify({
   slot,
   date,
   image_origin: trigger.image_origin,
+  direct_output: trigger.direct_output,
+  edited_after_generation: trigger.edited_after_generation,
+  fallback_renderer_used: trigger.fallback_renderer_used,
   qa_status: trigger.qa_status,
   width,
   height,

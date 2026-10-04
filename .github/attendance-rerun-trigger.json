@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "consumer-test-morning-20261003-1702",
+  "request_id": "manual-morning-20261004-091045",
   "slot": "morning_1230",
-  "target_date": "2026-10-03",
-  "requested_at": "2026-10-03T17:02:00+07:00",
-  "reason": "fresh attendance producer run for external Teams consumer TEST verification",
+  "target_date": "2026-10-04",
+  "requested_at": "2026-10-04T09:10:45.569Z",
+  "reason": "manual end-to-end TEST after MS_REFRESH_TOKEN setup",
   "delivery": {
     "enabled": false
   }

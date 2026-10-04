@@ -158,23 +158,12 @@ function promptHeader(spec, slot) {
 function buildMorningPrompt(request) {
   const d = request.data;
   const attention = d.missing_count + d.review_count;
-  const recordedRows = d.employees.filter((row) => ["recorded","working"].includes(row.status_code));
-  const missingRows = d.employees.filter((row) => row.status_code === "not_recorded_morning");
-  const reviewRows = d.employees.filter((row) => !["recorded","working","not_recorded_morning"].includes(row.status_code));
-
-  const recordedLines = recordedRows.map((row) =>
-    `• ${row.name}: ${row.check_in}–${row.check_out} | ${row.duration}`
-  );
-  const missingLines = missingRows.map((row) => `• ${row.name}`);
-  const reviewLines = reviewRows.map((row) => `• ${row.name}: ${row.status}`);
-
   return [
-    "Create ONE premium Vietnamese corporate HR attendance infographic for CA SÁNG.",
-    "DIRECT-OUTPUT SAFE LAYOUT: vertical 1440x1920 PNG, 3:4 ratio, one unified composition, high-resolution for Microsoft Teams.",
-    "ABSOLUTELY NO LOGO, NO COMPANY NAME, NO BRAND MARK, NO TAGLINE, NO SLOGAN, NO MOTIVATIONAL QUOTE, NO EXTRA TEXT.",
-    "STYLE: premium bright modern office atmosphere with natural daylight, glass-office depth, fresh green plants and refined desk elements; fresh bright green + deep navy + professional blue + restrained gold; generous white space; rounded cards; subtle shadows; crisp Vietnamese typography.",
-    "IMPORTANT: do NOT draw a detailed table and do NOT draw quantitative bar charts. Use simple cards and lists only so every supplied value remains exact.",
-    "DATA FIDELITY IS ABSOLUTE: copy all supplied names, times, durations, date and KPIs EXACTLY; never infer or recalculate values; never rename employees.",
+    "Create ONE premium Vietnamese corporate HR attendance summary infographic for CA SÁNG.",
+    "FORMAT: vertical 1440x1920 PNG, 3:4 ratio, one unified composition, crisp and readable on Microsoft Teams.",
+    "STYLE: clean premium corporate editorial, bright white/light-blue background, deep navy, professional blue, fresh green, restrained gold, subtle office-inspired abstract shapes only.",
+    "ABSOLUTELY NO LOGO, NO COMPANY NAME, NO BRAND MARK, NO TAGLINE, NO SLOGAN, NO MOTIVATIONAL QUOTE, NO EMPLOYEE NAMES, NO TABLE, NO BAR CHART, NO EXTRA TEXT.",
+    "DATA FIDELITY IS ABSOLUTE: copy only the exact supplied date, update time, KPI numbers and total duration. Never infer, recalculate, paraphrase or add values.",
     "",
     'EYEBROW: "BÁO CÁO NHÂN SỰ"',
     'TITLE: "BÁO CÁO CHẤM CÔNG — CA SÁNG"',
@@ -191,26 +180,16 @@ function buildMorningPrompt(request) {
     `HIGHLIGHT STRIP: "Tổng thời lượng xác nhận: ${d.total_hours_text}"`,
     `SECONDARY TEXT: "Trung bình ${d.average_hours_text}/người (trên ${d.recorded_count} người đã ghi nhận)"`,
     "",
-    'SECTION A TITLE: "ĐÃ GHI NHẬN CA SÁNG"',
-    "Show exactly these employee cards, each with name, exact check-in, exact check-out and exact duration:",
-    ...recordedLines,
-    "",
-    'SECTION B TITLE: "CHƯA CHẤM CÔNG"',
-    "Show exactly these names, no times and no invented values:",
-    ...missingLines,
-    ...(reviewLines.length ? ["", 'SECTION C TITLE: "CẦN ĐỐI SOÁT"', ...reviewLines] : []),
-    "",
     `STATUS NOTE: "Có ${attention} nhân sự cần kiểm tra/đối soát dữ liệu ca sáng."`,
     "",
-    'FOOTER: "Lưu ý: Số liệu phục vụ đối soát, không mặc nhiên là giá trị công chính thức. Sai lệch hoặc vướng mắc vui lòng phản hồi P.HC-NS để kiểm tra và điều chỉnh."',
+    'FOOTER: "Lưu ý: Số liệu phục vụ đối soát, không mặc nhiên là giá trị công chính thức."',
     "",
     "QUALITY GATE BEFORE OUTPUT:",
     `- KPI must read exactly ${d.total_employees} / ${d.recorded_count} / ${attention} / ${d.attendance_rate}%.`,
     `- Confirmed duration must read exactly ${d.total_hours_text}.`,
-    `- Exactly ${d.total_employees} employee names must appear once each.`,
-    "- All recorded employee times and durations must exactly match the supplied cards.",
-    "- No logo, no company name, no slogan, no motivational quote, no extra decorative words.",
-    "- No detailed table, no numeric bar chart.",
+    `- Date must be exactly ${request.date_text}.`,
+    `- Update time must be exactly ${request.updated_time_text}.`,
+    "- No employee names, no table, no bar chart, no logo, no company name, no slogan, no extra decorative words.",
     "OUTPUT ONLY: one polished 1440x1920 vertical infographic image.",
   ].join("\n");
 }
@@ -322,7 +301,7 @@ export function validateAiVisualRequest(request, report) {
 
   if (request.prompt.includes("Điều Văn Mạnh")) throw new Error("Prompt contains incorrect employee spelling");
   if (!request.prompt.includes("DATA FIDELITY IS ABSOLUTE")) throw new Error("Prompt is missing data-fidelity lock");
-  if (!request.prompt.includes("Exactly 8 employee names must appear once each.")) throw new Error("Prompt is missing 8-name quality gate");
+  if (!request.prompt.includes("KPI must read exactly")) throw new Error("Prompt is missing KPI quality gate");
   if (!request.prompt.includes("fresh bright green")) throw new Error("Prompt is missing approved fresh-green visual direction");
   return true;
 }

@@ -1,11 +1,9 @@
 {
   "schema_version": 1,
-  "request_id": "test-daily-v2-20261004-20261005-121046",
+  "request_id": "input-v1-daily-20261004-20261005-123846-7f8ee485",
   "slot": "daily_2105",
   "target_date": "2026-10-04",
-  "requested_at": "2026-10-05T12:13:55+07:00",
-  "reason": "cleanup after successful manual TEST deterministic publication",
-  "delivery": {
-    "enabled": false
-  }
+  "requested_at": "2026-10-05T12:38:46+07:00",
+  "reason": "verify lossless data-first ChatGPT Image input after input contract repair; no TEST publication",
+  "delivery": { "enabled": false }
 }

@@ -1,11 +1,17 @@
 {
   "schema_version": 1,
-  "request_id": "strict-fallback-daily-20261004-20261005-072548",
+  "request_id": "strict-v2-daily-20261004-20261005-114915",
   "slot": "daily_2105",
   "target_date": "2026-10-04",
-  "requested_at": "2026-10-05T07:30:25+07:00",
-  "reason": "cleanup after successful strict-data fallback Teams publication",
+  "requested_at": "2026-10-05T11:49:15+07:00",
+  "reason": "redesign strict-data fallback for mobile readability after visual QA rejection",
   "delivery": {
-    "enabled": false
+    "enabled": true,
+    "mode": "TEST",
+    "target_type": "chat",
+    "chat_id": "19:0e02d613cded448892f27d74cff19d63@thread.v2",
+    "render_mode": "strict_data_renderer",
+    "direct_output": false,
+    "fallback_renderer_used": true
   }
 }

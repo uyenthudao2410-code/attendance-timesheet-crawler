@@ -3,15 +3,9 @@
   "request_id": "test-daily-v2-20261004-20261005-121046",
   "slot": "daily_2105",
   "target_date": "2026-10-04",
-  "requested_at": "2026-10-05T12:10:46+07:00",
-  "reason": "manual TEST of data-first deterministic full-day publication",
+  "requested_at": "2026-10-05T12:13:55+07:00",
+  "reason": "cleanup after successful manual TEST deterministic publication",
   "delivery": {
-    "enabled": true,
-    "mode": "TEST",
-    "target_type": "chat",
-    "chat_id": "19:0e02d613cded448892f27d74cff19d63@thread.v2",
-    "render_mode": "strict_data_renderer",
-    "direct_output": false,
-    "fallback_renderer_used": false
+    "enabled": false
   }
 }

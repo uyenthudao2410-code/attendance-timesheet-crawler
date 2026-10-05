@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildImageInput, validateImageInput, encodeImageInput, decodeImageInput, sha256} from '../src/attendance-image-input.mjs';
+import {buildImageInput, validateImageInput, encodeImageInput, decodeImageInput, sha256, IMAGE_CONTEXT_VERSION} from '../src/attendance-image-input.mjs';
 
 // Synthetic fixture: no live attendance roster is stored in the public repository.
 function fixture(daily = true) {
@@ -38,7 +38,12 @@ test('full-day data-first input preserves every session and missing cell',()=>{
   assert.equal(input.display.employees[0][2],'\u2014');
   assert.equal(input.display.employees[2][4],'6h17');
   assert.deepEqual(input.display.kpis.map(k=>k.value),['8','3','3','38%']);
+  assert.equal(input.image_context_contract_version, IMAGE_CONTEXT_VERSION);
+  assert.match(input.generation_prompt,/^BEGIN_ISOLATED_IMAGE_REQUEST/m);
+  assert.match(input.generation_prompt,/CONTEXT_VERSION=ATTENDANCE_IMAGEGEN_ISOLATED_CONTEXT_V1/);
+  assert.match(input.generation_prompt,/REQUEST_FINGERPRINT=[a-f0-9]{16}/);
   assert(input.generation_prompt.indexOf('DATA_INPUT_BEGIN') < input.generation_prompt.indexOf('ART DIRECTION'));
+  assert.match(input.generation_prompt,/every earlier conversation message, image, visual example/i);
   assert(validateImageInput(input));
 });
 test('morning has separate 7-field contract',()=>{
@@ -84,4 +89,19 @@ test('reject report roster reorder',()=>{
   // Restore independent request fixture since the synthetic report shares rows.
   const g=fixture();g.report.employees=f.report.employees;
   assert.throws(()=>make(g),/order\/name/);
+});
+
+test('reject missing or downgraded image context contract',()=>{
+  for(const value of [undefined,'ATTENDANCE_IMAGEGEN_ISOLATED_CONTEXT_V0']){
+    const input=make();
+    if(value===undefined) delete input.image_context_contract_version; else input.image_context_contract_version=value;
+    assert.throws(()=>validateImageInput(input),/image context contract/i);
+  }
+});
+test('isolated prompt fingerprints the exact display data and forbids prior context',()=>{
+  const input=make(fixture(false));
+  assert(input.generation_prompt.includes(input.data_sha256.slice(0,16)));
+  assert.match(input.generation_prompt,/Use ONLY the DATA_INPUT block/i);
+  assert.match(input.generation_prompt,/Do not invent any visible wording/i);
+  assert.match(input.generation_prompt,/END_ISOLATED_IMAGE_REQUEST$/);
 });

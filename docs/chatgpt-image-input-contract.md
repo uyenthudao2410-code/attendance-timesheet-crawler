@@ -6,9 +6,9 @@ The final attendance report must be an untouched ChatGPT Image output. The deter
 
 Crawl fresh data, build the canonical report and the approved V9 visual request. The technical handoff sender independently rebuilds the visual request from the same canonical report and deep-compares every name, session, duration, status, date, update time and KPI before building the image input.
 
-The display contract contains the exact header strings, four KPI label/value pairs, hours summary, complete overview, column definitions, eight complete employee rows and footer. All displayed values are strings; missing values remain as supplied. A person's multiple sessions must not be collapsed.
+The display contract contains the exact header strings, four KPI label/value pairs, hours summary, complete overview, column definitions, eight complete employee rows and footer. These report-data strings are immutable; missing values remain as supplied and multiple sessions must not be collapsed. Visual treatment is intentionally more flexible: one short professional Vietnamese attendance slogan and up to three short nonnumeric attendance cue badges may be generated per image, while the background/layout may vary naturally between runs.
 
-The image context contract is `ATTENDANCE_IMAGEGEN_ISOLATED_CONTEXT_V1`. The generated prompt begins with `BEGIN_ISOLATED_IMAGE_REQUEST`, carries the context version and a data fingerprint, explicitly invalidates earlier conversation/image content, contains the complete `DATA_INPUT`, and ends with the same fingerprint. The prompt never uses an old image, screenshot, sample roster or previous report as input.
+The image context contract is `ATTENDANCE_IMAGEGEN_ISOLATED_CONTEXT_V1`. The generated prompt begins with `BEGIN_ISOLATED_IMAGE_REQUEST`, carries the context version and a data fingerprint, explicitly invalidates earlier conversation/image content, contains the complete `DATA_INPUT`, and ends with the same fingerprint. The prompt never uses an old image, screenshot, sample roster or previous report as input. V10 separates DATA LOCK from CREATIVE TEXT FREEDOM and VISUAL FREEDOM: report data stays exact while slogan/background/icon/layout treatment may vary within guardrails.
 
 The producer writes `output/chatgpt-image-input-<slot>-<date>.json` and `output/chatgpt-image-prompt-<slot>-<date>.txt`. Live data is never committed to the public repository. Existing encrypted artifacts retain these temporary outputs.
 
@@ -31,8 +31,27 @@ The input receipt proves which decoded input was prepared. It is NOT evidence th
 
 ## Independent output QA and delivery
 
-Compare the generated image to every exact display string in `image-input.json`: report type/date/update, four KPI labels and values, hours/average, full overview, all eight names in order, every session and duration, totals/statuses, footer and no additional branding/text/report.
+Compare the generated image to every locked report-data string in `image-input.json`: report type/date/update, four KPI labels and values, hours/average, full overview, all eight names in order, every session and duration, totals/statuses and footer. One short positive Vietnamese attendance slogan and up to three short nonnumeric attendance cue badges are allowed. Background/layout variation is allowed. Still reject any logo, company/brand name, watermark, fake date/time/number, invented attendance fact, second report/page, wrong scope or data mismatch.
 
 Discard and regenerate from the same complete verified context on failure, at most three attempts per run. If all fail, report the actual fields wrong and do not post. Do not change architecture or pause the recurring task.
 
 Only a QA-passed direct PNG may use the existing OneDrive and schema-v3 `Attendance AI Image Post` path. Bind `source_prompt_sha256` to the new handoff's `PROMPT_SHA256`. Keep the real source message ID, date/slot and direct-image provenance flags. Confirm delivery only after the exact workflow succeeds and logs `ATTENDANCE_AI_TEAMS_MESSAGE_ID`. Never post a raw prompt/handoff in the TEST chat.
+
+
+## V10 creative policy
+
+Current visual spec: `ATTENDANCE_AI_VISUAL_V10_FLEX_VISUAL_STRICT_DATA_2026_10_05`.
+
+Locked every run:
+- report scope, date, update time, KPI labels/values, hours/average, overview;
+- all eight employee names/order and every attendance value;
+- footer, missing-value em dash, one-image/mobile-first rule;
+- no logo, no company/brand name, no watermark, no second report/page.
+
+Flexible every run:
+- one short professional Vietnamese attendance slogan;
+- up to three short nonnumeric attendance cue badges;
+- realistic bright office/workspace background, lighting, camera angle, desk objects, plants and tasteful time/checklist motifs;
+- card styling, icons and small layout variations that do not change the fixed information order or omit locked data.
+
+Creative text must not include names, dates, times, KPI numbers, attendance values, company names or invented factual claims. Background must not contain readable random signage, fake dates/times/numbers or logos.

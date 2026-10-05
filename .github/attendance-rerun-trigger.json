@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "strict-fallback-daily-20261004-20261005-072219",
+  "request_id": "strict-fallback-daily-20261004-20261005-072548",
   "slot": "daily_2105",
   "target_date": "2026-10-04",
-  "requested_at": "2026-10-05T07:22:19+07:00",
-  "reason": "strict-data fallback after 3 ChatGPT Image QA failures for scheduled 06:50 full-day publication",
+  "requested_at": "2026-10-05T07:25:48+07:00",
+  "reason": "strict-data fallback retry after renderer identity fix",
   "delivery": {
     "enabled": true,
     "mode": "TEST",

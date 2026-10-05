@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "test-1350-morning-20261004-132747",
-  "slot": "morning_1230",
+  "request_id": "self-heal-daily-20261004-20261005-065949",
+  "slot": "daily_2105",
   "target_date": "2026-10-04",
-  "requested_at": "2026-10-04T13:27:47.737Z",
-  "reason": "manual simulation of scheduled 13:50 morning attendance publication",
+  "requested_at": "2026-10-05T06:59:49+07:00",
+  "reason": "self-heal producer for scheduled 06:50 full-day publication",
   "delivery": {
     "enabled": false
   }

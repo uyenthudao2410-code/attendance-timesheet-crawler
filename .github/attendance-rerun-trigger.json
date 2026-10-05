@@ -3,15 +3,9 @@
   "request_id": "strict-fallback-daily-20261004-20261005-072548",
   "slot": "daily_2105",
   "target_date": "2026-10-04",
-  "requested_at": "2026-10-05T07:25:48+07:00",
-  "reason": "strict-data fallback retry after renderer identity fix",
+  "requested_at": "2026-10-05T07:30:25+07:00",
+  "reason": "cleanup after successful strict-data fallback Teams publication",
   "delivery": {
-    "enabled": true,
-    "mode": "TEST",
-    "target_type": "chat",
-    "chat_id": "19:0e02d613cded448892f27d74cff19d63@thread.v2",
-    "render_mode": "strict_data_renderer",
-    "direct_output": false,
-    "fallback_renderer_used": true
+    "enabled": false
   }
 }

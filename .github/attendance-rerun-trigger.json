@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "request_id": "v10-refresh-morning-20261005-1537",
-  "slot": "morning_1230",
-  "target_date": "2026-10-05",
-  "requested_at": "2026-10-05T15:37:00+07:00",
+  "request_id": "v10-refresh-daily-20261004-1540",
+  "slot": "daily_2105",
+  "target_date": "2026-10-04",
+  "requested_at": "2026-10-05T15:40:00+07:00",
   "reason": "refresh producer state to V10 flexible-visual strict-data contract",
   "delivery": {
     "enabled": false

@@ -4,8 +4,11 @@ import { decodeImageInput, sha256 } from '../src/attendance-image-input.mjs';
 const [source,directory,messageId]=process.argv.slice(2);
 if(!source||!directory||!/^\d+$/.test(messageId||''))throw new Error('Usage: node scripts/prepare-chatgpt-image-input.mjs handoff.txt output-dir source-message-id');
 const text=fs.readFileSync(source,'utf8');
+if(text.split('PROMPT_BEGIN').length!==2)throw new Error('Missing/duplicate prompt boundary');
+const metadata=text.split('PROMPT_BEGIN')[0];
+// Teams connectors may join lines; metadata tokens are whitespace-delimited.
 const field=(name)=>{
-  const values=[...text.matchAll(new RegExp(`^${name}=([^\\r\\n]+)`,'gm'))];
+  const values=[...metadata.matchAll(new RegExp(`(?:^|\\s)${name}=([^\\s]+)`,'g'))];
   if(values.length!==1)throw new Error(`Missing/duplicate ${name}`);
   return values[0][1].trim();
 };

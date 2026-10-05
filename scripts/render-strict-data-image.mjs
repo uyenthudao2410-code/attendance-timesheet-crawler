@@ -10,7 +10,7 @@ if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('Invalid TARGET_DATE');
 
 const requestPath = path.join('output', `ai-visual-request-${slot}-${date}.json`);
 const request = JSON.parse(await fs.readFile(requestPath, 'utf8'));
-if (request.slot !== slot || request.target_date !== date) throw new Error('AI visual request identity mismatch');
+if (request.slot !== slot || request.date !== date) throw new Error('AI visual request identity mismatch');
 if (!String(request.spec_version || '').startsWith('ATTENDANCE_AI_VISUAL_V9_MOBILE_STRICT_DATA_')) throw new Error('Strict renderer requires V9 or newer visual request');
 if (!request.data || !Array.isArray(request.data.employees) || request.data.employees.length !== 8) throw new Error('Strict renderer requires exactly 8 employees');
 if (request.data.employees[0]?.name !== 'Điêu Văn Mạnh') throw new Error('Canonical employee spelling/order mismatch');

@@ -26,7 +26,7 @@ test("daily AI visual request is locked to approved mobile V10 flexible-visual s
   const report=dailyReport();
   const request=buildAiVisualRequest(report);
   assert.equal(validateAiVisualRequest(request,report),true);
-  assert.equal(request.reference_asset,"attendance-ai-reference-daily-v1.png");
+  assert.equal(request.reference_asset,null);
   assert.match(request.prompt,/APPROVED FULL-DAY MOBILE V10 FLEX VISUAL STRICT DATA/);
   assert.match(request.prompt,/MOBILE-FIRST OUTPUT/);
   assert.match(request.prompt,/OVERVIEW — COPY EXACTLY/);
@@ -47,7 +47,7 @@ test("morning AI visual request is locked to approved mobile V10 flexible-visual
   const report=morningReport();
   const request=buildAiVisualRequest(report);
   assert.equal(validateAiVisualRequest(request,report),true);
-  assert.equal(request.reference_asset,"attendance-ai-reference-morning-v1.png");
+  assert.equal(request.reference_asset,null);
   assert.equal(request.data.recorded_count,7);
   assert.equal(request.data.missing_count,1);
   assert.equal(request.data.attendance_rate,88);

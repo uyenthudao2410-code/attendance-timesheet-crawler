@@ -142,7 +142,7 @@ function promptHeader(spec, slot) {
     "FORMAT LOCK: vertical 1440x1920 PNG, 3:4 ratio, one unified composition, high-resolution and sharp for Microsoft Teams on mobile and desktop.",
     "VISUAL IDENTITY: energetic and premium business style; fresh bright green (#27C86F / #52D985) as the main positive accent, deep corporate navy (#0B2E66), professional blue (#1F6FCE), warm gold (#D9A62E), white/light-blue surfaces, and red (#E5484D) only for missing/error states.",
     "MOOD: optimistic, disciplined, motivating, confident, modern, highly professional. Do not look playful, childish, neon, cluttered, or like a generic web dashboard screenshot.",
-    "HEADER ART DIRECTION: premium bright modern office scene with natural daylight, glass partitions, subtle city-office depth, fresh green plants and refined desk elements. The office imagery should create energy and business depth but stay secondary to the data. No people faces, no company logo, no brand mark, no tagline, no slogan.",
+    "HEADER/BACKGROUND ART DIRECTION: keep the visual fresh between runs. Use a realistic bright modern office/workspace atmosphere with natural daylight, glass-office depth, clean desk objects, greenery, clipboard/checklist, analog clock/calendar objects or other tasteful attendance/time-management motifs. Keep all background text/numbers unreadable or absent. No company logo or brand mark.",
     "TYPOGRAPHY: modern premium sans-serif, strong hierarchy, crisp Vietnamese diacritics, large readable numbers, no warped letters. If a line is long, reduce font size or wrap cleanly; NEVER omit, paraphrase, or invent text.",
     "FIXED INFORMATION ORDER: 1) header/title/date/update time, 2) four KPI cards, 3) full-width confirmed-hours summary strip, 4) chart + overview panel, 5) detailed 8-row table, 6) footer note.",
     "LAYOUT: generous white space, rounded premium cards, subtle depth/shadows, consistent spacing, no overlapping blocks, no cropped text, no tiny unreadable labels.",
@@ -150,7 +150,7 @@ function promptHeader(spec, slot) {
     "MISSING DATA RULE: render missing values exactly as '—'. Do not guess. Missing/error rows must remain visually distinct using warm red; review/open-session rows use amber/gold; confirmed rows use fresh green.",
     "ROW LOCK: show all 8 employees exactly once, in the supplied order. Never duplicate, omit, rename, reorder, or merge rows.",
     "CHART LOCK: chart values must visually correspond to the supplied duration values. Missing rows must not receive a positive bar.",
-    "BRANDING LOCK: ABSOLUTELY NO LOGO, NO COMPANY NAME MARK, NO TAGLINE, NO SLOGAN. Use neutral HR/business icons plus tasteful office/plant imagery only.",
+    "BRANDING LOCK: ABSOLUTELY NO LOGO, NO COMPANY NAME MARK, NO WATERMARK. One short positive Vietnamese attendance slogan and up to three short nonnumeric attendance cue badges are allowed; they must not contain company names, employee names, dates, times, KPI numbers or invented factual claims.",
     `PROMPT SPEC VERSION: ${spec.version}`,
   ];
 }
@@ -169,7 +169,7 @@ function buildMorningPrompt(request) {
   );
 
   return [
-    "Create exactly ONE Vietnamese HR attendance infographic for MORNING ATTENDANCE using APPROVED MORNING MOBILE V9 STRICT DATA.",
+    "Create exactly ONE Vietnamese HR attendance infographic for MORNING ATTENDANCE using APPROVED MORNING MOBILE V10 FLEX VISUAL STRICT DATA.",
     "The highest priority is DATA ACCURACY. Slight layout variation is allowed whenever it improves readability or data fidelity.",
     "",
     "MOBILE-FIRST OUTPUT:",
@@ -187,16 +187,16 @@ function buildMorningPrompt(request) {
     "VISUAL STYLE:",
     "- Premium modern HR/business infographic; bright, fresh and professional.",
     "- fresh bright green as main positive accent; combine with white/light neutral surfaces, deep navy/professional blue, restrained gold, and red/orange only for missing or attention states.",
-    "- A subtle bright office / greenery header visual is allowed, but it must stay secondary to the data.",
+    "- Background is intentionally flexible and should feel fresh between runs: realistic bright office/workspace, natural daylight, clean desk, laptop without readable screen text, clipboard/checklist, analog clock/calendar objects, greenery or glass-office depth. Keep it secondary to the data."
     "- Rounded cards, generous white space, simple clean composition, crisp Vietnamese typography.",
     "- Do not force a dense desktop dashboard. Prefer a simple vertical reading flow.",
     "",
     "BRANDING LOCK:",
     "- ABSOLUTELY NO LOGO.",
     "- NO COMPANY NAME MARK.",
-    "- NO TAGLINE OR SLOGAN.",
-    "- NO motivational quote.",
-    "- NO invented decorative text.",
+    "- NO COMPANY TAGLINE. One short professional Vietnamese attendance slogan is allowed and may vary between runs."
+    "- A short positive attendance-themed slogan is allowed; avoid long or unrelated motivational quotes."
+    "- Up to three very short nonnumeric attendance-themed cue badges are allowed; no invented factual data."
     "",
     "LANGUAGE LOCK:",
     "- All visible text must be Vietnamese.",
@@ -214,7 +214,7 @@ function buildMorningPrompt(request) {
     "2) Large title.",
     "3) Subtitle.",
     "4) Date + update time.",
-    "5) Four KPI cards.",
+    "5) Optional short slogan/cue badges, then four KPI cards."
     "6) One total-duration summary strip.",
     "7) One concise overview/status block.",
     "8) One mobile-friendly detail section containing all 8 employees.",
@@ -256,7 +256,7 @@ function buildMorningPrompt(request) {
     "HARD FAIL CONDITIONS TO AVOID:",
     "- No FULL-DAY report.",
     "- No second report.",
-    "- No logo, company name, slogan or extra decorative wording.",
+    "- No logo or company name. A short flexible attendance slogan/cue badges are allowed, but no invented factual wording or numbers."
     "- Do not omit the Mức công field.",
     "- Preserve the canonical employee spelling exactly as supplied, including 'Điêu Văn Mạnh'.",
     "",
@@ -281,7 +281,7 @@ function buildDailyPrompt(request) {
   );
 
   return [
-    "Create exactly ONE Vietnamese HR attendance infographic for FULL-DAY ATTENDANCE using APPROVED FULL-DAY MOBILE V9 STRICT DATA.",
+    "Create exactly ONE Vietnamese HR attendance infographic for FULL-DAY ATTENDANCE using APPROVED FULL-DAY MOBILE V10 FLEX VISUAL STRICT DATA.",
     "The highest priority is DATA ACCURACY. Slight layout variation is allowed whenever it improves readability or data fidelity.",
     "",
     "MOBILE-FIRST OUTPUT:",
@@ -299,16 +299,16 @@ function buildDailyPrompt(request) {
     "VISUAL STYLE:",
     "- Premium modern HR/business infographic; bright, fresh and professional.",
     "- fresh bright green as main positive accent; combine with white/light neutral surfaces, deep navy/professional blue, restrained gold, and red/orange only for missing or attention states.",
-    "- A subtle bright office / greenery header visual is allowed, but it must stay secondary to the data.",
+    "- Background is intentionally flexible and should feel fresh between runs: realistic bright office/workspace, natural daylight, clean desk, laptop without readable screen text, clipboard/checklist, analog clock/calendar objects, greenery or glass-office depth. Keep it secondary to the data."
     "- Rounded cards, generous white space, simple clean composition, crisp Vietnamese typography.",
     "- Do not force a dense desktop dashboard. Prefer a simple vertical reading flow.",
     "",
     "BRANDING LOCK:",
     "- ABSOLUTELY NO LOGO.",
     "- NO COMPANY NAME MARK.",
-    "- NO TAGLINE OR SLOGAN.",
-    "- NO motivational quote.",
-    "- NO invented decorative text.",
+    "- NO COMPANY TAGLINE. One short professional Vietnamese attendance slogan is allowed and may vary between runs."
+    "- A short positive attendance-themed slogan is allowed; avoid long or unrelated motivational quotes."
+    "- Up to three very short nonnumeric attendance-themed cue badges are allowed; no invented factual data."
     "",
     "LANGUAGE LOCK:",
     "- All visible text must be Vietnamese.",
@@ -326,7 +326,7 @@ function buildDailyPrompt(request) {
     "2) Large title.",
     "3) Subtitle.",
     "4) Date + update time.",
-    "5) Four KPI cards.",
+    "5) Optional short slogan/cue badges, then four KPI cards."
     "6) One total-hours summary strip.",
     "7) One concise overview/status block.",
     "8) One mobile-friendly detail section containing all 8 employees.",
@@ -369,7 +369,7 @@ function buildDailyPrompt(request) {
     "HARD FAIL CONDITIONS TO AVOID:",
     "- No MORNING-ONLY report.",
     "- No second report.",
-    "- No logo, company name, slogan or extra decorative wording.",
+    "- No logo or company name. A short flexible attendance slogan/cue badges are allowed, but no invented factual wording or numbers."
     "- Preserve the canonical employee spelling exactly as supplied, including 'Điêu Văn Mạnh'.",
     "",
     "QUALITY GATE BEFORE OUTPUT:",
@@ -436,10 +436,12 @@ export function validateAiVisualRequest(request, report) {
   if (!request.prompt.includes("DATA FIDELITY IS ABSOLUTE")) throw new Error("Prompt is missing data-fidelity lock");
   if (!request.prompt.includes("KPI must read exactly")) throw new Error("Prompt is missing KPI quality gate");
   if (request.slot === "morning_1230" && !request.prompt.includes("CHI TIẾT CHẤM CÔNG CA SÁNG")) throw new Error("Morning prompt is missing approved detail section");
-  if (request.slot === "morning_1230" && !request.prompt.includes("APPROVED MORNING MOBILE V9 STRICT DATA")) throw new Error("Morning prompt is not locked to approved mobile V9 form");
-  if (request.slot === "daily_2105" && !request.prompt.includes("APPROVED FULL-DAY MOBILE V9 STRICT DATA")) throw new Error("Daily prompt is not locked to approved mobile V9 form");
+  if (request.slot === "morning_1230" && !request.prompt.includes("APPROVED MORNING MOBILE V10 FLEX VISUAL STRICT DATA")) throw new Error("Morning prompt is not locked to approved mobile V9 form");
+  if (request.slot === "daily_2105" && !request.prompt.includes("APPROVED FULL-DAY MOBILE V10 FLEX VISUAL STRICT DATA")) throw new Error("Daily prompt is not locked to approved mobile V9 form");
   if (request.slot === "daily_2105" && !request.prompt.includes("CHI TIẾT CHẤM CÔNG CẢ NGÀY")) throw new Error("Daily prompt is missing approved detail section");
   if (!request.prompt.includes("MOBILE-FIRST OUTPUT")) throw new Error("Prompt is missing mobile-first output lock");
   if (!request.prompt.includes("fresh bright green")) throw new Error("Prompt is missing approved fresh-green visual direction");
+  if (!request.prompt.includes("One short professional Vietnamese attendance slogan is allowed")) throw new Error("Prompt is missing flexible slogan policy");
+  if (!request.prompt.includes("Background is intentionally flexible")) throw new Error("Prompt is missing flexible background policy");
   return true;
 }

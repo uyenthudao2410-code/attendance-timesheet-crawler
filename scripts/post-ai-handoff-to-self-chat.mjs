@@ -39,6 +39,7 @@ fs.writeFileSync(promptPath,input.generation_prompt,{mode:0o600});
 const meta=[
   ATTENDANCE_AI_HANDOFF_MARKER,`REQUEST_ID=${requestId}`,`SLOT=${slot}`,`TARGET_DATE=${date}`,
   `CREATED_AT=${new Date().toISOString()}`,`INPUT_VERSION=${input.input_contract_version}`,
+  `CONTEXT_VERSION=${input.image_context_contract_version}`,
   `SPEC_VERSION=${input.spec_version}`,`INPUT_SHA256=${inputSha}`,
   `SOURCE_REPORT_SHA256=${input.source_report_sha256}`,`DATA_SHA256=${input.data_sha256}`,
   `PROMPT_SHA256=${input.generation_prompt_sha256}`,`PROMPT_BYTES=${input.generation_prompt_bytes}`,
@@ -52,6 +53,7 @@ console.log('ATTENDANCE_IMAGE_INPUT_GATE=PASS');
 console.log(`ATTENDANCE_IMAGE_INPUT_DATA_SHA256=${input.data_sha256}`);
 console.log(`ATTENDANCE_IMAGE_INPUT_PROMPT_SHA256=${input.generation_prompt_sha256}`);
 console.log(`ATTENDANCE_IMAGE_INPUT_PROMPT_BYTES=${input.generation_prompt_bytes}`);
+console.log(`ATTENDANCE_IMAGE_CONTEXT_VERSION=${input.image_context_contract_version}`);
 const response=await httpRequest(`${GRAPH}/chats/${encodeURIComponent(ATTENDANCE_AI_HANDOFF_CHAT_ID)}/messages`,{
   method:'POST',headers:{Authorization:`Bearer ${await accessToken()}`,'Content-Type':'application/json'},
   body:JSON.stringify({body:{contentType:'html',content:html}}),
@@ -71,6 +73,7 @@ if(process.env.GITHUB_ENV)fs.appendFileSync(process.env.GITHUB_ENV,[
   `ATTENDANCE_IMAGE_INPUT_FILE=${inputPath}`,
   `ATTENDANCE_IMAGE_INPUT_DATA_SHA256=${input.data_sha256}`,
   `ATTENDANCE_IMAGE_INPUT_VERSION=${input.input_contract_version}`,
+  `ATTENDANCE_IMAGE_CONTEXT_VERSION=${input.image_context_contract_version}`,
   `ATTENDANCE_IMAGE_INPUT_SHA256=${inputSha}`,
   `ATTENDANCE_PUBLICATION_SUMMARY_SHA256=${summarySha}`,
   `ATTENDANCE_PUBLICATION_VERSION=${PUBLICATION_VERSION}`,'',

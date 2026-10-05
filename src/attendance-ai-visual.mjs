@@ -214,7 +214,7 @@ function buildMorningPrompt(request) {
     "2) Large title.",
     "3) Subtitle.",
     "4) Date + update time.",
-    "5) Optional short slogan/cue badges, then four KPI cards."
+    "5) Optional short slogan/cue badges, then four KPI cards.",
     "6) One total-duration summary strip.",
     "7) One concise overview/status block.",
     "8) One mobile-friendly detail section containing all 8 employees.",
@@ -256,7 +256,7 @@ function buildMorningPrompt(request) {
     "HARD FAIL CONDITIONS TO AVOID:",
     "- No FULL-DAY report.",
     "- No second report.",
-    "- No logo or company name. A short flexible attendance slogan/cue badges are allowed, but no invented factual wording or numbers."
+    "- No logo or company name. A short flexible attendance slogan/cue badges are allowed, but no invented factual wording or numbers.",
     "- Do not omit the Mức công field.",
     "- Preserve the canonical employee spelling exactly as supplied, including 'Điêu Văn Mạnh'.",
     "",
@@ -326,7 +326,7 @@ function buildDailyPrompt(request) {
     "2) Large title.",
     "3) Subtitle.",
     "4) Date + update time.",
-    "5) Optional short slogan/cue badges, then four KPI cards."
+    "5) Optional short slogan/cue badges, then four KPI cards.",
     "6) One total-hours summary strip.",
     "7) One concise overview/status block.",
     "8) One mobile-friendly detail section containing all 8 employees.",
@@ -369,7 +369,7 @@ function buildDailyPrompt(request) {
     "HARD FAIL CONDITIONS TO AVOID:",
     "- No MORNING-ONLY report.",
     "- No second report.",
-    "- No logo or company name. A short flexible attendance slogan/cue badges are allowed, but no invented factual wording or numbers."
+    "- No logo or company name. A short flexible attendance slogan/cue badges are allowed, but no invented factual wording or numbers.",
     "- Preserve the canonical employee spelling exactly as supplied, including 'Điêu Văn Mạnh'.",
     "",
     "QUALITY GATE BEFORE OUTPUT:",

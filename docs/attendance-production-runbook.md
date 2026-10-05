@@ -24,9 +24,10 @@ not guarantees of completion to the second.
    already delivered with the existing message ID, and do not generate/post again.
    If status=sending/uncertain, STOP automatic resend: reconcile the existing
    publisher run/log and actual Teams message. Do not clear the ledger blindly.
-2. Check source state .github/attendance-state/<slot>.json. Require schema 11,
+2. Check source state .github/attendance-state/<slot>.json. Require schema 12,
    publication_contract_version=ATTENDANCE_PUBLICATION_V1, input_gate=passed,
-   input_contract_version=ATTENDANCE_CHATGPT_IMAGE_INPUT_V1, correct date/slot.
+   input_contract_version=ATTENDANCE_CHATGPT_IMAGE_INPUT_V1,
+   image_context_contract_version=ATTENDANCE_IMAGEGEN_ISOLATED_CONTEXT_V1, correct date/slot.
    The exact Attendance Crawl run must be completed/success on main. If a matching
    producer is queued/in_progress, wait for it instead of starting another crawl.
    Missing/old state: create ONE unique request in attendance-rerun-trigger.json
@@ -40,11 +41,17 @@ not guarantees of completion to the second.
    Use the lossless input decoder as documented. Load current repo files into
    the temporary execution workspace and run prepare-chatgpt-image-input.mjs.
    Save source state as producer-state.json. Reject mismatched hashes/contracts.
-4. Read the ENTIRE decoded generation-prompt.txt into active context immediately
-   before calling ChatGPT Image. Never shorten the data to a few KPIs or refer to
-   an old image. Create ONE fresh portrait image. Validate every field against
-   image-input.json. Retry from scratch with the SAME verified input at most
-   three times. Do not use fallback imagery and do not change attendance values.
+4. IMAGE CONTEXT ISOLATION IS A HARD GATE. Publication image generation may run only
+   inside the scheduled/one-off automation execution, never from a long interactive
+   chat that contains old attendance images/prompts/data. Run the decoder and require
+   context_ready=true plus image_context_contract_version=ATTENDANCE_IMAGEGEN_ISOLATED_CONTEXT_V1.
+   Read the ENTIRE decoded imagegen-context.txt. After that read, emit no commentary
+   and call no other connector/tool: the immediate next action must be a fresh ChatGPT
+   Image generation. This keeps the verified isolated context nearest to the image tool.
+   Never shorten the data to a few KPIs or refer to an old image. Validate every field
+   against image-input.json. For each retry, reload the SAME imagegen-context.txt and
+   create from scratch, at most three attempts. Do not use fallback imagery and do not
+   change attendance values.
 5. On a genuinely passed visual inspection, create private qa.json:
    status=passed, image_origin=chatgpt_image, generation_id=ACTUAL tool gen/file ID,
    image_sha256=SHA-256 of untouched PNG, source_data_sha256=input.data_sha256,
@@ -80,8 +87,10 @@ not guarantees of completion to the second.
   A confirmed client rejection is recorded as rejected, so a corrected run can retry.
 - Errors identify the actual stage. A cleanup failure cannot make an already
   delivered image publish again. Recurring tasks are never paused by a failed run.
-- The publication test suite runs in CI and before the publisher. Input contract
-  tests remain separate. No test success proves that the image model itself has
+- Producer state schema 12 proves the isolated-context contract was built and handed
+  off; older schema 11 states are intentionally rejected by the ChatGPT consumer.
+- The publication test suite runs in CI and before the publisher. Input/context
+  contract tests remain separate. No test success proves that the image model itself
   copied every character; visual QA remains mandatory.
 
 ## Diagnostics without exposing attendance records

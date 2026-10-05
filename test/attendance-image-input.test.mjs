@@ -42,7 +42,7 @@ test('full-day data-first input preserves every session and missing cell',()=>{
   assert.match(input.generation_prompt,/^BEGIN_ISOLATED_IMAGE_REQUEST/m);
   assert.match(input.generation_prompt,/CONTEXT_VERSION=ATTENDANCE_IMAGEGEN_ISOLATED_CONTEXT_V1/);
   assert.match(input.generation_prompt,/REQUEST_FINGERPRINT=[a-f0-9]{16}/);
-  assert(input.generation_prompt.indexOf('DATA_INPUT_BEGIN') < input.generation_prompt.indexOf('ART DIRECTION'));
+  assert(input.generation_prompt.indexOf('DATA_INPUT_BEGIN') < input.generation_prompt.indexOf('CREATIVE TEXT FREEDOM'));
   assert.match(input.generation_prompt,/every earlier conversation message, image, visual example/i);
   assert(validateImageInput(input));
 });

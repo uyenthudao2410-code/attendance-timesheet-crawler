@@ -2,7 +2,7 @@
   "version": "ATTENDANCE_AI_VISUAL_V9_MOBILE_STRICT_DATA_2026_10_05",
   "status": "approved",
   "production_enabled": true,
-  "render_mode": "strict_data_renderer_v2",
+  "render_mode": "chatgpt_image_direct_mobile_strict_data",
   "canvas": {
     "width": 1440,
     "height": 1920,
@@ -14,21 +14,21 @@
     "daily_2105": "attendance-ai-reference-daily-v1.png"
   },
   "style_rules": [
-    "Production delivery is DATA-FIRST DETERMINISTIC: canonical attendance data is rendered by the strict renderer; ChatGPT Image must not typeset attendance names, times, KPIs, durations, totals, or statuses.",
+    "Both attendance slots use mobile-first strict-data V9 production prompts.",
     "Priority order: exact data > report-scope isolation > phone readability > visual polish > layout rigidity.",
-    "The validated AI visual request remains the canonical display contract and art-direction manifest; it is not a free-form ImageGen instruction for production data.",
-    "Render one mobile-first portrait PNG at 1080x1800 using deterministic Chromium/HTML rendering from the validated request.",
-    "Use large readable typography, 2x2 KPI cards, a clear confirmed-hours summary strip, and eight vertically stacked employee cards.",
+    "Create exactly one portrait Vietnamese HR/business infographic using direct ChatGPT Image output.",
+    "Preferred portrait aspect is 2:3 to 9:16 for Microsoft Teams phone viewing; use large readable typography and avoid tiny dense dashboard text.",
+    "Slight layout variation is allowed when it improves readability or data fidelity.",
     "Use fresh bright green, white/light neutrals, deep navy/professional blue, restrained gold, and red/orange only for missing or attention states.",
     "No logo, no company-name mark, no tagline, no slogan, no motivational quote, no invented decorative text.",
-    "Morning scope must never include the full-day report; full-day scope must never include the morning-only report; never render a second report/page.",
-    "Do not calculate, infer, correct, round, reinterpret or fabricate attendance data inside the renderer.",
+    "Morning scope must never include the full-day report; full-day scope must never include the morning-only report; never generate a second report/page.",
+    "Do not calculate, infer, correct, round, reinterpret or fabricate attendance data inside the image.",
     "Missing values display exactly as an em dash.",
     "Show all 8 employees exactly once, in source order, with canonical Vietnamese spelling.",
-    "Morning detail fields: Họ và tên | Trạng thái | Giờ vào | Giờ ra | Thời lượng | Mức công.",
-    "Full-day detail fields: Họ và tên | Ca sáng | Ca chiều | Tổng công | Trạng thái.",
-    "Fail closed on data mismatch, stale source, overflow, wrong dimensions, wrong employee count, or wrong canonical spelling.",
-    "ChatGPT Image may be used only for optional text-free decorative artwork outside the attendance data layer; such artwork is never authoritative and must not alter the data layout."
+    "Morning detail fields: STT | Họ và tên | Trạng thái | Giờ vào | Giờ ra | Thời lượng | Mức công.",
+    "Full-day detail fields: STT | Họ và tên | Ca sáng | Ca chiều | Tổng công | Trạng thái.",
+    "After generation, QA report type, date, update time, KPIs, total/average time, all 8 employees and every displayed row value.",
+    "If QA fails, discard and regenerate with ChatGPT Image; never patch, overlay, crop, composite or re-render the failed image."
   ],
   "daily_status_labels": {
     "recorded": "Đã ghi nhận",

@@ -18,7 +18,7 @@ function inputFixture(){
 }
 function handoff(input){return [
   'ATTENDANCE_AI_HANDOFF_V3',`REQUEST_ID=${input.request_id}`,`SLOT=${input.slot}`,`TARGET_DATE=${input.target_date}`,
-  `INPUT_SHA256=${sha256(JSON.stringify(input))}`,`SOURCE_REPORT_SHA256=${input.source_report_sha256}`,
+  `INPUT_SHA256=${sha256(JSON.stringify(input))}`,`SOURCE_REPORT_SHA256=${input.source_report_sha256}`,`CONTEXT_VERSION=${input.image_context_contract_version}`,
   `DATA_SHA256=${input.data_sha256}`,`PROMPT_SHA256=${input.generation_prompt_sha256}`,`PROMPT_BYTES=${input.generation_prompt_bytes}`,
   'PROMPT_BEGIN',input.generation_prompt,'PROMPT_END','INPUT_GZIP_BASE64_BEGIN',encodeImageInput(input),'INPUT_GZIP_BASE64_END',
 ].join('\n');}
@@ -32,6 +32,9 @@ test('consumer CLI accepts real connector joined metadata and preserves exact pr
     assert.equal(receipt.input_gate,'passed');
     assert.equal(receipt.source_handoff_message_id,'123456789');
     assert.equal(readFileSync(path.join(out,'generation-prompt.txt'),'utf8'),input.generation_prompt);
+    assert.equal(readFileSync(path.join(out,'imagegen-context.txt'),'utf8'),input.generation_prompt);
+    assert.equal(receipt.image_context_contract_version,input.image_context_contract_version);
+    assert.equal(receipt.context_ready,true);
     assert.equal(receipt.image_generated,false);
     assert.equal(receipt.image_qa_status,'pending');
   }finally{rmSync(root,{recursive:true,force:true});}

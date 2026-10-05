@@ -102,6 +102,19 @@ test('isolated prompt fingerprints the exact display data and forbids prior cont
   const input=make(fixture(false));
   assert(input.generation_prompt.includes(input.data_sha256.slice(0,16)));
   assert.match(input.generation_prompt,/Use ONLY the DATA_INPUT block/i);
-  assert.match(input.generation_prompt,/Do not invent any visible wording/i);
+  assert.match(input.generation_prompt,/You MAY create exactly one short Vietnamese motivational attendance slogan/i);
+  assert.match(input.generation_prompt,/Background is intentionally FLEXIBLE/i);
+  assert.match(input.generation_prompt,/never contain a company\/brand name, employee name, date, time, KPI number/i);
   assert.match(input.generation_prompt,/END_ISOLATED_IMAGE_REQUEST$/);
+});
+
+test('V10 keeps business data locked while allowing controlled creative freshness',()=>{
+  const input=make(fixture(false));
+  assert.match(input.generation_prompt,/DATA LOCK - NOT VISIBLE TEXT:/);
+  assert.match(input.generation_prompt,/All report data from DATA_INPUT is immutable/i);
+  assert.match(input.generation_prompt,/one short Vietnamese motivational attendance slogan/i);
+  assert.match(input.generation_prompt,/up to three very short nonnumeric attendance-themed cue badges/i);
+  assert.match(input.generation_prompt,/realistic, bright, modern office\/workspace atmosphere/i);
+  assert.match(input.generation_prompt,/Do not place readable random text, random numbers, fake dates\/times, signage, logos or company names/i);
+  assert.match(input.generation_prompt,/Do not add a second report, second page/i);
 });

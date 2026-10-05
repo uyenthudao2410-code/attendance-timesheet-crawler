@@ -1,11 +1,17 @@
 {
   "schema_version": 1,
-  "request_id": "self-heal-daily-20261004-20261005-065949",
+  "request_id": "strict-fallback-daily-20261004-20261005-072219",
   "slot": "daily_2105",
   "target_date": "2026-10-04",
-  "requested_at": "2026-10-05T06:59:49+07:00",
-  "reason": "self-heal producer for scheduled 06:50 full-day publication",
+  "requested_at": "2026-10-05T07:22:19+07:00",
+  "reason": "strict-data fallback after 3 ChatGPT Image QA failures for scheduled 06:50 full-day publication",
   "delivery": {
-    "enabled": false
+    "enabled": true,
+    "mode": "TEST",
+    "target_type": "chat",
+    "chat_id": "19:0e02d613cded448892f27d74cff19d63@thread.v2",
+    "render_mode": "strict_data_renderer",
+    "direct_output": false,
+    "fallback_renderer_used": true
   }
 }

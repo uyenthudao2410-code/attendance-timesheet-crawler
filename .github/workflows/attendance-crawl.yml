@@ -255,6 +255,32 @@ jobs:
           MS_REFRESH_TOKEN: ${{ secrets.MS_REFRESH_TOKEN }}
         run: node scripts/post-ai-handoff-to-self-chat.mjs
 
+      - name: Resolve strict-data fallback delivery
+        id: strict_renderer
+        shell: bash
+        run: |
+          set -euo pipefail
+          enabled="$(node --input-type=module -e "import fs from 'node:fs'; const x=JSON.parse(fs.readFileSync('.github/attendance-rerun-trigger.json','utf8')); process.stdout.write(String(x?.delivery?.enabled===true && x?.delivery?.render_mode==='strict_data_renderer'));")"
+          echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
+          echo "Strict renderer fallback enabled: $enabled"
+
+      - name: Install Chromium for strict-data fallback renderer
+        if: ${{ steps.strict_renderer.outputs.enabled == 'true' }}
+        run: npx playwright install --with-deps chromium
+
+      - name: Render strict-data fallback image
+        if: ${{ steps.strict_renderer.outputs.enabled == 'true' }}
+        run: node scripts/render-strict-data-image.mjs
+
+      - name: Post strict-data fallback image to Teams
+        if: ${{ steps.strict_renderer.outputs.enabled == 'true' }}
+        env:
+          MS_TENANT_ID: ${{ secrets.MS_TENANT_ID }}
+          MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
+          MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
+          MS_REFRESH_TOKEN: ${{ secrets.MS_REFRESH_TOKEN }}
+        run: node scripts/post-strict-image-to-teams.mjs
+
       - name: Encrypt result before artifact upload
         if: ${{ hashFiles('output/*.json') != '' }}
         shell: bash

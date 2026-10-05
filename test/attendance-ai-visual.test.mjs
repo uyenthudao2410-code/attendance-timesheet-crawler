@@ -22,18 +22,20 @@ function morningReport(){
   };
 }
 
-test("daily AI visual request is locked to approved mobile V9 strict-data form",()=>{
+test("daily AI visual request is locked to approved mobile V10 flexible-visual strict-data form",()=>{
   const report=dailyReport();
   const request=buildAiVisualRequest(report);
   assert.equal(validateAiVisualRequest(request,report),true);
   assert.equal(request.reference_asset,"attendance-ai-reference-daily-v1.png");
-  assert.match(request.prompt,/APPROVED FULL-DAY MOBILE V9 STRICT DATA/);
+  assert.match(request.prompt,/APPROVED FULL-DAY MOBILE V10 FLEX VISUAL STRICT DATA/);
   assert.match(request.prompt,/MOBILE-FIRST OUTPUT/);
   assert.match(request.prompt,/OVERVIEW — COPY EXACTLY/);
   assert.match(request.prompt,/CHI TIẾT CHẤM CÔNG CẢ NGÀY/);
   assert.match(request.prompt,/STT \| Họ và tên \| Ca sáng \| Ca chiều \| Tổng công \| Trạng thái/);
   assert.match(request.prompt,/Preferred aspect: 2:3 to 9:16 portrait/);
   assert.match(request.prompt,/Slight layout variation is allowed/);
+  assert.match(request.prompt,/Background is intentionally flexible/);
+  assert.match(request.prompt,/One short professional Vietnamese attendance slogan is allowed/);
   assert.match(request.prompt,/Điêu Văn Mạnh/);
   assert.doesNotMatch(request.prompt,/Điều Văn Mạnh/);
   assert.equal(request.data.recorded_count,7);
@@ -41,7 +43,7 @@ test("daily AI visual request is locked to approved mobile V9 strict-data form",
   assert.equal(request.data.total_hours_text,"63h00");
 });
 
-test("morning AI visual request is locked to approved mobile V9 strict-data form",()=>{
+test("morning AI visual request is locked to approved mobile V10 flexible-visual strict-data form",()=>{
   const report=morningReport();
   const request=buildAiVisualRequest(report);
   assert.equal(validateAiVisualRequest(request,report),true);
@@ -49,7 +51,7 @@ test("morning AI visual request is locked to approved mobile V9 strict-data form
   assert.equal(request.data.recorded_count,7);
   assert.equal(request.data.missing_count,1);
   assert.equal(request.data.attendance_rate,88);
-  assert.match(request.prompt,/APPROVED MORNING MOBILE V9 STRICT DATA/);
+  assert.match(request.prompt,/APPROVED MORNING MOBILE V10 FLEX VISUAL STRICT DATA/);
   assert.match(request.prompt,/MOBILE-FIRST OUTPUT/);
   assert.match(request.prompt,/OVERVIEW — COPY EXACTLY/);
   assert.match(request.prompt,/CHI TIẾT CHẤM CÔNG CA SÁNG/);
@@ -58,4 +60,6 @@ test("morning AI visual request is locked to approved mobile V9 strict-data form
   assert.doesNotMatch(request.prompt,/Điều Văn Mạnh/);
   assert.match(request.prompt,/ABSOLUTELY NO LOGO/);
   assert.match(request.prompt,/Exactly 8 employees must be visible once each/);
+  assert.match(request.prompt,/Background is intentionally flexible/);
+  assert.match(request.prompt,/One short professional Vietnamese attendance slogan is allowed/);
 });

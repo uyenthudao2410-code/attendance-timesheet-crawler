@@ -10,8 +10,8 @@
     "aspect_ratio": "3:4"
   },
   "reference_assets": {
-    "morning_1230": "attendance-ai-reference-morning-v1.png",
-    "daily_2105": "attendance-ai-reference-daily-v1.png"
+    "morning_1230": null,
+    "daily_2105": null
   },
   "style_rules": [
     "Both attendance slots use mobile-first strict-data V10 prompts with controlled visual freedom.",

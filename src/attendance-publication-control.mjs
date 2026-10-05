@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 export const PUBLICATION_VERSION = 'ATTENDANCE_PUBLICATION_V1';
-export const QA_FIELDS = Object.freeze(['report_type', 'date', 'update_time', 'kpis', 'hours_average', 'overview', 'employee_names_order', 'sessions_durations', 'totals_statuses', 'footer', 'no_extra_text', 'mobile_readability']);
+export const QA_FIELDS = Object.freeze(['report_type', 'date', 'update_time', 'kpis', 'hours_average', 'overview', 'employee_names_order', 'sessions_durations', 'totals_statuses', 'footer', 'no_unauthorized_factual_text', 'no_logo_company_brand', 'creative_text_policy', 'background_data_safety', 'mobile_readability']);
 export const digest = (value) => createHash('sha256').update(value).digest('hex');
 const fail = (message) => { throw new Error(`PUBLICATION_GATE: ${message}`); };
 const hash = (value, field) => { if (!/^[a-f0-9]{64}$/.test(value || '')) fail(`Invalid hash: ${field}`); return value; };

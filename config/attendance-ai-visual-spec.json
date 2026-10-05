@@ -1,8 +1,8 @@
 {
-  "version": "ATTENDANCE_AI_VISUAL_V9_MOBILE_STRICT_DATA_2026_10_05",
+  "version": "ATTENDANCE_AI_VISUAL_V10_FLEX_VISUAL_STRICT_DATA_2026_10_05",
   "status": "approved",
   "production_enabled": true,
-  "render_mode": "chatgpt_image_direct_mobile_strict_data",
+  "render_mode": "chatgpt_image_direct_flexible_visual_strict_data",
   "canvas": {
     "width": 1440,
     "height": 1920,
@@ -14,21 +14,23 @@
     "daily_2105": "attendance-ai-reference-daily-v1.png"
   },
   "style_rules": [
-    "Both attendance slots use mobile-first strict-data V9 production prompts.",
-    "Priority order: exact data > report-scope isolation > phone readability > visual polish > layout rigidity.",
+    "Both attendance slots use mobile-first strict-data V10 prompts with controlled visual freedom.",
+    "Priority order: exact data > report-scope isolation > phone readability > visual freshness/polish.",
     "Create exactly one portrait Vietnamese HR/business infographic using direct ChatGPT Image output.",
     "Preferred portrait aspect is 2:3 to 9:16 for Microsoft Teams phone viewing; use large readable typography and avoid tiny dense dashboard text.",
-    "Slight layout variation is allowed when it improves readability or data fidelity.",
-    "Use fresh bright green, white/light neutrals, deep navy/professional blue, restrained gold, and red/orange only for missing or attention states.",
-    "No logo, no company-name mark, no tagline, no slogan, no motivational quote, no invented decorative text.",
+    "Attendance/report data is immutable: never calculate, infer, correct, round, reinterpret, rename, reorder, merge or fabricate supplied values.",
+    "Missing values display exactly as an em dash; show all 8 employees exactly once in source order with canonical Vietnamese spelling.",
+    "Creative freedom is allowed for one short professional Vietnamese attendance slogan and up to three short nonnumeric attendance-themed cue badges.",
+    "Creative text must not contain company/brand names, employee names, dates, times, KPI numbers, attendance values or invented factual claims.",
+    "Background and decorative visual direction should vary naturally between runs to avoid monotony.",
+    "Prefer realistic bright modern office/workspace scenes: daylight, clean desk, laptop without readable screen text, clipboard/checklist, analog clock, calendar object, greenery, glass-office depth, and tasteful time-management motifs.",
+    "Use fresh bright green as the lead accent with white/light neutrals, deep navy/professional blue, restrained gold, and red/orange only for missing or attention states.",
+    "No logo, no company-name mark, no watermark, no readable random signage, no fake date/time/number in the background.",
     "Morning scope must never include the full-day report; full-day scope must never include the morning-only report; never generate a second report/page.",
-    "Do not calculate, infer, correct, round, reinterpret or fabricate attendance data inside the image.",
-    "Missing values display exactly as an em dash.",
-    "Show all 8 employees exactly once, in source order, with canonical Vietnamese spelling.",
     "Morning detail fields: STT | Họ và tên | Trạng thái | Giờ vào | Giờ ra | Thời lượng | Mức công.",
     "Full-day detail fields: STT | Họ và tên | Ca sáng | Ca chiều | Tổng công | Trạng thái.",
-    "After generation, QA report type, date, update time, KPIs, total/average time, all 8 employees and every displayed row value.",
-    "If QA fails, discard and regenerate with ChatGPT Image; never patch, overlay, crop, composite or re-render the failed image."
+    "After generation, QA all locked report data and reject any wrong data, wrong scope, logo/company name, or second report.",
+    "If QA fails, discard and regenerate with ChatGPT Image from the same verified input; never patch, overlay, crop, composite or re-render the failed image."
   ],
   "daily_status_labels": {
     "recorded": "Đã ghi nhận",
@@ -51,7 +53,7 @@
     "daily_2105": "approved"
   },
   "reference_form": {
-    "morning_1230": "APPROVED_MORNING_MOBILE_V9_STRICT_DATA",
-    "daily_2105": "APPROVED_FULL_DAY_MOBILE_V9_STRICT_DATA"
+    "morning_1230": "APPROVED_MORNING_MOBILE_V10_FLEX_VISUAL_STRICT_DATA",
+    "daily_2105": "APPROVED_FULL_DAY_MOBILE_V10_FLEX_VISUAL_STRICT_DATA"
   }
 }

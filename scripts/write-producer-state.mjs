@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { PUBLICATION_VERSION } from '../src/attendance-publication-control.mjs';
+import { IMAGE_CONTEXT_VERSION } from '../src/attendance-image-input.mjs';
 const env=(name)=>String(process.env[name]||'').trim();
 const slot=env('ATTENDANCE_RUN_SLOT'), date=env('TARGET_DATE');
 const requestId=env('ATTENDANCE_REQUEST_ID'), requestedAt=env('ATTENDANCE_REQUESTED_AT');
@@ -19,13 +20,13 @@ if(crawlEmployeeCount!==8)throw new Error('Producer requires 8 employee crawl ba
 for(const value of [reportSha256,promptSha256,handoffPromptSha,dataSha,inputSha,summarySha])if(!/^[a-f0-9]{64}$/.test(value))throw new Error('Invalid producer hashes');
 if(promptSha256!==handoffPromptSha)throw new Error('Prompt differs from handoff');
 if(!handoffMessageId||reportFile!==`output/report-${slot}-${date}.json`)throw new Error('Missing producer handoff/report');
-if(env('ATTENDANCE_PUBLICATION_VERSION')!==PUBLICATION_VERSION||env('ATTENDANCE_IMAGE_INPUT_VERSION')!=='ATTENDANCE_CHATGPT_IMAGE_INPUT_V1')throw new Error('Missing verified input/publication contract');
+if(env('ATTENDANCE_PUBLICATION_VERSION')!==PUBLICATION_VERSION||env('ATTENDANCE_IMAGE_INPUT_VERSION')!=='ATTENDANCE_CHATGPT_IMAGE_INPUT_V1'||env('ATTENDANCE_IMAGE_CONTEXT_VERSION')!==IMAGE_CONTEXT_VERSION)throw new Error('Missing verified input/publication/context contract');
 const value={
-  schema_version:11,role:'producer',run_id:runId,run_attempt:runAttempt,request_id:requestId,requested_at:requestedAt,
+  schema_version:12,role:'producer',run_id:runId,run_attempt:runAttempt,request_id:requestId,requested_at:requestedAt,
   slot,target_date:date,crawl_complete:true,crawl_employee_count:8,crawl_completed_at:crawlCompletedAt,
   artifact_id:artifactId,artifact_name:artifactName,report_file:reportFile,report_sha256:reportSha256,
   ai_visual_spec_version:specVersion,ai_visual_request_sha256:promptSha256,teams_self_handoff_message_id:handoffMessageId,
-  publication_contract_version:PUBLICATION_VERSION,input_contract_version:env('ATTENDANCE_IMAGE_INPUT_VERSION'),input_gate:'passed',
+  publication_contract_version:PUBLICATION_VERSION,input_contract_version:env('ATTENDANCE_IMAGE_INPUT_VERSION'),image_context_contract_version:IMAGE_CONTEXT_VERSION,input_gate:'passed',
   source_data_sha256:dataSha,source_input_sha256:inputSha,publication_summary_sha256:summarySha,completed_at:new Date().toISOString(),
 };
 const dir=path.join('.github','attendance-state');await fs.mkdir(dir,{recursive:true});

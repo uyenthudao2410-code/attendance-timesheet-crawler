@@ -2,11 +2,13 @@ name: Attendance AI Image Post
 
 on:
   push:
+    branches: [main]
     paths:
       - ".github/attendance-ai-post-trigger.json"
 
 permissions:
-  contents: read
+  contents: write
+  actions: read
 
 concurrency:
   group: attendance-ai-image-post
@@ -25,8 +27,12 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Run publication control tests
+        run: node --test test/attendance-publication-control.test.mjs
+
       - name: Post untouched direct ChatGPT Image output to Teams
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           MS_TENANT_ID: ${{ secrets.MS_TENANT_ID }}
           MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
           MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}

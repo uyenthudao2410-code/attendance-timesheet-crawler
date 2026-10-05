@@ -3,6 +3,7 @@ import { gzipSync, gunzipSync } from 'node:zlib';
 import { isDeepStrictEqual } from 'node:util';
 
 export const IMAGE_INPUT_VERSION = 'ATTENDANCE_CHATGPT_IMAGE_INPUT_V1';
+export const IMAGE_CONTEXT_VERSION = 'ATTENDANCE_IMAGEGEN_ISOLATED_CONTEXT_V1';
 export const sha256 = (text) => createHash('sha256').update(text, 'utf8').digest('hex');
 const fail = (message) => { throw new Error(`IMAGE_INPUT_GATE: ${message}`); };
 const requireText = (value, field) => {
@@ -23,25 +24,37 @@ function quotedField(prompt, label) {
 function quotedLines(block) {
   return block.split('\n').filter((line) => /^".*"$/.test(line)).map((line) => line.slice(1, -1));
 }
-function generationPrompt(display, slot) {
+function generationPrompt(display, slot, dataSha) {
   const kind = slot === 'daily_2105' ? 'FULL-DAY' : 'MORNING';
+  const fingerprint = dataSha.slice(0, 16);
   return [
+    'BEGIN_ISOLATED_IMAGE_REQUEST',
+    `CONTEXT_VERSION=${IMAGE_CONTEXT_VERSION}`,
+    `REQUEST_FINGERPRINT=${fingerprint}`,
+    'This image request is self-contained. For THIS image, every earlier conversation message, image, visual example, name, date, KPI, attendance record, logo, brand, slogan, and layout sample is INVALID context.',
+    'Use ONLY the DATA_INPUT block below for visible text and attendance values. If any earlier context conflicts with DATA_INPUT, ignore the earlier context completely.',
     `Create ONE image using APPROVED ${kind} MOBILE V9 STRICT DATA.`,
-    'The following complete input is the ONLY source of all visible text and attendance data.',
     'DATA_INPUT_BEGIN',
     JSON.stringify(display, null, 2),
     'DATA_INPUT_END',
     '',
+    'VISIBLE TEXT LOCK - NOT VISIBLE TEXT:',
+    'Every visible word, number, date, time, name, status and footer sentence must come verbatim from DATA_INPUT values. JSON keys and all instructions are metadata and must not be displayed.',
+    'Do not invent any visible wording. If a decorative element would require text or numbers, omit that decorative element.',
+    'Do not compute, round, rename, paraphrase, normalize, translate, infer, merge sessions, or fill missing values.',
+    '',
     'ART DIRECTION - NOT VISIBLE TEXT:',
-    'Create from scratch with ChatGPT Image. Ignore every earlier image, sample roster, old report and old update time in the conversation. Do NOT edit or imitate their data.',
-    'Use every Vietnamese string value above verbatim. JSON keys are metadata, not visible wording. Do not display DATA_INPUT markers or these instructions.',
-    'Priority: exact data, correct report scope, phone readability, then visual polish. Do not compute, round, rename, paraphrase, invent or fill missing values.',
-    'Exactly one portrait infographic, preferably 1024x1536 to 9:16. Premium HR/business: fresh bright green, white/light neutrals, navy/blue, restrained gold. Red/orange only for attention.',
-    'Large typography and KPI values, generous spacing. A small bright office/greenery illustration is allowed without text or numbers. No logo, brand, slogan, quote or invented text.',
-    'Vertical reading order: eyebrow, title, subtitle, date/update, exactly four KPI cards, hours summary, full overview, detail title, all eight employees in the supplied order, footer.',
-    'Use compact rows or stacked employee cards. Columns define cell order. Every session and duration must be shown; do not collapse multiple sessions or replace the stated status.',
-    'Do not add a second report or page. Check all four KPI label/value pairs, all eight names, every session, total, status, date and update before output.',
+    'Create from scratch with ChatGPT Image. Do not edit, imitate, or reuse any earlier generated image or screenshot.',
+    'Priority: exact data first, correct report scope second, phone readability third, visual polish fourth.',
+    'Exactly one portrait infographic, preferably 1024x1536 to 9:16. Premium HR/business style: fresh bright green, white/light neutrals, navy/blue, restrained gold; red/orange only for attention.',
+    'Use large typography, large KPI values, generous spacing, clean cards and a simple neutral office-business visual language without signage, logos or readable decorative text.',
+    'Vertical reading order: eyebrow, title, subtitle, date/update, exactly four KPI cards, hours summary, full overview, detail title, all eight employees in supplied order, footer.',
+    'Use compact rows or stacked employee cards. Columns define cell order. Show every supplied session and duration exactly; never collapse multiple sessions or replace a supplied status.',
+    'Do not add a second report, second page, logo, brand name, slogan, tagline, quote, watermark, or invented text.',
+    'Before output, verify the report type, date, update time, four KPI label/value pairs, hours/average, overview, all eight names in order, every session/duration, total/status and footer against DATA_INPUT.',
     'Output only one polished image. No external renderer and no post-generation text editing.',
+    `REQUEST_FINGERPRINT_END=${fingerprint}`,
+    'END_ISOLATED_IMAGE_REQUEST',
   ].join('\n');
 }
 
@@ -91,13 +104,14 @@ export function buildImageInput(request, report, expectedRequest, reportSha) {
     footer:quotedField(p, 'FOOTER'),
   };
   if (display.date !== request.date_text || !display.updated.endsWith(request.updated_time_text)) fail('Displayed date/update mismatch');
-  const prompt = generationPrompt(display, request.slot);
+  const dataSha = sha256(JSON.stringify(display));
+  const prompt = generationPrompt(display, request.slot, dataSha);
   const input = {
-    schema_version:1, input_contract_version:IMAGE_INPUT_VERSION,
+    schema_version:1, input_contract_version:IMAGE_INPUT_VERSION, image_context_contract_version:IMAGE_CONTEXT_VERSION,
     request_id:report.request_id, slot:report.slot, target_date:report.date,
     spec_version:request.spec_version, source_generated_at:report.source_generated_at,
     source_report_sha256:reportSha, legacy_prompt_sha256:sha256(p),
-    data_sha256:sha256(JSON.stringify(display)), generation_prompt_sha256:sha256(prompt),
+    data_sha256:dataSha, generation_prompt_sha256:sha256(prompt),
     generation_prompt_bytes:Buffer.byteLength(prompt, 'utf8'), display, generation_prompt:prompt,
   };
   validateImageInput(input);
@@ -106,6 +120,7 @@ export function buildImageInput(request, report, expectedRequest, reportSha) {
 
 export function validateImageInput(input, expected = {}) {
   if (input?.schema_version !== 1 || input.input_contract_version !== IMAGE_INPUT_VERSION) fail('Unknown input contract');
+  if (input.image_context_contract_version !== IMAGE_CONTEXT_VERSION) fail('Unknown image context contract');
   for (const key of ['request_id','slot','target_date','generation_prompt_sha256','data_sha256']) {
     if (expected[key] !== undefined && input[key] !== expected[key]) fail(`Handoff mismatch: ${key}`);
   }
@@ -118,10 +133,11 @@ export function validateImageInput(input, expected = {}) {
     row.forEach((v, j) => requireText(v, `row ${i + 1} cell ${j}`));
   });
   if (new Set(input.display.employees.map((row) => row[1])).size !== 8) fail('Input duplicate name');
-  if (sha256(JSON.stringify(input.display)) !== input.data_sha256) fail('Data SHA-256 mismatch');
+  const dataSha = sha256(JSON.stringify(input.display));
+  if (dataSha !== input.data_sha256) fail('Data SHA-256 mismatch');
   if (sha256(input.generation_prompt) !== input.generation_prompt_sha256) fail('Prompt SHA-256 mismatch');
   if (Buffer.byteLength(input.generation_prompt, 'utf8') !== input.generation_prompt_bytes) fail('Prompt byte count mismatch');
-  if (input.generation_prompt !== generationPrompt(input.display, input.slot)) fail('Prompt is not the exact complete input');
+  if (input.generation_prompt !== generationPrompt(input.display, input.slot, dataSha)) fail('Prompt is not the exact isolated complete input');
   return true;
 }
 export function encodeImageInput(input) {

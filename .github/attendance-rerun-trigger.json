@@ -1,9 +1,11 @@
 {
   "schema_version": 1,
-  "request_id": "publication-v1-morning-20261005-134220-23b2df27",
+  "request_id": "isolated-context-morning-20261005-140953",
   "slot": "morning_1230",
   "target_date": "2026-10-05",
-  "requested_at": "2026-10-05T13:42:20+07:00",
-  "reason": "verify complete morning producer and publication manifest for the scheduled 13:50 direct ChatGPT Image task; no TEST publication",
-  "delivery": { "enabled": false }
+  "requested_at": "2026-10-05T14:09:53+07:00",
+  "reason": "refresh producer after isolated ChatGPT Image context contract fix",
+  "delivery": {
+    "enabled": false
+  }
 }

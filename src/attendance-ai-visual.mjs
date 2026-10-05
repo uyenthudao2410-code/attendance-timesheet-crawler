@@ -187,16 +187,16 @@ function buildMorningPrompt(request) {
     "VISUAL STYLE:",
     "- Premium modern HR/business infographic; bright, fresh and professional.",
     "- fresh bright green as main positive accent; combine with white/light neutral surfaces, deep navy/professional blue, restrained gold, and red/orange only for missing or attention states.",
-    "- Background is intentionally flexible and should feel fresh between runs: realistic bright office/workspace, natural daylight, clean desk, laptop without readable screen text, clipboard/checklist, analog clock/calendar objects, greenery or glass-office depth. Keep it secondary to the data."
+    "- Background is intentionally flexible and should feel fresh between runs: realistic bright office/workspace, natural daylight, clean desk, laptop without readable screen text, clipboard/checklist, analog clock/calendar objects, greenery or glass-office depth. Keep it secondary to the data.",
     "- Rounded cards, generous white space, simple clean composition, crisp Vietnamese typography.",
     "- Do not force a dense desktop dashboard. Prefer a simple vertical reading flow.",
     "",
     "BRANDING LOCK:",
     "- ABSOLUTELY NO LOGO.",
     "- NO COMPANY NAME MARK.",
-    "- NO COMPANY TAGLINE. One short professional Vietnamese attendance slogan is allowed and may vary between runs."
-    "- A short positive attendance-themed slogan is allowed; avoid long or unrelated motivational quotes."
-    "- Up to three very short nonnumeric attendance-themed cue badges are allowed; no invented factual data."
+    "- NO COMPANY TAGLINE. One short professional Vietnamese attendance slogan is allowed and may vary between runs.",
+    "- A short positive attendance-themed slogan is allowed; avoid long or unrelated motivational quotes.",
+    "- Up to three very short nonnumeric attendance-themed cue badges are allowed; no invented factual data.",
     "",
     "LANGUAGE LOCK:",
     "- All visible text must be Vietnamese.",
@@ -299,16 +299,16 @@ function buildDailyPrompt(request) {
     "VISUAL STYLE:",
     "- Premium modern HR/business infographic; bright, fresh and professional.",
     "- fresh bright green as main positive accent; combine with white/light neutral surfaces, deep navy/professional blue, restrained gold, and red/orange only for missing or attention states.",
-    "- Background is intentionally flexible and should feel fresh between runs: realistic bright office/workspace, natural daylight, clean desk, laptop without readable screen text, clipboard/checklist, analog clock/calendar objects, greenery or glass-office depth. Keep it secondary to the data."
+    "- Background is intentionally flexible and should feel fresh between runs: realistic bright office/workspace, natural daylight, clean desk, laptop without readable screen text, clipboard/checklist, analog clock/calendar objects, greenery or glass-office depth. Keep it secondary to the data.",
     "- Rounded cards, generous white space, simple clean composition, crisp Vietnamese typography.",
     "- Do not force a dense desktop dashboard. Prefer a simple vertical reading flow.",
     "",
     "BRANDING LOCK:",
     "- ABSOLUTELY NO LOGO.",
     "- NO COMPANY NAME MARK.",
-    "- NO COMPANY TAGLINE. One short professional Vietnamese attendance slogan is allowed and may vary between runs."
-    "- A short positive attendance-themed slogan is allowed; avoid long or unrelated motivational quotes."
-    "- Up to three very short nonnumeric attendance-themed cue badges are allowed; no invented factual data."
+    "- NO COMPANY TAGLINE. One short professional Vietnamese attendance slogan is allowed and may vary between runs.",
+    "- A short positive attendance-themed slogan is allowed; avoid long or unrelated motivational quotes.",
+    "- Up to three very short nonnumeric attendance-themed cue badges are allowed; no invented factual data.",
     "",
     "LANGUAGE LOCK:",
     "- All visible text must be Vietnamese.",

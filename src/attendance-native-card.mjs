@@ -369,7 +369,25 @@ export function buildNativeCard(source,directory) {
         id:'panel-workdays',
         isVisible:false,
         spacing:'Small',
-        items:s.employees.map((e,i)=>avatarChartRow(e,i,directory,'workday'))
+        items:[
+          text('CÔNG QUY ĐỔI · 1 công = 8 giờ',{size:'Small',weight:'Bolder',color:'Accent'}),
+          {
+            type:'Chart.HorizontalBar',
+            id:'workforce-workdays-chart',
+            title:'',
+            showTitle:false,
+            showLegend:false,
+            showBarValues:true,
+            displayMode:'AbsoluteNoAxis',
+            spacing:'Small',
+            data:s.employees.map((e,i)=>({
+              x:String(i+1).padStart(2,'0'),
+              y:workdaysFromMinutes(recordedMinutes(e)),
+              color:PALETTE[i % PALETTE.length]
+            })),
+            fallback:chartFallback()
+          }
+        ]
       },
 
       {
@@ -426,7 +444,8 @@ export function auditCard(card,source,directory) {
     row_modules:['avatar','microsoft_native_chart'],
     employee_row_module_count:2,
     shift_mini_chart_count:source.employees.length,
-    workday_mini_chart_count:source.employees.length,
+    workday_mini_chart_count:0,
+    workday_summary_chart_count:1,
     detail_interaction:'row_toggle_visibility',
     details_hidden_by_default:true,
     native_microsoft_charts_only:true,

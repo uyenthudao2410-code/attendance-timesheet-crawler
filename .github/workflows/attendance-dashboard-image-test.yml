@@ -1,0 +1,29 @@
+name: Attendance Dashboard Image Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/attendance-dashboard-image-test-trigger.json"
+
+permissions:
+  contents: read
+
+jobs:
+  post-dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Post dashboard image to Teams
+        env:
+          MS_TENANT_ID: ${{ secrets.MS_TENANT_ID }}
+          MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
+          MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
+          MS_REFRESH_TOKEN: ${{ secrets.MS_REFRESH_TOKEN }}
+        run: node scripts/post-dashboard-image-test.mjs

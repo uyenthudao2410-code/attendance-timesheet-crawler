@@ -80,11 +80,11 @@ async function fetchProfilePhotos(source,directory,delegatedHeaders) {
     if (!bytes.length || bytes.length>12000) throw new Error(`PROFILE_PHOTO_SIZE_INVALID_${bytes.length}`);
 
     const optimized=await sharp(bytes)
-      .resize(32,32,{fit:'cover',position:'centre'})
-      .jpeg({quality:58,mozjpeg:true,chromaSubsampling:'4:2:0'})
+      .resize(36,36,{fit:'cover',position:'centre'})
+      .jpeg({quality:60,mozjpeg:true,chromaSubsampling:'4:2:0'})
       .toBuffer();
 
-    if (!optimized.length || optimized.length>2200) {
+    if (!optimized.length || optimized.length>2600) {
       throw new Error(`PROFILE_PHOTO_OPTIMIZED_SIZE_INVALID_${optimized.length}`);
     }
 

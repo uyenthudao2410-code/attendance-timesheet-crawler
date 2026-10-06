@@ -605,7 +605,7 @@ export function auditCard(card,source,directory) {
     if (!v || typeof v!=='object') return;
 
     if (v.type) types.push(v.type);
-    if (v.id) {
+    if (v.type && v.id) {
       if (ids.has(v.id)) fail('Duplicate element id');
       ids.add(v.id);
     }

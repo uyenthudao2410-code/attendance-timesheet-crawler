@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { chromium } from 'playwright';
 
 const GRAPH='https://graph.microsoft.com/v1.0';
 const TEST_CHAT='19:0e02d613cded448892f27d74cff19d63@thread.v2';
@@ -30,71 +31,60 @@ function shortName(name){
   if(p.length<=2) return name;
   return p.slice(-2).join(' ');
 }
-function employeeChartUrl(){
-  const labels=trigger.employees.map(e=>shortName(e.name));
-  const values=trigger.employees.map(e=>Math.round(recordedMinutes(e)/6)/10);
-  const totals=trigger.employees.map(e=>String(e.total||'—'));
-  const colors=trigger.employees.map(barColor);
+function liveGapUrl(){
+  const params=new URLSearchParams();
+  params.set('ai_template','gpt');
+  params.set('type','bar');
+  params.set('labels',trigger.employees.map(e=>shortName(e.name)).join(','));
+  params.set('data',trigger.employees.map(e=>(Math.round(recordedMinutes(e)/6)/10).toFixed(1)).join(','));
+  params.set('colors',trigger.employees.map(barColor).join('|'));
+  return 'https://charts.livegap.com/v2/app.php?'+params.toString();
+}
 
-  const c={
-    type:'bar',
-    data:{
-      labels,
-      datasets:[{
-        data:values,
-        backgroundColor:colors,
-        borderRadius:10,
-        borderSkipped:false,
-        maxBarThickness:44
-      }]
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      layout:{padding:{top:12,right:14,bottom:4,left:6}},
-      scales:{
-        x:{
-          ticks:{color:'#334155',font:{size:12,weight:'bold'},maxRotation:0,minRotation:0,padding:8},
-          grid:{display:false},
-          border:{display:false}
-        },
-        y:{
-          beginAtZero:true,
-          suggestedMax:12,
-          ticks:{color:'#64748b',font:{size:11},stepSize:3},
-          title:{display:true,text:'Giờ',color:'#64748b',font:{size:12,weight:'bold'}},
-          grid:{color:'#edf1f2'},
-          border:{display:false}
-        }
-      },
-      plugins:{
-        title:{
-          display:true,
-          text:'TỔNG CÔNG THEO NHÂN SỰ',
-          color:'#0f172a',
-          font:{size:22,weight:'bold'},
-          padding:{top:0,bottom:4}
-        },
-        subtitle:{
-          display:true,
-          text:'Xanh: đã ghi nhận · Vàng: chưa chốt · Đỏ: cần đối soát',
-          color:'#64748b',
-          font:{size:12},
-          padding:{bottom:10}
-        },
-        legend:{display:false},
-        datalabels:{
-          anchor:'end',
-          align:'end',
-          offset:2,
-          color:'#0f172a',
-          font:{size:11,weight:'bold'},
-          formatter:(v,ctx)=>totals[ctx.dataIndex]
-        }
+async function renderLiveGapChart(){
+  const url=liveGapUrl();
+  const browser=await chromium.launch({headless:true});
+  try{
+    const page=await browser.newPage({
+      viewport:{width:1180,height:820},
+      deviceScaleFactor:2
+    });
+    await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000});
+    await page.waitForTimeout(6500);
+
+    const candidates=page.locator('canvas, svg');
+    const count=await candidates.count();
+    let best=null;
+    let bestArea=0;
+    for(let i=0;i<count;i++){
+      const el=candidates.nth(i);
+      if(!(await el.isVisible().catch(()=>false))) continue;
+      const box=await el.boundingBox().catch(()=>null);
+      if(!box) continue;
+      const area=box.width*box.height;
+      if(box.width>=420 && box.height>=220 && area>bestArea){
+        best=el;
+        bestArea=area;
       }
     }
-  };
-  return 'https://quickchart.io/chart?version=4&width=920&height=520&devicePixelRatio=2&backgroundColor=white&format=png&c='+encodeURIComponent(JSON.stringify(c));
+    if(!best) throw new Error('LIVEGAP_CHART_ELEMENT_NOT_FOUND');
+
+    const box=await best.boundingBox();
+    let target=best;
+    const parent=best.locator('xpath=..');
+    const pbox=await parent.boundingBox().catch(()=>null);
+    if(pbox && pbox.width<=box.width*1.25 && pbox.height<=box.height*1.35 && pbox.width>=box.width){
+      target=parent;
+    }
+
+    const png=await target.screenshot({type:'png'});
+    if(!png || png.length<5000) throw new Error('LIVEGAP_CHART_SCREENSHOT_TOO_SMALL');
+    console.log('LIVEGAP_CHART_URL='+url);
+    console.log('LIVEGAP_CHART_BYTES='+png.length);
+    return {png,url};
+  } finally {
+    await browser.close();
+  }
 }
 
 function kpi(label,value,color){
@@ -107,7 +97,6 @@ function kpi(label,value,color){
     ]
   };
 }
-
 function styleFor(e){
   const s=String(e.status||'');
   if(s.includes('Cần đối soát')) return 'attention';
@@ -120,14 +109,16 @@ function colorFor(e){
   if(s.includes('Chưa chốt')) return 'Warning';
   return 'Good';
 }
-
-function employeeCard(e,i){
+function compactShift(text){
+  return String(text||'—').replace(/ \((\d+)h(\d{2})\)/g,' · $1h$2');
+}
+function employeeRow(e,i){
   const style=styleFor(e);
   const color=colorFor(e);
   return {
     type:'Container',
     style,
-    spacing:i===0?'Small':'Medium',
+    spacing:i===0?'Small':'Small',
     items:[
       {
         type:'ColumnSet',
@@ -135,39 +126,27 @@ function employeeCard(e,i){
         columns:[
           {
             type:'Column',
-            width:'stretch',
-            items:[
-              {type:'TextBlock',text:`${String(i+1).padStart(2,'0')}  ${e.name}`,size:'Small',weight:'Bolder',wrap:true,spacing:'None'}
-            ]
+            width:2.3,
+            verticalContentAlignment:'Center',
+            items:[{type:'TextBlock',text:`${String(i+1).padStart(2,'0')}  ${e.name}`,size:'Small',weight:'Bolder',wrap:true,spacing:'None'}]
           },
           {
             type:'Column',
-            width:'auto',
-            items:[
-              {type:'TextBlock',text:`${e.total} · ${e.status}`,size:'Small',weight:'Bolder',color,horizontalAlignment:'Right',wrap:true,spacing:'None'}
-            ]
-          }
-        ]
-      },
-      {
-        type:'ColumnSet',
-        spacing:'Small',
-        columns:[
-          {
-            type:'Column',
-            width:'stretch',
-            items:[
-              {type:'TextBlock',text:'SÁNG',size:'Small',weight:'Bolder',color:'Accent',spacing:'None'},
-              {type:'TextBlock',text:e.morning,size:'Small',wrap:true,spacing:'None'}
-            ]
+            width:2.5,
+            verticalContentAlignment:'Center',
+            items:[{type:'TextBlock',text:`Sáng  ${compactShift(e.morning)}`,size:'Small',wrap:true,spacing:'None'}]
           },
           {
             type:'Column',
-            width:'stretch',
-            items:[
-              {type:'TextBlock',text:'CHIỀU',size:'Small',weight:'Bolder',color:'Accent',spacing:'None'},
-              {type:'TextBlock',text:e.afternoon,size:'Small',wrap:true,spacing:'None'}
-            ]
+            width:3.2,
+            verticalContentAlignment:'Center',
+            items:[{type:'TextBlock',text:`Chiều  ${compactShift(e.afternoon)}`,size:'Small',wrap:true,spacing:'None'}]
+          },
+          {
+            type:'Column',
+            width:2.0,
+            verticalContentAlignment:'Center',
+            items:[{type:'TextBlock',text:`${e.total} · ${e.status}`,size:'Small',weight:'Bolder',color,horizontalAlignment:'Right',wrap:true,spacing:'None'}]
           }
         ]
       }
@@ -175,7 +154,7 @@ function employeeCard(e,i){
   };
 }
 
-function buildCard(){
+function buildCard(livegapUrl){
   const k=trigger.kpis;
   return {
     type:'AdaptiveCard',
@@ -199,13 +178,10 @@ function buildCard(){
             type:'Column',
             width:'auto',
             verticalContentAlignment:'Center',
-            items:[
-              {type:'TextBlock',text:`Cập nhật ${trigger.updated}`,size:'Small',isSubtle:true,horizontalAlignment:'Right'}
-            ]
+            items:[{type:'TextBlock',text:`Cập nhật ${trigger.updated}`,size:'Small',isSubtle:true,horizontalAlignment:'Right'}]
           }
         ]
       },
-
       {
         type:'Container',
         style:'emphasis',
@@ -223,7 +199,6 @@ function buildCard(){
           }
         ]
       },
-
       {
         type:'ColumnSet',
         spacing:'Small',
@@ -246,36 +221,32 @@ function buildCard(){
           }
         ]
       },
-
       {
         type:'Image',
-        url:employeeChartUrl(),
+        url:'../hostedContents/1/$value',
         size:'Stretch',
-        altText:'Biểu đồ cột dọc tổng công theo nhân sự',
-        spacing:'Medium'
+        altText:'Biểu đồ LiveGap tổng công theo nhân sự',
+        spacing:'Medium',
+        selectAction:{type:'Action.OpenUrl',url:livegapUrl}
       },
-
       {
-        type:'TextBlock',
-        text:'CHI TIẾT GIỜ VÀO / RA',
-        size:'Small',
-        weight:'Bolder',
-        color:'Accent',
+        type:'ColumnSet',
+        spacing:'Small',
         separator:true,
-        spacing:'Medium'
+        columns:[
+          {type:'Column',width:2.3,items:[{type:'TextBlock',text:'NHÂN SỰ',size:'Small',weight:'Bolder',color:'Accent'}]},
+          {type:'Column',width:2.5,items:[{type:'TextBlock',text:'CA SÁNG',size:'Small',weight:'Bolder',color:'Accent'}]},
+          {type:'Column',width:3.2,items:[{type:'TextBlock',text:'CA CHIỀU',size:'Small',weight:'Bolder',color:'Accent'}]},
+          {type:'Column',width:2.0,items:[{type:'TextBlock',text:'TỔNG / TRẠNG THÁI',size:'Small',weight:'Bolder',color:'Accent',horizontalAlignment:'Right',wrap:true}]}
+        ]
       },
-
-      ...trigger.employees.map(employeeCard),
-
+      ...trigger.employees.map(employeeRow),
       {
         type:'Container',
         style:'attention',
         spacing:'Medium',
-        items:[
-          {type:'TextBlock',text:`⚠ Cần chú ý: ${trigger.attention_summary}`,size:'Small',weight:'Bolder',color:'Attention',wrap:true}
-        ]
+        items:[{type:'TextBlock',text:`⚠ Cần chú ý: ${trigger.attention_summary}`,size:'Small',weight:'Bolder',color:'Attention',wrap:true}]
       },
-
       {
         type:'TextBlock',
         text:'Số liệu phục vụ đối soát nội bộ · Sai lệch vui lòng phản hồi P.HC-NS.',
@@ -290,6 +261,8 @@ function buildCard(){
 }
 
 async function main(){
+  const {png,url:chartUrl}=await renderLiveGapChart();
+
   const form=new URLSearchParams({
     client_id:required('MS_CLIENT_ID'),
     grant_type:'refresh_token',
@@ -308,16 +281,21 @@ async function main(){
   const token=(await auth.json()).access_token;
   if(!token)throw new Error('Missing access token');
 
-  const attachmentId='attendance-card-mobile-v7';
+  const attachmentId='attendance-card-mobile-v8';
   const payload={
     body:{contentType:'html',content:`<attachment id="${attachmentId}"></attachment>`},
     attachments:[{
       id:attachmentId,
       contentType:'application/vnd.microsoft.card.adaptive',
       contentUrl:null,
-      content:JSON.stringify(buildCard()),
+      content:JSON.stringify(buildCard(chartUrl)),
       name:null,
       thumbnailUrl:null
+    }],
+    hostedContents:[{
+      '@microsoft.graph.temporaryId':'1',
+      contentBytes:png.toString('base64'),
+      contentType:'image/png'
     }]
   };
 
@@ -326,14 +304,14 @@ async function main(){
     headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
     body:JSON.stringify(payload)
   });
-  const text=await response.text();
-  if(!response.ok)throw new Error(`TEAMS_CARD_HTTP_${response.status}: ${text}`);
-  const body=JSON.parse(text);
+  const bodyText=await response.text();
+  if(!response.ok)throw new Error(`TEAMS_CARD_HTTP_${response.status}: ${bodyText}`);
+  const body=JSON.parse(bodyText);
 
   console.log('ATTENDANCE_ADAPTIVE_CARD_TEST=SUCCESS');
-  console.log('ATTENDANCE_ADAPTIVE_CARD_LAYOUT=MOBILE_V7');
+  console.log('ATTENDANCE_ADAPTIVE_CARD_LAYOUT=MOBILE_V8_LIVEGAP');
   console.log('ATTENDANCE_ADAPTIVE_CARD_MESSAGE_ID='+body.id);
-  console.log('QUICKCHART_MODE=REMOTE_IMAGE_URL');
+  console.log('LIVEGAP_MODE=RENDERED_HOSTED_CONTENT');
 }
 
 main().catch(e=>{console.error(String(e.message||e));process.exitCode=1;});

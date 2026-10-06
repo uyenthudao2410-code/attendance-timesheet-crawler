@@ -242,6 +242,56 @@ jobs:
       - name: Validate same-request fresh snapshot before visual generation
         run: node scripts/validate-publication-freshness.mjs report
 
+      - name: Resolve V24 native auto-publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          auto=false
+          case "${ATTENDANCE_REQUEST_ID}" in
+            schedule-*|watchdog-*) auto=true ;;
+          esac
+          echo "ATTENDANCE_NATIVE_AUTO_PUBLISH=$auto" >> "$GITHUB_ENV"
+          echo "V24 native auto-publication: $auto request_id=${ATTENDANCE_REQUEST_ID}"
+
+      - name: Install V24 profile-photo optimizer
+        if: ${{ env.ATTENDANCE_NATIVE_AUTO_PUBLISH == 'true' }}
+        run: npm install --no-save sharp@0.34.5
+
+      - name: Wait for scheduled publication minute
+        if: ${{ env.ATTENDANCE_NATIVE_AUTO_PUBLISH == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          now="$(date +%s)"
+          local_day="$(TZ=Asia/Ho_Chi_Minh date +%F)"
+          case "${ATTENDANCE_RUN_SLOT}" in
+            daily_2105) publish_hm="06:50" ;;
+            morning_1230) publish_hm="13:50" ;;
+            *) echo "Unsupported publication slot" >&2; exit 1 ;;
+          esac
+          target="$(TZ=Asia/Ho_Chi_Minh date -d "$local_day $publish_hm:00" +%s)"
+          wait_seconds=$((target-now))
+          if [ "$wait_seconds" -gt 1200 ]; then
+            echo "Publication target unexpectedly more than 20 minutes away" >&2
+            exit 1
+          fi
+          if [ "$wait_seconds" -gt 0 ]; then
+            echo "Waiting ${wait_seconds}s until ${publish_hm} Asia/Ho_Chi_Minh"
+            sleep "$wait_seconds"
+          else
+            echo "Publication minute already reached; publishing immediately"
+          fi
+
+      - name: Publish V24 Adaptive Card to Teams
+        if: ${{ env.ATTENDANCE_NATIVE_AUTO_PUBLISH == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MS_TENANT_ID: ${{ secrets.MS_TENANT_ID }}
+          MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
+          MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
+          MS_REFRESH_TOKEN: ${{ secrets.MS_REFRESH_TOKEN }}
+        run: node scripts/post-native-attendance-production.mjs
+
       - name: Build approved AI visual request bundle
         run: node scripts/build-ai-visual-request.mjs
 

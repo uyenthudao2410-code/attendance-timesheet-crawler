@@ -402,7 +402,7 @@ export function buildNativeCard(source, shiftChartUrl) {
     lang:'vi',
     msteams:{width:'Full'},
     body:[
-      text('TEST · NATIVE V11 · MOBILE FIRST',{size:'Small',color:'Accent',weight:'Bolder'}),
+      text('TEST · HYBRID V12 · MOBILE FIRST',{size:'Small',color:'Accent',weight:'Bolder'}),
       text('BÁO CÁO CHẤM CÔNG — CẢ NGÀY',{size:'Large',weight:'Bolder',spacing:'Small'}),
       text(s.date_label + ' · Cập nhật ' + s.updated,{size:'Small',isSubtle:true,spacing:'Small'}),
 

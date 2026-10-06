@@ -126,24 +126,48 @@ async function main() {
   }
 
   stage='microsoft_auth';
-  const form=new URLSearchParams({
-    client_id:required('MS_CLIENT_ID'),
-    grant_type:'refresh_token',
-    refresh_token:required('MS_REFRESH_TOKEN'),
-    scope:'offline_access https://graph.microsoft.com/ChatMessage.Send https://graph.microsoft.com/User.Read'
-  });
   const secret=String(process.env.MS_CLIENT_SECRET || '').trim();
-  if (secret) form.set('client_secret',secret);
+  const scopeCandidates=[
+    'offline_access https://graph.microsoft.com/ChatMessage.Send https://graph.microsoft.com/User.Read https://graph.microsoft.com/ProfilePhoto.Read.All',
+    'offline_access https://graph.microsoft.com/ChatMessage.Send https://graph.microsoft.com/User.Read https://graph.microsoft.com/User.ReadBasic.All',
+    'offline_access https://graph.microsoft.com/ChatMessage.Send https://graph.microsoft.com/User.Read'
+  ];
 
-  const auth=await request(
-    `https://login.microsoftonline.com/${encodeURIComponent(required('MS_TENANT_ID'))}/oauth2/v2.0/token`,
-    {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form},
-    {retrySafe:true}
-  );
-  if (!auth.ok) throw new Error(`TOKEN_REFRESH_HTTP_${auth.status}`);
+  let token='';
+  let grantedScopeMode='';
+  for (const scope of scopeCandidates) {
+    const form=new URLSearchParams({
+      client_id:required('MS_CLIENT_ID'),
+      grant_type:'refresh_token',
+      refresh_token:required('MS_REFRESH_TOKEN'),
+      scope
+    });
+    if (secret) form.set('client_secret',secret);
 
-  const token=String((await auth.json()).access_token || '');
+    const auth=await request(
+      `https://login.microsoftonline.com/${encodeURIComponent(required('MS_TENANT_ID'))}/oauth2/v2.0/token`,
+      {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form},
+      {retrySafe:true}
+    );
+
+    if (!auth.ok) {
+      console.log(`ATTENDANCE_AUTH_SCOPE_REJECTED=${scope.split(' ').at(-1)}:HTTP_${auth.status}`);
+      continue;
+    }
+
+    const authBody=await auth.json();
+    token=String(authBody.access_token || '');
+    if (!token) continue;
+    grantedScopeMode=scope.includes('ProfilePhoto.Read.All')
+      ? 'ProfilePhoto.Read.All'
+      : scope.includes('User.ReadBasic.All')
+        ? 'User.ReadBasic.All'
+        : 'User.Read';
+    console.log(`ATTENDANCE_AUTH_SCOPE_MODE=${grantedScopeMode}`);
+    break;
+  }
   if (!token) throw new Error('ACCESS_TOKEN_MISSING');
+
   const headers={Authorization:`Bearer ${token}`};
 
   const meResponse=await request(`${GRAPH}/me?$select=userPrincipalName,mail`,{headers},{retrySafe:true});

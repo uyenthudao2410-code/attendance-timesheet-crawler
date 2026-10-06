@@ -25,11 +25,17 @@ function barColor(e){
   if(s.includes('Chưa chốt')) return '#f59e0b';
   return '#16a34a';
 }
+function shortName(name){
+  const p=String(name).trim().split(/\s+/);
+  if(p.length<=2) return name;
+  return p.slice(-2).join(' ');
+}
 function employeeChartUrl(){
-  const labels=trigger.employees.map(e=>e.name);
+  const labels=trigger.employees.map(e=>shortName(e.name));
   const values=trigger.employees.map(e=>Math.round(recordedMinutes(e)/6)/10);
   const totals=trigger.employees.map(e=>String(e.total||'—'));
   const colors=trigger.employees.map(barColor);
+
   const c={
     type:'bar',
     data:{
@@ -39,35 +45,35 @@ function employeeChartUrl(){
         backgroundColor:colors,
         borderRadius:10,
         borderSkipped:false,
-        barThickness:20
+        maxBarThickness:44
       }]
     },
     options:{
-      indexAxis:'y',
       responsive:true,
       maintainAspectRatio:false,
-      layout:{padding:{top:8,right:76,bottom:6,left:6}},
+      layout:{padding:{top:12,right:14,bottom:4,left:6}},
       scales:{
         x:{
-          beginAtZero:true,
-          suggestedMax:12,
-          ticks:{display:false},
-          grid:{color:'#eef2f3',drawTicks:false},
+          ticks:{color:'#334155',font:{size:12,weight:'bold'},maxRotation:0,minRotation:0,padding:8},
+          grid:{display:false},
           border:{display:false}
         },
         y:{
-          ticks:{color:'#0f172a',font:{size:14,weight:'bold'},padding:8},
-          grid:{display:false},
+          beginAtZero:true,
+          suggestedMax:12,
+          ticks:{color:'#64748b',font:{size:11},stepSize:3},
+          title:{display:true,text:'Giờ',color:'#64748b',font:{size:12,weight:'bold'}},
+          grid:{color:'#edf1f2'},
           border:{display:false}
         }
       },
       plugins:{
         title:{
           display:true,
-          text:'THỜI LƯỢNG GHI NHẬN THEO NHÂN SỰ',
+          text:'TỔNG CÔNG THEO NHÂN SỰ',
           color:'#0f172a',
           font:{size:22,weight:'bold'},
-          padding:{top:2,bottom:4}
+          padding:{top:0,bottom:4}
         },
         subtitle:{
           display:true,
@@ -79,17 +85,16 @@ function employeeChartUrl(){
         legend:{display:false},
         datalabels:{
           anchor:'end',
-          align:'right',
-          offset:4,
-          clamp:true,
+          align:'end',
+          offset:2,
           color:'#0f172a',
-          font:{size:12,weight:'bold'},
+          font:{size:11,weight:'bold'},
           formatter:(v,ctx)=>totals[ctx.dataIndex]
         }
       }
     }
   };
-  return 'https://quickchart.io/chart?version=4&width=900&height=520&devicePixelRatio=2&backgroundColor=white&format=png&c='+encodeURIComponent(JSON.stringify(c));
+  return 'https://quickchart.io/chart?version=4&width=920&height=520&devicePixelRatio=2&backgroundColor=white&format=png&c='+encodeURIComponent(JSON.stringify(c));
 }
 
 function kpi(label,value,color){
@@ -103,19 +108,26 @@ function kpi(label,value,color){
   };
 }
 
-function detailColor(e){
+function styleFor(e){
+  const s=String(e.status||'');
+  if(s.includes('Cần đối soát')) return 'attention';
+  if(s.includes('Chưa chốt')) return 'warning';
+  return 'good';
+}
+function colorFor(e){
   const s=String(e.status||'');
   if(s.includes('Cần đối soát')) return 'Attention';
   if(s.includes('Chưa chốt')) return 'Warning';
   return 'Good';
 }
 
-function employeeRow(e,i){
-  const c=detailColor(e);
+function employeeCard(e,i){
+  const style=styleFor(e);
+  const color=colorFor(e);
   return {
     type:'Container',
-    separator:i>0,
-    spacing:'Small',
+    style,
+    spacing:i===0?'Small':'Medium',
     items:[
       {
         type:'ColumnSet',
@@ -125,25 +137,39 @@ function employeeRow(e,i){
             type:'Column',
             width:'stretch',
             items:[
-              {type:'TextBlock',text:`${String(i+1).padStart(2,'0')}  **${e.name}**`,size:'Small',wrap:true,spacing:'None'}
+              {type:'TextBlock',text:`${String(i+1).padStart(2,'0')}  ${e.name}`,size:'Small',weight:'Bolder',wrap:true,spacing:'None'}
             ]
           },
           {
             type:'Column',
             width:'auto',
             items:[
-              {type:'TextBlock',text:`**${e.total}** · ${e.status}`,size:'Small',weight:'Bolder',color:c,horizontalAlignment:'Right',wrap:true,spacing:'None'}
+              {type:'TextBlock',text:`${e.total} · ${e.status}`,size:'Small',weight:'Bolder',color,horizontalAlignment:'Right',wrap:true,spacing:'None'}
             ]
           }
         ]
       },
       {
-        type:'TextBlock',
-        text:`Sáng  ${e.morning}    |    Chiều  ${e.afternoon}`,
-        size:'Small',
-        wrap:true,
-        isSubtle:true,
-        spacing:'None'
+        type:'ColumnSet',
+        spacing:'Small',
+        columns:[
+          {
+            type:'Column',
+            width:'stretch',
+            items:[
+              {type:'TextBlock',text:'SÁNG',size:'Small',weight:'Bolder',color:'Accent',spacing:'None'},
+              {type:'TextBlock',text:e.morning,size:'Small',wrap:true,spacing:'None'}
+            ]
+          },
+          {
+            type:'Column',
+            width:'stretch',
+            items:[
+              {type:'TextBlock',text:'CHIỀU',size:'Small',weight:'Bolder',color:'Accent',spacing:'None'},
+              {type:'TextBlock',text:e.afternoon,size:'Small',wrap:true,spacing:'None'}
+            ]
+          }
+        ]
       }
     ]
   };
@@ -225,7 +251,7 @@ function buildCard(){
         type:'Image',
         url:employeeChartUrl(),
         size:'Stretch',
-        altText:'Biểu đồ thời lượng ghi nhận theo 8 nhân sự',
+        altText:'Biểu đồ cột dọc tổng công theo nhân sự',
         spacing:'Medium'
       },
 
@@ -239,12 +265,12 @@ function buildCard(){
         spacing:'Medium'
       },
 
-      ...trigger.employees.map(employeeRow),
+      ...trigger.employees.map(employeeCard),
 
       {
         type:'Container',
         style:'attention',
-        spacing:'Small',
+        spacing:'Medium',
         items:[
           {type:'TextBlock',text:`⚠ Cần chú ý: ${trigger.attention_summary}`,size:'Small',weight:'Bolder',color:'Attention',wrap:true}
         ]
@@ -279,11 +305,10 @@ async function main(){
     body:form
   });
   if(!auth.ok)throw new Error('TOKEN_REFRESH_HTTP_'+auth.status);
-
   const token=(await auth.json()).access_token;
   if(!token)throw new Error('Missing access token');
 
-  const attachmentId='attendance-card-mobile-v6';
+  const attachmentId='attendance-card-mobile-v7';
   const payload={
     body:{contentType:'html',content:`<attachment id="${attachmentId}"></attachment>`},
     attachments:[{
@@ -306,7 +331,7 @@ async function main(){
   const body=JSON.parse(text);
 
   console.log('ATTENDANCE_ADAPTIVE_CARD_TEST=SUCCESS');
-  console.log('ATTENDANCE_ADAPTIVE_CARD_LAYOUT=MOBILE_V6');
+  console.log('ATTENDANCE_ADAPTIVE_CARD_LAYOUT=MOBILE_V7');
   console.log('ATTENDANCE_ADAPTIVE_CARD_MESSAGE_ID='+body.id);
   console.log('QUICKCHART_MODE=REMOTE_IMAGE_URL');
 }

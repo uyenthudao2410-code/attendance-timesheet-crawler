@@ -159,7 +159,7 @@ test('V20 contract is native, future-colored and external-resource-free',()=>{
   const card=buildNativeCard(input,directory);
   const qa=auditCard(card,input,directory);
 
-  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V20_FUTURE_AVATAR_DETAILS');
+  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V20_AVATAR_ONLY_BRIGHT');
   assert.equal(qa.data_gate,'passed');
   assert.deepEqual(qa.row_modules,['avatar','microsoft_native_chart']);
   assert.equal(qa.employee_row_module_count,2);

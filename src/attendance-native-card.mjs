@@ -15,7 +15,7 @@ export function hoursFromMinutes(value) {
   return Number((Number(value) / 60).toFixed(2));
 }
 export function chartHours(value) {
-  return Number((Number(value) / 60).toFixed(1));
+  return Math.round(Number(value) / 6) / 10;
 }
 export function sessionMinutes(value) {
   if (value === '—') return [];

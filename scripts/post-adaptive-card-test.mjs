@@ -52,30 +52,58 @@ async function renderLiveGapChart(){
     await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000});
     await page.waitForTimeout(6500);
 
-    const candidates=page.locator('canvas, svg');
-    const count=await candidates.count();
-    let best=null;
+    let target=null;
     let bestArea=0;
-    for(let i=0;i<count;i++){
-      const el=candidates.nth(i);
-      if(!(await el.isVisible().catch(()=>false))) continue;
-      const box=await el.boundingBox().catch(()=>null);
-      if(!box) continue;
-      const area=box.width*box.height;
-      if(box.width>=420 && box.height>=220 && area>bestArea){
-        best=el;
-        bestArea=area;
+
+    for(const frame of page.frames()){
+      const candidates=frame.locator('canvas, svg');
+      const count=await candidates.count().catch(()=>0);
+      for(let i=0;i<count;i++){
+        const el=candidates.nth(i);
+        if(!(await el.isVisible().catch(()=>false))) continue;
+        const box=await el.boundingBox().catch(()=>null);
+        if(!box) continue;
+        const area=box.width*box.height;
+        if(box.width>=360 && box.height>=180 && area>bestArea){
+          target=el;
+          bestArea=area;
+        }
       }
     }
-    if(!best) throw new Error('LIVEGAP_CHART_ELEMENT_NOT_FOUND');
 
-    const box=await best.boundingBox();
-    let target=best;
-    const parent=best.locator('xpath=..');
-    const pbox=await parent.boundingBox().catch(()=>null);
-    if(pbox && pbox.width<=box.width*1.25 && pbox.height<=box.height*1.35 && pbox.width>=box.width){
-      target=parent;
+    if(!target){
+      const iframes=page.locator('iframe');
+      const iframeCount=await iframes.count().catch(()=>0);
+      for(let i=0;i<iframeCount;i++){
+        const el=iframes.nth(i);
+        if(!(await el.isVisible().catch(()=>false))) continue;
+        const box=await el.boundingBox().catch(()=>null);
+        if(!box) continue;
+        const area=box.width*box.height;
+        if(box.width>=360 && box.height>=180 && area>bestArea){
+          target=el;
+          bestArea=area;
+        }
+      }
     }
+
+    if(!target){
+      const chartish=page.locator('[id*="chart" i], [class*="chart" i]');
+      const count=await chartish.count().catch(()=>0);
+      for(let i=0;i<count;i++){
+        const el=chartish.nth(i);
+        if(!(await el.isVisible().catch(()=>false))) continue;
+        const box=await el.boundingBox().catch(()=>null);
+        if(!box) continue;
+        const area=box.width*box.height;
+        if(box.width>=360 && box.height>=180 && area>bestArea){
+          target=el;
+          bestArea=area;
+        }
+      }
+    }
+
+    if(!target) throw new Error('LIVEGAP_CHART_ELEMENT_NOT_FOUND');
 
     const png=await target.screenshot({type:'png'});
     if(!png || png.length<5000) throw new Error('LIVEGAP_CHART_SCREENSHOT_TOO_SMALL');

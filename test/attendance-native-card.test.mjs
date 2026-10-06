@@ -52,26 +52,25 @@ test('recorded time preserves all known sessions and ignores open-ended duration
   assert.deepEqual(sessionMinutes(input.employees[6].afternoon),[]);
 });
 
-test('stacked shift chart payload overlays employee labels and keeps morning/afternoon on one bar',()=>{
+test('stacked shift chart uses Chart.js v4 and overlays name plus shift duration inside bars',()=>{
   const p=shiftChartCreatePayload(input);
+  assert.equal(p.version,'4');
   assert.equal(p.width,1100);
   assert.equal(p.height,760);
   assert.equal(p.devicePixelRatio,2);
-  assert.equal(p.chart.type,'bar');
-  assert.equal(p.chart.options.indexAxis,'y');
-  assert.equal(p.chart.options.scales.x.stacked,true);
-  assert.equal(p.chart.options.scales.y.stacked,true);
-  assert.equal(p.chart.options.scales.y.ticks.mirror,true);
-  assert.equal(p.chart.options.plugins.datalabels.display,true);
-  assert.equal(p.chart.data.datasets.length,2);
-  assert.deepEqual(p.chart.data.datasets.map(d=>d.label),['Ca sáng','Ca chiều']);
-  assert.equal(p.chart.data.datasets[0].data[0].y,'01 · Văn Mạnh');
-  assert.equal(p.chart.data.datasets[0].data[0].label,'S 4h50');
-  assert.equal(p.chart.data.datasets[1].data[0].label,'C 6h07');
-  assert.equal(p.chart.data.datasets[0].data[2].label,'');
-  assert.equal(p.chart.data.datasets[1].data[2].label,'C 4h59');
-  assert.equal(p.chart.data.datasets[1].data[5].label,'C 4h46');
-  assert.equal(p.chart.data.datasets[1].data[6].label,'');
+  assert.equal(typeof p.chart,'string');
+  assert.ok(p.chart.includes("indexAxis:'y'"));
+  assert.ok(p.chart.includes("stacked:true"));
+  assert.ok(p.chart.includes("ticks:{display:false}"));
+  assert.ok(p.chart.includes("labels:{"));
+  assert.ok(p.chart.includes("name:{"));
+  assert.ok(p.chart.includes("shift:{"));
+  assert.ok(p.chart.includes("return [ctx.dataset._names[i],shiftLabel]"));
+  assert.ok(p.chart.includes('"01 · Văn Mạnh"'));
+  assert.ok(p.chart.includes('"S 4h50"'));
+  assert.ok(p.chart.includes('"C 6h07"'));
+  assert.ok(p.chart.includes('"C 4h59"'));
+  assert.ok(p.chart.includes('"C 4h46"'));
 });
 
 test('native workday alternate view remains available',()=>{

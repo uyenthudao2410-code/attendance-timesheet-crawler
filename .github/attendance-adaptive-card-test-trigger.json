@@ -79,5 +79,6 @@
       "attention": false
     }
   ],
-  "requested_at": "2026-10-06T11:43:00+07:00"
+  "requested_at": "2026-10-06T12:25:00+07:00",
+  "layout_version": "MOBILE_V2"
 }

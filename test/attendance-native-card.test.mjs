@@ -114,7 +114,7 @@ test('alternate workday view remains a compact native chart',()=>{
   assert.equal(chart.showBarValues,true);
 });
 
-test('detail panel is hidden and each employee becomes a readable two-row micro-card',()=>{
+test('detail panel is hidden and each employee becomes a readable two-line micro-card',()=>{
   const card=buildNativeCard(input,directory);
   const panel=card.body.find(n=>n.id==='attendance-details-panel');
   assert.equal(panel.isVisible,false);
@@ -123,13 +123,13 @@ test('detail panel is hidden and each employee becomes a readable two-row micro-
     assert.equal(row.id,'detail-row-'+(i+1));
     assert.equal(row.type,'Container');
     assert.equal(row.items.length,2);
-    assert.equal(row.items[0].type,'ColumnSet');
-    assert.equal(row.items[1].type,'ColumnSet');
+    assert.equal(row.items[0].type,'RichTextBlock');
+    assert.equal(row.items[1].type,'RichTextBlock');
     const json=JSON.stringify(row);
     assert.ok(json.includes(input.employees[i].name));
-    assert.ok(json.includes('SÁNG'));
-    assert.ok(json.includes('CHIỀU'));
     assert.ok(json.includes('công'));
+    assert.ok(json.includes('S  '));
+    assert.ok(json.includes('C  '));
   });
 });
 
@@ -139,10 +139,12 @@ test('first detail micro-card separates name-summary from morning-afternoon data
   const first=rows[0];
   const top=first.items[0];
   const shifts=first.items[1];
-  assert.equal(top.columns[0].items[0].text,'01 · Điêu Văn Mạnh');
-  assert.ok(top.columns[1].items[0].text.includes('10h57 · 1,37 công · Chưa chốt'));
-  assert.ok(JSON.stringify(shifts.columns[0]).includes('08:37–13:27 · 4h50'));
-  assert.ok(JSON.stringify(shifts.columns[1]).includes('13:27–19:34 · 6h07'));
+  assert.equal(top.type,'RichTextBlock');
+  assert.equal(shifts.type,'RichTextBlock');
+  assert.ok(JSON.stringify(top).includes('01 · Điêu Văn Mạnh'));
+  assert.ok(JSON.stringify(top).includes('10h57 · 1,37 công · Chưa chốt'));
+  assert.ok(JSON.stringify(shifts).includes('08:37–13:27 · 4h50'));
+  assert.ok(JSON.stringify(shifts).includes('13:27–19:34 · 6h07'));
 });
 
 test('there is no separate quick summary or bulk PersonaSet',()=>{

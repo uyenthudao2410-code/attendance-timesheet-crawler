@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V9_ICONS_OVER8';
+export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V10_WORKDAYS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
 const DATA_KEYS = ['target_date', 'date_label', 'updated', 'kpis', 'total_hours', 'rate', 'attention_summary', 'employees'];
 const fail = message => { throw new Error('NATIVE_CARD_GATE: ' + message); };
@@ -16,6 +16,16 @@ export function hoursFromMinutes(value) {
 }
 export function chartHours(value) {
   return Math.round(Number(value) / 6) / 10;
+}
+export function workdaysFromMinutes(value) {
+  return Math.round((Number(value) / 480) * 100) / 100;
+}
+export function formatRecordedMinutes(value) {
+  const minutes = Number(value);
+  return Math.floor(minutes / 60) + 'h' + String(minutes % 60).padStart(2,'0');
+}
+export function formatWorkdays(value) {
+  return workdaysFromMinutes(value).toFixed(2).replace('.',',') + ' công';
 }
 export function sessionMinutes(value) {
   if (value === '—') return [];
@@ -56,10 +66,10 @@ export function validateSource(s) {
 const text = (value, options = {}) => ({type:'TextBlock', text:value, wrap:true, spacing:'None', ...options});
 const inline = (value, options = {}) => ({type:'TextRun', text:value, ...options});
 const rich = (inlines, options = {}) => ({type:'RichTextBlock', inlines, spacing:'None', ...options});
-const statusColor = e => needsReconciliation(e) ? 'Attention'
-  : e.status === 'Chưa chốt' ? 'Warning' : e.status === 'Đã ghi nhận' ? 'Good' : 'Default';
-const rowStyle = e => needsReconciliation(e) ? 'attention'
-  : e.status === 'Chưa chốt' ? 'warning' : 'default';
+const displayStatus = e => e.status === 'Cần đối soát' ? 'Chưa chốt' : e.status;
+const statusColor = e => displayStatus(e) === 'Chưa chốt' ? 'Warning'
+  : displayStatus(e) === 'Đã ghi nhận' ? 'Good' : 'Default';
+const rowStyle = e => displayStatus(e) === 'Chưa chốt' ? 'warning' : 'default';
 const chartFallback = () => text('Biểu đồ chưa được hỗ trợ; giờ vào/ra vẫn hiển thị đầy đủ.',
   {size:'Small',isSubtle:true});
 const sectionTitle = (iconName, label) => ({
@@ -92,29 +102,18 @@ export function employeeSegmentsHours(e) {
 export function recordedMinutes(e) {
   return [...sessionMinutes(e.morning), ...sessionMinutes(e.afternoon)].reduce((a,b)=>a+b,0);
 }
-export function needsReconciliation(e) {
-  return recordedMinutes(e) > 480;
-}
-export function reconciliationSummary(s) {
-  return s.employees
-    .filter(needsReconciliation)
-    .map(e => e.name + ' · ' + Math.floor(recordedMinutes(e)/60) + 'h' + String(recordedMinutes(e)%60).padStart(2,'0'))
-    .join(' · ');
-}
 export function chartName(name) {
   const parts = String(name).trim().split(/\s+/);
   return parts.length <= 2 ? name : parts.slice(-2).join(' ');
 }
 export function statusChartColor(e) {
-  if (needsReconciliation(e)) return 'attention';
-  if (e.status !== 'Đã ghi nhận') return 'warning';
-  return 'good';
+  return displayStatus(e) === 'Đã ghi nhận' ? 'categoricalBlue' : 'categoricalMarigold';
 }
 export function workforceRecordedHoursChart(s) {
   return {
     type:'Chart.HorizontalBar',
-    id:'workforce-recorded-hours',
-    title:'Giờ công theo nhân sự',
+    id:'workforce-workdays-chart',
+    title:'Công quy đổi theo nhân sự',
     showTitle:false,
     showLegend:false,
     showBarValues:true,
@@ -122,7 +121,7 @@ export function workforceRecordedHoursChart(s) {
     spacing:'Small',
     data:s.employees.map((e,i)=>({
       x:String(i+1).padStart(2,'0') + ' · ' + chartName(e.name),
-      y:chartHours(recordedMinutes(e)),
+      y:workdaysFromMinutes(recordedMinutes(e)),
       color:statusChartColor(e)
     })),
     fallback:chartFallback()
@@ -134,25 +133,23 @@ export function aggregateShiftMixChart(s) {
   return {
     type:'Chart.HorizontalBar.Stacked',
     id:'shift-mix',
-    title:'Phân bổ giờ theo ca',
+    title:'Phân bổ công theo ca',
     showTitle:false,
     showLegend:true,
     showBarValues:true,
     spacing:'Small',
     data:[{
-      title:'Tổng giờ phiên',
+      title:'Công quy đổi',
       data:[
-        {legend:'Ca sáng',value:chartHours(morning),color:'categoricalBlue'},
-        {legend:'Ca chiều',value:chartHours(afternoon),color:'categoricalGreen'}
+        {legend:'Ca sáng',value:workdaysFromMinutes(morning),color:'categoricalBlue'},
+        {legend:'Ca chiều',value:workdaysFromMinutes(afternoon),color:'categoricalTeal'}
       ]
     }],
     fallback:chartFallback()
   };
 }
 function statusSummary(e) {
-  const baseStatus = e.status === 'Cần đối soát' ? 'Chưa chốt' : e.status;
-  const base = e.total === baseStatus ? e.total : e.total + ' · ' + baseStatus;
-  return needsReconciliation(e) ? base + ' · Cần đối soát' : base;
+  return formatRecordedMinutes(recordedMinutes(e)) + ' · ' + formatWorkdays(recordedMinutes(e)) + ' · ' + displayStatus(e);
 }
 export function employeeCompactRow(e, i) {
   return {
@@ -176,11 +173,13 @@ export function employeeCompactRow(e, i) {
         ]
       },
       rich([
-        inline('☀  SÁNG  ',{weight:'Bolder',color:'Accent',size:'Small'}),
+        {type:'IconRun',name:'Clock',size:'Small',color:'Accent',fallback:'drop'},
+        inline('  SÁNG  ',{weight:'Bolder',color:'Accent',size:'Small'}),
         inline(e.morning,{size:'Small'})
       ],{spacing:'Small'}),
       rich([
-        inline('◐  CHIỀU  ',{weight:'Bolder',color:'Good',size:'Small'}),
+        {type:'IconRun',name:'Clock',size:'Small',color:'Good',fallback:'drop'},
+        inline('  CHIỀU  ',{weight:'Bolder',color:'Good',size:'Small'}),
         inline(e.afternoon,{size:'Small'})
       ],{spacing:'Small'})
     ]
@@ -207,19 +206,14 @@ export function confirmedChart(s) {
 export function statusStrip(s) {
   const data = [
     {
-      legend:'Trong ngưỡng',
-      color:'good',
-      value:s.employees.filter(e=>!needsReconciliation(e) && e.status==='Đã ghi nhận').length
+      legend:'Đã ghi nhận',
+      color:'categoricalBlue',
+      value:s.employees.filter(e=>displayStatus(e)==='Đã ghi nhận').length
     },
     {
       legend:'Chưa chốt',
-      color:'warning',
-      value:s.employees.filter(e=>!needsReconciliation(e) && e.status!=='Đã ghi nhận').length
-    },
-    {
-      legend:'Cần đối soát >8h',
-      color:'attention',
-      value:s.employees.filter(needsReconciliation).length
+      color:'categoricalMarigold',
+      value:s.employees.filter(e=>displayStatus(e)!=='Đã ghi nhận').length
     }
   ].filter(p=>p.value>0);
   return {
@@ -241,7 +235,7 @@ export function buildNativeCard(source) {
     ['Tổng nhân sự',k.total,'Accent'],
     ['Có dữ liệu',k.with_record,'Good'],
     ['Đã chốt',k.closed,'Good'],
-    ['Vượt 8h',s.employees.filter(needsReconciliation).length,'Attention']
+    ['Chưa chốt',s.employees.filter(e=>displayStatus(e)!=='Đã ghi nhận').length,'Warning']
   ];
   const kpiColumns = entries => ({
     type:'ColumnSet',
@@ -264,7 +258,7 @@ export function buildNativeCard(source) {
     lang:'vi',
     msteams:{width:'Full'},
     body:[
-      text('TEST · NATIVE V7 · MOBILE FIRST',{size:'Small',color:'Accent',weight:'Bolder'}),
+      text('TEST · NATIVE V10 · MOBILE FIRST',{size:'Small',color:'Accent',weight:'Bolder'}),
       text('BÁO CÁO CHẤM CÔNG — CẢ NGÀY',{size:'Large',weight:'Bolder',spacing:'Small'}),
       text(s.date_label + ' · Cập nhật ' + s.updated,{size:'Small',isSubtle:true,spacing:'Small'}),
 
@@ -290,22 +284,36 @@ export function buildNativeCard(source) {
         items:[kpiColumns(kpis)]
       },
 
-      rich([
-        inline('Tổng giờ xác nhận  ',{size:'Small'}),
-        inline(s.total_hours,{weight:'Bolder',size:'Large',color:'Good'}),
-        inline('   ·   Có bản ghi  ',{size:'Small'}),
-        inline(s.rate,{weight:'Bolder',size:'Medium'})
-      ],{spacing:'Small'}),
+      {
+        type:'Container',
+        style:'default',
+        roundedCorners:true,
+        spacing:'Small',
+        items:[
+          rich([
+            {type:'IconRun',name:'Clock',size:'Small',color:'Accent',fallback:'drop'},
+            inline('  Xác nhận  ',{size:'Small'}),
+            inline(s.total_hours,{weight:'Bolder',size:'Large',color:'Good'}),
+            inline('  ·  ',{size:'Small'}),
+            inline(formatWorkdays(durationMinutes(s.total_hours)),{weight:'Bolder',size:'Medium',color:'Accent'})
+          ]),
+          rich([
+            {type:'IconRun',name:'CheckmarkCircle',size:'Small',color:'Good',fallback:'drop'},
+            inline('  Có bản ghi  ',{size:'Small'}),
+            inline(s.rate,{weight:'Bolder',size:'Medium'})
+          ],{spacing:'Small'})
+        ]
+      },
 
-      sectionTitle('DataBarHorizontal','GIỜ CÔNG THEO NHÂN SỰ'),
-      text('Giá trị hiển thị trực tiếp ở cuối thanh · đơn vị giờ · làm tròn 0,1 giờ.',
+      sectionTitle('DataBarHorizontal','CÔNG QUY ĐỔI THEO NHÂN SỰ'),
+      text('1 công = 8 giờ · giá trị hiển thị trực tiếp ở cuối thanh · tăng ca được ghi nhận theo thời lượng thực tế.',
         {size:'Small',isSubtle:true,spacing:'Small'}),
       workforceRecordedHoursChart(s),
-      text('Xanh: đã ghi nhận · Vàng: chưa chốt · Đỏ: cần đối soát',
+      text('Xanh: đã ghi nhận · Vàng: chưa chốt',
         {size:'Small',isSubtle:true,spacing:'Small'}),
 
       sectionTitle('DataTrending','CHỈ SỐ NHANH'),
-      text('Phân bổ các phiên đã có thời lượng',{size:'Small',weight:'Bolder'}),
+      text('Phân bổ công ghi nhận theo ca',{size:'Small',weight:'Bolder'}),
       aggregateShiftMixChart(s),
       text('Tình trạng chấm công',{size:'Small',weight:'Bolder',spacing:'Small'}),
       statusStrip(s),
@@ -317,7 +325,7 @@ export function buildNativeCard(source) {
         spacing:'Medium',
         actions:[{
           type:'Action.ToggleVisibility',
-          title:'🕘 Xem / Ẩn chi tiết giờ vào / ra (8)',
+          title:'Xem / Ẩn chi tiết giờ vào / ra (8)',
           targetElements:['attendance-details-panel']
         }]
       },
@@ -336,24 +344,7 @@ export function buildNativeCard(source) {
         ]
       },
 
-      ...(s.employees.some(needsReconciliation) ? [{
-        type:'Container',
-        style:'attention',
-        roundedCorners:true,
-        spacing:'Small',
-        items:[
-          {
-            type:'ColumnSet',
-            spacing:'None',
-            columns:[
-              {type:'Column',width:'24px',items:[{type:'Icon',name:'Warning',size:'Small',color:'Attention',fallback:'drop'}]},
-              {type:'Column',width:'stretch',items:[text('Cần đối soát >8h/ngày: ' + reconciliationSummary(s),{size:'Small',color:'Attention',weight:'Bolder'})]}
-            ]
-          }
-        ]
-      }] : []),
-
-      text('Số liệu phục vụ đối soát, không mặc nhiên là công chính thức. Sai lệch vui lòng phản hồi P.HC-NS.',
+      text('Quy đổi tham khảo: 1 công = 8 giờ. Thời gian tăng ca được ghi nhận đầy đủ theo dữ liệu thực tế. Sai lệch vui lòng phản hồi P.HC-NS.',
         {size:'Small',isSubtle:true,spacing:'Small'})
     ]
   };
@@ -388,14 +379,13 @@ export function auditCard(card, source) {
     table_count:0,
     chart_count:types.filter(t=>t.startsWith('Chart.')).length,
     data_gate:'passed',
-    chart_unit:'hours',
+    chart_unit:'workdays',
     native_schema_contract:'documented_native_elements',
     external_chart_requests:0,
     image_generation:false,
     all_sessions_visible_by_default:false,
     collapsible_detail_panel:true,
-    reconciliation_rule:'recorded_minutes_gt_480',
-    reconciliation_count:source.employees.filter(needsReconciliation).length,
+    workday_conversion_minutes:480,
     render_qa:'pending_designer_and_real_teams_clients'
   };
 }

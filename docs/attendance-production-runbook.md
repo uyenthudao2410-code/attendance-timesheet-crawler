@@ -17,6 +17,14 @@ and visual QA. Missing capabilities/permissions must be reported explicitly;
 keep both recurring tasks enabled. Clock schedules are requested trigger times,
 not guarantees of completion to the second.
 
+## Producer watchdog and self-heal
+
+The normal producer schedules remain 06:40 and 13:40 Asia/Ho_Chi_Minh. A GitHub-side watchdog checks producer freshness twice before each ChatGPT consumer window: 06:43/06:48 for `daily_2105` and 13:43/13:48 for `morning_1230`.
+
+The watchdog is fail-closed. It first accepts an already-valid schema-12 state, then checks for an existing same-slot/same-date self-heal request, then checks whether Attendance Crawl is already queued/in_progress. Only when all three are absent does it write ONE audited request to `.github/attendance-rerun-trigger.json` with `delivery.enabled=false`. Because commits made by a workflow's `GITHUB_TOKEN` do not recursively start push-triggered workflows, the watchdog explicitly dispatches `Attendance Crawl` after committing the trigger. The producer therefore supports `workflow_dispatch` in addition to schedule and trigger-file push.
+
+The watchdog never posts Teams, never disables the 06:50/13:50 ChatGPT schedules and never creates a second request for the same slot/date. The consumer still performs its own freshness check and remains authoritative for publication idempotency and visual QA.
+
 ## Each scheduled consumer
 
 1. Determine target date in Asia/Ho_Chi_Minh and the task's own fixed slot.

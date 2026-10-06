@@ -106,7 +106,7 @@ test('card contains three separate dashboard charts and no per-person chart list
   assert.equal(nodes.filter(n=>n.type==='Chart.HorizontalBar').length,1);
   assert.equal(nodes.filter(n=>n.type==='Chart.HorizontalBar.Stacked').length,2);
   assert.equal(nodes.filter(n=>n.type==='Table').length,0);
-  assert.equal(card.body.filter(n=>/^employee-\d+$/.test(n.id||'')).length,8);
+  assert.equal(all(card).filter(n=>/^employee-\d+$/.test(n.id||'')).length,8);
   assert.ok(!nodes.some(n=>/^employee-bar-/.test(n.id||'')));
 });
 
@@ -115,7 +115,7 @@ test('details are hidden by default and opened by one toggle action',()=>{
   const panel=card.body.find(n=>n.id==='attendance-details-panel');
   assert.ok(panel);
   assert.equal(panel.isVisible,false);
-  assert.equal(panel.items.filter(n=>/^employee-\\d+$/.test(n.id||'')).length,8);
+  assert.equal(panel.items.filter(n=>/^employee-\d+$/.test(n.id||'')).length,8);
   const action=all(card).find(n=>n.type==='Action.ToggleVisibility');
   assert.ok(action);
   assert.deepEqual(action.targetElements,['attendance-details-panel']);
@@ -158,7 +158,8 @@ test('external resources and duplicate IDs fail closed',()=>{
   card.body.push({type:'Image',url:'https://example.com/chart.png'});
   assert.throws(()=>auditCard(card,input),/external visual/);
   const duplicate=buildNativeCard(input);
-  duplicate.body.push(duplicate.body.find(n=>n.id==='employee-1'));
+  const panel=duplicate.body.find(n=>n.id==='attendance-details-panel');
+  duplicate.body.push(panel.items.find(n=>n.id==='employee-1'));
   assert.throws(()=>auditCard(duplicate,input),/Duplicate/);
 });
 

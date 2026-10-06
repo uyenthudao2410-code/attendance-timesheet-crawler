@@ -79,8 +79,8 @@
       "attention": false
     }
   ],
-  "requested_at": "2026-10-06T13:05:00+07:00",
-  "layout_version": "MOBILE_V8_LIVEGAP",
-  "test_variant": "livegap-chart-one-line-colored-rows-viewport-fallback",
-  "retry_seq": 2
+  "requested_at": "2026-10-06T13:48:00+07:00",
+  "layout_version": "MOBILE_V9_QUICKCHART",
+  "test_variant": "direct-quickchart-compact-one-row-employees",
+  "retry_seq": 3
 }

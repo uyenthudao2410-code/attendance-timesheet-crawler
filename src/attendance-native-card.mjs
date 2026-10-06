@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V18_AVATAR_CHART_TAP';
+export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V19_FUTURE_AVATAR_DETAILS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
@@ -145,8 +145,8 @@ export function overviewStatusChart(s) {
     showBarValues:true,
     spacing:'Small',
     data:[{title:'Nhân sự',data:[
-      {legend:'Đã chốt',value:closed,color:'categoricalBlue'},
-      {legend:'Chưa chốt',value:open,color:'categoricalMarigold'}
+      {legend:'Đã chốt',value:closed,color:'categoricalTeal'},
+      {legend:'Chưa chốt',value:open,color:'categoricalPurple'}
     ]}],
     fallback:chartFallback()
   };
@@ -167,17 +167,17 @@ export function employeeShiftMiniChart(e,i) {
   return {
     type:'Chart.HorizontalBar.Stacked',
     id:'shift-chart-' + (i+1),
-    title:'',
+    title:'\u200B',
     showTitle:false,
     showLegend:false,
     showBarValues:true,
     displayMode:'AbsoluteNoAxis',
     spacing:'None',
     data:[{
-      title:'',
+      title:'\u200B',
       data:[
-        ...(morning>0 ? [{legend:'Sáng',value:chartHours(morning),color:'categoricalBlue'}] : []),
-        ...(afternoon>0 ? [{legend:'Chiều',value:chartHours(afternoon),color:'categoricalTeal'}] : [])
+        ...(morning>0 ? [{legend:'\u200B',value:chartHours(morning),color:'categoricalPurple'}] : []),
+        ...(afternoon>0 ? [{legend:'\u200C',value:chartHours(afternoon),color:'categoricalTeal'}] : [])
       ]
     }],
     fallback:chartFallback()
@@ -227,11 +227,9 @@ export function employeeDetailPanel(e,i) {
         )
       ]),
       rich([
-        inline('SÁNG  ',{size:'Small',weight:'Bolder',color:'Accent'}),
-        inline(compactShift(e.morning),{size:'Small'}),
+        inline(compactShift(e.morning),{size:'Small',weight:'Bolder',color:'Accent'}),
         inline('    |    ',{size:'Small',isSubtle:true}),
-        inline('CHIỀU  ',{size:'Small',weight:'Bolder',color:'Good'}),
-        inline(compactShift(e.afternoon),{size:'Small'})
+        inline(compactShift(e.afternoon),{size:'Small',weight:'Bolder',color:'Good'})
       ],{spacing:'Small'})
     ]
   };
@@ -244,28 +242,38 @@ export function avatarChartRow(e,i,directory,mode='shift') {
     id:mode + '-row-' + (i+1),
     separator:i>0,
     spacing:'Small',
-    selectAction:{
-      type:'Action.ToggleVisibility',
-      targetElements:['employee-detail-' + (i+1)]
-    },
-    items:[{
-      type:'ColumnSet',
-      spacing:'Small',
-      columns:[
-        {
-          type:'Column',
-          width:12,
-          verticalContentAlignment:'Center',
-          items:[personaCompact(e,directory)]
-        },
-        {
-          type:'Column',
-          width:88,
-          verticalContentAlignment:'Center',
-          items:[chart]
-        }
-      ]
-    }]
+    items:[
+      {
+        type:'ColumnSet',
+        spacing:'Small',
+        columns:[
+          {
+            type:'Column',
+            width:10,
+            verticalContentAlignment:'Center',
+            items:[personaCompact(e,directory)]
+          },
+          {
+            type:'Column',
+            width:90,
+            verticalContentAlignment:'Center',
+            items:[chart]
+          }
+        ]
+      },
+      {
+        type:'ActionSet',
+        id:'detail-action-' + (i+1),
+        spacing:'None',
+        horizontalAlignment:'Right',
+        actions:[{
+          type:'Action.ToggleVisibility',
+          title:'Chi tiết',
+          targetElements:['employee-detail-' + (i+1)]
+        }]
+      },
+      employeeDetailPanel(e,i)
+    ]
   };
 }
 
@@ -303,7 +311,7 @@ export function buildNativeCard(source,directory) {
     lang:'vi',
     msteams:{width:'Full'},
     body:[
-      text('TEST · NATIVE V18 · AVATAR + CHART',{size:'Small',color:'Accent',weight:'Bolder'}),
+      text('TEST · NATIVE V19 · FUTURE MOBILE',{size:'Small',color:'Accent',weight:'Bolder'}),
       text('BÁO CÁO CHẤM CÔNG — CẢ NGÀY',{size:'Large',weight:'Bolder',spacing:'Small'}),
       text(s.date_label + ' · Cập nhật ' + s.updated,{size:'Small',isSubtle:true,spacing:'Small'}),
 
@@ -352,7 +360,7 @@ export function buildNativeCard(source,directory) {
           }
         ]
       },
-      text('Chạm vào Avatar/Chart để xem hoặc ẩn chi tiết giờ vào / ra.',{
+      text('Mỗi dòng chỉ gồm avatar + chart · bấm Chi tiết khi cần xem giờ vào / ra.',{
         size:'Small',isSubtle:true,spacing:'Small'
       }),
 
@@ -392,14 +400,24 @@ export function buildNativeCard(source,directory) {
 
       {
         type:'Container',
-        id:'details-area',
-        spacing:'Small',
-        items:s.employees.map(employeeDetailPanel)
-      },
-
-      text('1 công = 8 giờ · Tăng ca được ghi nhận đầy đủ theo dữ liệu thực tế · Sai lệch vui lòng phản hồi P.HC-NS.',{
-        size:'Small',isSubtle:true,spacing:'Small'
-      })
+        id:'report-legend',
+        style:'emphasis',
+        roundedCorners:true,
+        spacing:'Medium',
+        items:[
+          text('GHI CHÚ',{size:'Small',weight:'Bolder',color:'Accent'}),
+          rich([
+            inline('■ ',{color:'Accent',weight:'Bolder'}),
+            inline('Màu tím = ca sáng  ·  ',{size:'Small'}),
+            inline('■ ',{color:'Good',weight:'Bolder'}),
+            inline('Màu xanh ngọc = ca chiều  ·  ',{size:'Small'}),
+            inline('Giá trị trên chart = tổng giờ ghi nhận',{size:'Small',weight:'Bolder'})
+          ]),
+          text('Chi tiết thời gian hiển thị theo thứ tự ca sáng | ca chiều · 1 công = 8 giờ · Tăng ca được ghi nhận đầy đủ.',{
+            size:'Small',isSubtle:true,spacing:'Small'
+          })
+        ]
+      }
     ]
   };
 }
@@ -446,8 +464,11 @@ export function auditCard(card,source,directory) {
     shift_mini_chart_count:source.employees.length,
     workday_mini_chart_count:0,
     workday_summary_chart_count:1,
-    detail_interaction:'row_toggle_visibility',
+    detail_interaction:'per_person_detail_button',
     details_hidden_by_default:true,
+    repeated_shift_legends:false,
+    chart_category_label:'zero_width',
+    future_palette:'purple_teal',
     native_microsoft_charts_only:true,
     native_microsoft_personas:true,
     external_chart_requests:0,

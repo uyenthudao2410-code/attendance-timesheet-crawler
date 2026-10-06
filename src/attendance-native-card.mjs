@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V19_FUTURE_AVATAR_DETAILS';
+export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V20_AVATAR_ONLY_BRIGHT';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
@@ -176,8 +176,8 @@ export function employeeShiftMiniChart(e,i) {
     data:[{
       title:'\u200B',
       data:[
-        ...(morning>0 ? [{legend:'\u200B',value:chartHours(morning),color:'categoricalPurple'}] : []),
-        ...(afternoon>0 ? [{legend:'\u200C',value:chartHours(afternoon),color:'categoricalTeal'}] : [])
+        ...(morning>0 ? [{value:chartHours(morning),color:'categoricalLightBlue'}] : []),
+        ...(afternoon>0 ? [{value:chartHours(afternoon),color:'divergingCyan'}] : [])
       ]
     }],
     fallback:chartFallback()
@@ -249,13 +249,13 @@ export function avatarChartRow(e,i,directory,mode='shift') {
         columns:[
           {
             type:'Column',
-            width:10,
+            width:'32px',
             verticalContentAlignment:'Center',
             items:[personaCompact(e,directory)]
           },
           {
             type:'Column',
-            width:90,
+            width:'stretch',
             verticalContentAlignment:'Center',
             items:[chart]
           }
@@ -360,10 +360,6 @@ export function buildNativeCard(source,directory) {
           }
         ]
       },
-      text('Mỗi dòng chỉ gồm avatar + chart · bấm Chi tiết khi cần xem giờ vào / ra.',{
-        size:'Small',isSubtle:true,spacing:'Small'
-      }),
-
       {
         type:'Container',
         id:'panel-shifts',
@@ -395,27 +391,6 @@ export function buildNativeCard(source,directory) {
             })),
             fallback:chartFallback()
           }
-        ]
-      },
-
-      {
-        type:'Container',
-        id:'report-legend',
-        style:'emphasis',
-        roundedCorners:true,
-        spacing:'Medium',
-        items:[
-          text('GHI CHÚ',{size:'Small',weight:'Bolder',color:'Accent'}),
-          rich([
-            inline('■ ',{color:'Accent',weight:'Bolder'}),
-            inline('Màu tím = ca sáng  ·  ',{size:'Small'}),
-            inline('■ ',{color:'Good',weight:'Bolder'}),
-            inline('Màu xanh ngọc = ca chiều  ·  ',{size:'Small'}),
-            inline('Giá trị trên chart = tổng giờ ghi nhận',{size:'Small',weight:'Bolder'})
-          ]),
-          text('Chi tiết thời gian hiển thị theo thứ tự ca sáng | ca chiều · 1 công = 8 giờ · Tăng ca được ghi nhận đầy đủ.',{
-            size:'Small',isSubtle:true,spacing:'Small'
-          })
         ]
       }
     ]
@@ -468,7 +443,10 @@ export function auditCard(card,source,directory) {
     details_hidden_by_default:true,
     repeated_shift_legends:false,
     chart_category_label:'zero_width',
-    future_palette:'purple_teal',
+    future_palette:'lightblue_cyan',
+    avatar_column_width:'32px',
+    footer_notes:false,
+    segment_legends_omitted:true,
     native_microsoft_charts_only:true,
     native_microsoft_personas:true,
     external_chart_requests:0,

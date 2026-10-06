@@ -293,7 +293,7 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
     msteams:{width:'Full'},
     body:[
       text('TEST · NATIVE V24 · BALANCED INFO BARS',{size:'Small',color:'Accent',weight:'Bolder'}),
-      text('BÁO CÁO CHẤM CÔNG — CẢ NGÀY',{size:'Large',weight:'Bolder',spacing:'Small'}),
+      text(source.report_title || 'BÁO CÁO CHẤM CÔNG — CẢ NGÀY',{size:'Large',weight:'Bolder',spacing:'Small'}),
       text(s.date_label+' · Cập nhật '+s.updated,{size:'Small',isSubtle:true,spacing:'Small'}),
 
       {

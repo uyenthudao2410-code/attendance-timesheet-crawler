@@ -236,11 +236,10 @@ const tableCell = (items, style='default') => ({
   items
 });
 
-export function mobileDetailsTable(s) {
+export function compactDetailsTable(s) {
   return {
     type:'Table',
-    id:'details-table-mobile',
-    targetWidth:'atMost:Narrow',
+    id:'details-table-compact',
     firstRowAsHeader:true,
     showGridLines:false,
     columns:[{width:34},{width:66}],
@@ -272,37 +271,6 @@ export function mobileDetailsTable(s) {
               spacing:'Small'
             })
           ],rowStyle(e))
-        ]
-      }))
-    ]
-  };
-}
-
-export function wideDetailsTable(s) {
-  return {
-    type:'Table',
-    id:'details-table-wide',
-    targetWidth:'atLeast:Standard',
-    firstRowAsHeader:true,
-    showGridLines:false,
-    columns:[{width:28},{width:22},{width:30},{width:20}],
-    rows:[
-      {
-        type:'TableRow',
-        cells:[
-          tableCell([text('NHÂN SỰ',{size:'Small',weight:'Bolder',color:'Accent'})],'emphasis'),
-          tableCell([text('CA SÁNG',{size:'Small',weight:'Bolder',color:'Accent'})],'emphasis'),
-          tableCell([text('CA CHIỀU',{size:'Small',weight:'Bolder',color:'Accent'})],'emphasis'),
-          tableCell([text('TỔNG',{size:'Small',weight:'Bolder',color:'Accent'})],'emphasis')
-        ]
-      },
-      ...s.employees.map((e,i)=>({
-        type:'TableRow',
-        cells:[
-          tableCell([text(String(i+1).padStart(2,'0') + ' · ' + e.name,{size:'Small',weight:'Bolder'})],rowStyle(e)),
-          tableCell([text(e.morning,{size:'Small'})],rowStyle(e)),
-          tableCell([text(e.afternoon,{size:'Small'})],rowStyle(e)),
-          tableCell([text(totalSummary(e),{size:'Small',weight:'Bolder',color:statusColor(e)})],rowStyle(e))
         ]
       }))
     ]
@@ -456,10 +424,7 @@ export function buildNativeCard(source) {
         isVisible:false,
         spacing:'Small',
         items:[
-          text('Mỗi nhân sự một hàng · đầy đủ Sáng / Chiều / Tổng / Công quy đổi.',
-            {size:'Small',isSubtle:true}),
-          mobileDetailsTable(s),
-          wideDetailsTable(s)
+          compactDetailsTable(s)
         ]
       },
 

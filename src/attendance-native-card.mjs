@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V5_INLINE_BARS';
+export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V6_DASHBOARD';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
 const DATA_KEYS = ['target_date', 'date_label', 'updated', 'kpis', 'total_hours', 'rate', 'attention_summary', 'employees'];
 const fail = message => { throw new Error('NATIVE_CARD_GATE: ' + message); };
@@ -71,34 +71,61 @@ export function employeeSegmentsHours(e) {
     color:slot === 'morning' ? 'categoricalBlue' : i ? 'categoricalTeal' : 'categoricalGreen'
   })));
 }
-export function employeeInlineBar(e, i) {
-  const segments = employeeSegmentsHours(e);
-  if (!segments.length) {
-    return {
-      type:'ProgressBar',
-      id:'employee-bar-' + (i+1),
-      value:0,
-      color:'neutral',
-      spacing:'None',
-      fallback:text('Chưa có phiên đủ thời lượng.',{size:'Small',isSubtle:true})
-    };
-  }
+export function recordedMinutes(e) {
+  return [...sessionMinutes(e.morning), ...sessionMinutes(e.afternoon)].reduce((a,b)=>a+b,0);
+}
+export function chartName(name) {
+  const parts = String(name).trim().split(/\\s+/);
+  return parts.length <= 2 ? name : parts.slice(-2).join(' ');
+}
+export function statusChartColor(e) {
+  if (e.status === 'Cần đối soát') return 'attention';
+  if (e.status === 'Chưa chốt') return 'warning';
+  return 'good';
+}
+export function workforceRecordedHoursChart(s) {
   return {
-    type:'Chart.HorizontalBar.Stacked',
-    id:'employee-bar-' + (i+1),
-    title:'Cơ cấu ca',
+    type:'Chart.HorizontalBar',
+    id:'workforce-recorded-hours',
+    title:'Thời lượng phiên đã ghi nhận',
     showTitle:false,
     showLegend:false,
     showBarValues:false,
-    spacing:'None',
-    data:[{title:'',data:segments}],
+    xAxisTitle:'Giờ',
+    spacing:'Small',
+    data:s.employees.map((e,i)=>({
+      x:String(i+1).padStart(2,'0') + ' · ' + chartName(e.name),
+      y:hoursFromMinutes(recordedMinutes(e)),
+      color:statusChartColor(e)
+    })),
+    fallback:chartFallback()
+  };
+}
+export function aggregateShiftMixChart(s) {
+  const morning = s.employees.flatMap(e=>sessionMinutes(e.morning)).reduce((a,b)=>a+b,0);
+  const afternoon = s.employees.flatMap(e=>sessionMinutes(e.afternoon)).reduce((a,b)=>a+b,0);
+  return {
+    type:'Chart.HorizontalBar.Stacked',
+    id:'shift-mix',
+    title:'Cơ cấu thời lượng đã ghi nhận',
+    showTitle:false,
+    showLegend:true,
+    showBarValues:false,
+    spacing:'Small',
+    data:[{
+      title:'Sáng / Chiều',
+      data:[
+        {legend:'Ca sáng',value:hoursFromMinutes(morning),color:'categoricalBlue'},
+        {legend:'Ca chiều',value:hoursFromMinutes(afternoon),color:'categoricalGreen'}
+      ]
+    }],
     fallback:chartFallback()
   };
 }
 function statusSummary(e) {
   return e.total === e.status ? e.total : e.total + ' · ' + e.status;
 }
-export function employeeInlineBlock(e, i) {
+export function employeeCompactRow(e, i) {
   return {
     type:'Container',
     id:'employee-' + (i+1),
@@ -119,7 +146,6 @@ export function employeeInlineBlock(e, i) {
           ]}
         ]
       },
-      employeeInlineBar(e,i),
       rich([
         inline('Sáng  ',{weight:'Bolder',color:'Accent',size:'Small'}),
         inline(e.morning,{size:'Small'}),
@@ -182,7 +208,7 @@ export function buildNativeCard(source) {
     lang:'vi',
     msteams:{width:'Full'},
     body:[
-      text('TEST · NATIVE V5 · INLINE BAR',{size:'Small',color:'Accent',weight:'Bolder'}),
+      text('TEST · NATIVE V6 · DASHBOARD',{size:'Small',color:'Accent',weight:'Bolder'}),
       text('BÁO CÁO CHẤM CÔNG — CẢ NGÀY',{size:'Large',weight:'Bolder',spacing:'Small'}),
       text(s.date_label + ' · Cập nhật ' + s.updated,{size:'Small',isSubtle:true,spacing:'Small'}),
       {
@@ -203,26 +229,21 @@ export function buildNativeCard(source) {
         inline('   ·   Có bản ghi  ',{size:'Small'}),
         inline(s.rate,{weight:'Bolder',size:'Medium'})
       ],{spacing:'Small'}),
-      statusStrip(s),
-      text('NHÂN SỰ · BAR THEO CA + GIỜ VÀO / RA',{size:'Medium',weight:'Bolder',spacing:'Medium'}),
-      text('Mỗi người một cụm: tổng/trạng thái → thanh ngang cơ cấu ca → giờ sáng/chiều. Xanh dương: sáng · xanh lá: chiều · xanh ngọc: phiên bổ sung.',
+
+      text('TỔNG HỢP NHÂN SỰ',{size:'Medium',weight:'Bolder',spacing:'Medium'}),
+      text('Thanh ngang = tổng thời lượng các phiên đã có thời lượng. Màu thể hiện trạng thái; trục dùng giờ.',
         {size:'Small',isSubtle:true,spacing:'Small'}),
-      ...s.employees.map(employeeInlineBlock),
-      {
-        type:'ActionSet',spacing:'Small',actions:[{
-          type:'Action.ToggleVisibility',
-          title:'So sánh tổng công đã chốt',
-          targetElements:['confirmed-panel']
-        }]
-      },
-      {
-        type:'Container',id:'confirmed-panel',isVisible:false,spacing:'Small',
-        items:[
-          text('SO SÁNH TỔNG CÔNG ĐÃ CHỐT',{size:'Small',weight:'Bolder',color:'Accent'}),
-          confirmedChart(s),
-          text('Biểu đồ này dùng cùng thang giờ và chỉ gồm nhân sự đã chốt.',{size:'Small',isSubtle:true})
-        ]
-      },
+      workforceRecordedHoursChart(s),
+
+      text('CHỈ SỐ NHANH',{size:'Medium',weight:'Bolder',spacing:'Medium'}),
+      aggregateShiftMixChart(s),
+      statusStrip(s),
+
+      text('GIỜ VÀO / RA',{size:'Medium',weight:'Bolder',spacing:'Medium'}),
+      text('Mỗi người chỉ 2 dòng: tổng/trạng thái và đầy đủ ca sáng · ca chiều.',
+        {size:'Small',isSubtle:true,spacing:'Small'}),
+      ...s.employees.map(employeeCompactRow),
+
       ...(s.attention_summary ? [{
         type:'Container',style:'attention',roundedCorners:true,spacing:'Small',
         items:[text('Cần chú ý: ' + s.attention_summary,{size:'Small',color:'Attention',weight:'Bolder'})]
@@ -260,7 +281,6 @@ export function auditCard(card, source) {
     employee_count:source.employees.length,
     kpi_count:4,
     table_count:0,
-    inline_employee_bar_count:types.filter(t=>t==='Chart.HorizontalBar.Stacked').length-1,
     chart_count:types.filter(t=>t.startsWith('Chart.')).length,
     data_gate:'passed',
     chart_unit:'hours',

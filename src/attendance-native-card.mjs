@@ -102,8 +102,8 @@ const rowStyle = e => displayStatus(e)==='Chưa chốt' ? 'warning' : 'default';
 const chartFallback = () => text('Thiết bị này chưa hỗ trợ chart native.',{size:'Small',isSubtle:true});
 
 const PALETTE=[
-  'categoricalBlue','categoricalTeal','categoricalGreen','categoricalPurple',
-  'categoricalMarigold','categoricalLightBlue','categoricalLavender','categoricalLime'
+  'categoricalLightBlue','divergingCyan','categoricalTeal','categoricalGreen',
+  'categoricalLime','categoricalMarigold','categoricalLavender','categoricalBlue'
 ];
 
 const sectionTitle=(iconName,label)=>({
@@ -145,8 +145,8 @@ export function overviewStatusChart(s) {
     showBarValues:true,
     spacing:'Small',
     data:[{title:'Nhân sự',data:[
-      {legend:'Đã chốt',value:closed,color:'categoricalTeal'},
-      {legend:'Chưa chốt',value:open,color:'categoricalPurple'}
+      {legend:'Đã chốt',value:closed,color:'categoricalLightBlue'},
+      {legend:'Chưa chốt',value:open,color:'divergingCyan'}
     ]}],
     fallback:chartFallback()
   };
@@ -311,7 +311,7 @@ export function buildNativeCard(source,directory) {
     lang:'vi',
     msteams:{width:'Full'},
     body:[
-      text('TEST · NATIVE V19 · FUTURE MOBILE',{size:'Small',color:'Accent',weight:'Bolder'}),
+      text('TEST · NATIVE V20 · AVATAR ONLY',{size:'Small',color:'Accent',weight:'Bolder'}),
       text('BÁO CÁO CHẤM CÔNG — CẢ NGÀY',{size:'Large',weight:'Bolder',spacing:'Small'}),
       text(s.date_label + ' · Cập nhật ' + s.updated,{size:'Small',isSubtle:true,spacing:'Small'}),
 

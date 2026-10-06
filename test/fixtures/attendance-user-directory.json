@@ -1,0 +1,42 @@
+{
+  "Điêu Văn Mạnh": {
+    "id": "b48a45af-1984-44be-9ec8-93df9a2a95f9",
+    "displayName": "Điêu Văn Mạnh",
+    "userPrincipalName": "vanmanh@stacorp.net"
+  },
+  "Nguyễn Thị Thục Anh": {
+    "id": "1a4f7a21-d0b9-4fc8-a4bb-2f80e12fb3dd",
+    "displayName": "Nguyễn Thị Thục Anh",
+    "userPrincipalName": "thucanhnt@stacorp.net"
+  },
+  "Vũ Đình Tuệ": {
+    "id": "673a22a0-63de-4b7d-82d1-27d9a82920eb",
+    "displayName": "Vũ Đình Tuệ",
+    "userPrincipalName": "dinhtue@stacorp.net"
+  },
+  "Bùi Duy Hoàng": {
+    "id": "8214d2fe-c301-4918-9d30-095392003ae5",
+    "displayName": "Bùi Duy Hoàng",
+    "userPrincipalName": "duyhoang@stacorp.net"
+  },
+  "Nguyễn Thành Long": {
+    "id": "950c5595-cf74-458a-9491-1669f05a5bf8",
+    "displayName": "Nguyễn Thành Long",
+    "userPrincipalName": "thanhlong@stacorp.net"
+  },
+  "Trần Thanh Bình": {
+    "id": "1902558a-7da7-4e61-8395-0ce137bb910b",
+    "displayName": "Trần Thanh Bình",
+    "userPrincipalName": "thanhbinh@stacorp.net"
+  },
+  "Lê Thị Phương Linh": {
+    "id": "4e42e971-a5f1-4387-ab34-c2f608fff5d3",
+    "displayName": "Lê Thị Phương Linh",
+    "userPrincipalName": "phuonglinh@stacorp.net"
+  },
+  "Lê Đăng Hiếu": {
+    "id": "b6d9d3fc-bc1a-4e16-96e9-41e2642d13e4",
+    "displayName": "Lê Đăng Hiếu",
+    "userPrincipalName": "danghieu@stacorp.net"
+  }
+}

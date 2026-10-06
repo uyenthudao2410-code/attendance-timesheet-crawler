@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V23_GRAPH_PROFILE_PHOTO';
+export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
@@ -125,7 +125,7 @@ function avatarImage(e,avatarUrls={}) {
     altText:'',
     style:'Person',
     size:'Small',
-    height:'32px',
+    height:'36px',
     horizontalAlignment:'Center'
   };
 }
@@ -149,24 +149,31 @@ export function overviewStatusChart(s) {
   };
 }
 
+export function shiftChartLabel(e) {
+  const morning=shiftTotalMinutes(e,'morning');
+  const afternoon=shiftTotalMinutes(e,'afternoon');
+  const fmt=minutes=>minutes>0 ? chartHours(minutes).toFixed(1) : '–';
+  return fmt(morning) + ' | ' + fmt(afternoon);
+}
+
 export function consolidatedShiftChart(s) {
   return {
     type:'Chart.HorizontalBar.Stacked',
     id:'workforce-shift-chart',
     title:'\u200B',
     showTitle:false,
-    showLegend:false,
+    showLegend:true,
     showBarValues:true,
     displayMode:'AbsoluteNoAxis',
     spacing:'None',
-    data:s.employees.map((e,i)=>{
+    data:s.employees.map(e=>{
       const morning=shiftTotalMinutes(e,'morning');
       const afternoon=shiftTotalMinutes(e,'afternoon');
       return {
-        title:'\u200B'.repeat(i+1),
+        title:shiftChartLabel(e),
         data:[
-          ...(morning>0?[{legend:'\u200B',value:chartHours(morning),color:'categoricalBlue'}]:[]),
-          ...(afternoon>0?[{legend:'\u200C',value:chartHours(afternoon),color:'categoricalGreen'}]:[])
+          ...(morning>0?[{legend:'Ca sáng',value:chartHours(morning),color:'categoricalBlue'}]:[]),
+          ...(afternoon>0?[{legend:'Ca chiều',value:chartHours(afternoon),color:'categoricalGreen'}]:[])
         ]
       };
     }),
@@ -187,7 +194,7 @@ export function consolidatedWorkdayChart(s) {
     data:s.employees.map((e,i)=>({
       x:'\u200B'.repeat(i+1),
       y:workdaysFromMinutes(recordedMinutes(e)),
-      color:i%2===0?'categoricalBlue':'categoricalTeal'
+      color:'categoricalBlue'
     })),
     fallback:chartFallback()
   };
@@ -227,18 +234,27 @@ export function avatarRail(s,directory,avatarUrls={}) {
     type:'Container',
     id:'avatar-rail',
     spacing:'None',
-    items:s.employees.map((e,i)=>({
-      type:'Container',
-      id:'avatar-slot-'+(i+1),
-      minHeight:'46px',
-      verticalContentAlignment:'Center',
-      spacing:'None',
-      selectAction:{
-        type:'Action.ToggleVisibility',
-        targetElements:detailTargets(s,i)
+    items:[
+      {
+        type:'Container',
+        id:'avatar-top-spacer',
+        minHeight:'7px',
+        spacing:'None',
+        items:[]
       },
-      items:[avatarImage(e,avatarUrls)]
-    }))
+      ...s.employees.map((e,i)=>({
+        type:'Container',
+        id:'avatar-slot-'+(i+1),
+        minHeight:'44px',
+        verticalContentAlignment:'Center',
+        spacing:'None',
+        selectAction:{
+          type:'Action.ToggleVisibility',
+          targetElements:detailTargets(s,i)
+        },
+        items:[avatarImage(e,avatarUrls)]
+      }))
+    ]
   };
 }
 
@@ -276,7 +292,7 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
     lang:'vi',
     msteams:{width:'Full'},
     body:[
-      text('TEST · NATIVE V23 · GRAPH PROFILE PHOTO',{size:'Small',color:'Accent',weight:'Bolder'}),
+      text('TEST · NATIVE V24 · BALANCED INFO BARS',{size:'Small',color:'Accent',weight:'Bolder'}),
       text('BÁO CÁO CHẤM CÔNG — CẢ NGÀY',{size:'Large',weight:'Bolder',spacing:'Small'}),
       text(s.date_label+' · Cập nhật '+s.updated,{size:'Small',isSubtle:true,spacing:'Small'}),
 
@@ -334,7 +350,7 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
         columns:[
           {
             type:'Column',
-            width:'38px',
+            width:'46px',
             items:[avatarRail(s,directory,avatarUrls)]
           },
           {
@@ -357,20 +373,6 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
               }
             ]
           }
-        ]
-      },
-      {
-        type:'Container',
-        id:'shift-legend',
-        spacing:'Small',
-        items:[
-          rich([
-            inline('■ ',{color:'Accent',weight:'Bolder'}),
-            inline('Ca sáng',{size:'Small',weight:'Bolder'}),
-            inline('    ·    ',{size:'Small',isSubtle:true}),
-            inline('■ ',{color:'Good',weight:'Bolder'}),
-            inline('Ca chiều',{size:'Small',weight:'Bolder'})
-          ],{horizontalAlignment:'Center'})
         ]
       },
       {
@@ -427,17 +429,20 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     persona_component_count:types.filter(t=>t==='Component').length,
     image_avatar_count:types.filter(t=>t==='Image').length,
     data_gate:'passed',
-    chart_architecture:'single_consolidated_chart',
+    chart_architecture:'single_consolidated_chart_with_row_values',
     shift_chart_count:1,
     workday_chart_count:1,
     avatar_rail_count:source.employees.length,
+    avatar_alignment:'7px_top_spacer_44px_slots',
+    shift_row_values:'morning_hours | afternoon_hours',
+    workday_chart_layout:'horizontal_avatar_aligned',
     detail_interaction:'avatar_tap_toggle_own_detail',
     detail_buttons:0,
     details_hidden_by_default:true,
     footer_notes:false,
     repeated_legends:false,
     palette:'categoricalBlue_categoricalGreen',
-    shift_legend:'Ca sáng | Ca chiều',
+    shift_legend:'native: Ca sáng | Ca chiều',
     native_microsoft_charts_only:true,
     native_microsoft_personas:false,
     avatar_render:Object.keys(avatarUrls).length ? 'graph_profile_photo' : 'embedded_png_fallback',

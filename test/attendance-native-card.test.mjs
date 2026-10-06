@@ -6,7 +6,8 @@ import {
   LAYOUT, buildNativeCard, auditCard, validateSource, validateDirectory, sourceDigest,
   durationMinutes, sessionMinutes, shiftTotalMinutes,
   workdaysFromMinutes, formatRecordedMinutes, formatWorkdays,
-  overviewStatusChart, personaShiftRow, vividShiftBar, compactDetailRows
+  overviewStatusChart, employeeShiftMiniChart, employeeWorkdayMiniChart,
+  avatarChartRow, employeeDetailPanel
 } from '../src/attendance-native-card.mjs';
 
 const input=JSON.parse(fs.readFileSync(
@@ -27,7 +28,7 @@ const all=root=>{
   return result;
 };
 
-test('source and Entra directory are fully bound without mutation',()=>{
+test('source and directory bindings remain exact',()=>{
   const before=JSON.stringify(input);
   assert.equal(validateSource(input),input);
   assert.equal(validateDirectory(input,directory),directory);
@@ -36,7 +37,7 @@ test('source and Entra directory are fully bound without mutation',()=>{
   assert.equal(JSON.stringify(input),before);
 });
 
-test('workday conversion and source durations stay exact',()=>{
+test('workday conversion and source durations remain exact',()=>{
   assert.equal(durationMinutes('9h44'),584);
   assert.equal(workdaysFromMinutes(480),1);
   assert.equal(workdaysFromMinutes(657),1.37);
@@ -47,135 +48,141 @@ test('workday conversion and source durations stay exact',()=>{
   assert.equal(sessionMinutes(input.employees[6].afternoon).length,0);
 });
 
-test('overview remains one compact block with representative native chart and KPI icons',()=>{
+test('overview remains compact and native',()=>{
   const card=buildNativeCard(input,directory);
   const overview=card.body.find(n=>n.id==='overview');
   assert.ok(overview);
-  assert.equal(overview.style,'emphasis');
   const status=all(overview).find(n=>n.id==='overview-status-chart');
   assert.equal(status.type,'Chart.HorizontalBar.Stacked');
   assert.deepEqual(status.data[0].data.map(d=>[d.legend,d.value]),[
     ['Đã chốt',6],['Chưa chốt',2]
   ]);
-  assert.ok(all(overview).filter(n=>n.type==='Icon').length>=5);
-  const json=JSON.stringify(overview);
-  for(const value of ['50h40','6,33 công','Sáng 3,34 công','Chiều 4,88 công','100%']){
-    assert.ok(json.includes(value),value);
+});
+
+test('shift mini chart is a native Microsoft stacked chart with values shown',()=>{
+  const c=employeeShiftMiniChart(input.employees[0],0);
+  assert.equal(c.type,'Chart.HorizontalBar.Stacked');
+  assert.equal(c.id,'shift-chart-1');
+  assert.equal(c.showBarValues,true);
+  assert.equal(c.showLegend,false);
+  assert.equal(c.displayMode,'AbsoluteNoAxis');
+  assert.deepEqual(c.data[0].data,[
+    {legend:'Sáng',value:4.8,color:'categoricalBlue'},
+    {legend:'Chiều',value:6.1,color:'categoricalTeal'}
+  ]);
+});
+
+test('workday mini chart is a native Microsoft bar with value shown',()=>{
+  const c=employeeWorkdayMiniChart(input.employees[0],0);
+  assert.equal(c.type,'Chart.HorizontalBar');
+  assert.equal(c.id,'workday-chart-1');
+  assert.equal(c.showBarValues,true);
+  assert.equal(c.showLegend,false);
+  assert.equal(c.displayMode,'AbsoluteNoAxis');
+  assert.equal(c.data[0].y,1.37);
+});
+
+test('each shift row has exactly two visual modules: avatar-only PersonaSet and chart',()=>{
+  const row=avatarChartRow(input.employees[0],0,directory,'shift');
+  assert.equal(row.type,'Container');
+  assert.equal(row.id,'shift-row-1');
+  assert.equal(row.items.length,1);
+  const columns=row.items[0].columns;
+  assert.equal(columns.length,2);
+  assert.deepEqual(columns.map(c=>c.width),[12,88]);
+
+  const avatar=columns[0].items[0];
+  assert.equal(avatar.type,'Component');
+  assert.equal(avatar.name,'graph.microsoft.com/users');
+  assert.equal(avatar.view,'compact');
+  assert.equal(avatar.properties.users.length,1);
+  assert.equal(avatar.properties.users[0].id,directory['Điêu Văn Mạnh'].id);
+
+  const chart=columns[1].items[0];
+  assert.equal(chart.type,'Chart.HorizontalBar.Stacked');
+  assert.equal(chart.showBarValues,true);
+
+  assert.equal(all(row).filter(n=>n.type==='TextBlock' || n.type==='RichTextBlock').length,0);
+});
+
+test('each workday row has the same two-module contract',()=>{
+  const row=avatarChartRow(input.employees[1],1,directory,'workday');
+  const columns=row.items[0].columns;
+  assert.equal(columns.length,2);
+  assert.equal(columns[0].items[0].name,'graph.microsoft.com/users');
+  assert.equal(columns[1].items[0].type,'Chart.HorizontalBar');
+  assert.equal(columns[1].items[0].showBarValues,true);
+});
+
+test('tap on either row toggles that employee detail panel',()=>{
+  const shift=avatarChartRow(input.employees[0],0,directory,'shift');
+  const workday=avatarChartRow(input.employees[0],0,directory,'workday');
+  for(const row of [shift,workday]){
+    assert.equal(row.selectAction.type,'Action.ToggleVisibility');
+    assert.deepEqual(row.selectAction.targetElements,['employee-detail-1']);
   }
 });
 
-test('vivid bar uses strong colored glyph runs instead of pale container backgrounds',()=>{
-  const bar=vividShiftBar(290,367);
-  assert.equal(bar.type,'RichTextBlock');
-  assert.equal(bar.inlines.length,3);
-  assert.equal(bar.inlines[0].text,'██████');
-  assert.equal(bar.inlines[0].color,'Accent');
-  assert.equal(bar.inlines[0].size,'Large');
-  assert.equal(bar.inlines[1].text,'████████');
-  assert.equal(bar.inlines[1].color,'Good');
-  assert.equal(bar.inlines[2].text,'░░');
-  assert.equal(bar.inlines[2].isSubtle,true);
+test('detail panel is hidden by default and contains name, total, workday, status, morning and afternoon',()=>{
+  const d=employeeDetailPanel(input.employees[0],0);
+  assert.equal(d.id,'employee-detail-1');
+  assert.equal(d.isVisible,false);
+  const json=JSON.stringify(d);
+  for(const value of [
+    'Điêu Văn Mạnh','10h57','1,37 công','Chưa chốt',
+    '08:37–13:27 · 4h50','13:27–19:34 · 6h07'
+  ]) assert.ok(json.includes(value),value);
 });
 
-test('persona shift row is avatar left, vivid bar middle and total hours right',()=>{
-  const row=personaShiftRow(input.employees[0],0,directory);
-  assert.equal(row.type,'ColumnSet');
-  assert.equal(row.id,'shift-row-1');
-  assert.deepEqual(row.columns.map(c=>c.width),[36,50,14]);
-  const persona=row.columns[0].items[0];
-  assert.equal(persona.type,'Component');
-  assert.equal(persona.name,'graph.microsoft.com/user');
-  assert.equal(persona.properties.id,directory['Điêu Văn Mạnh'].id);
-  const bar=row.columns[1].items[0];
-  assert.equal(bar.type,'RichTextBlock');
-  assert.equal(bar.inlines[0].color,'Accent');
-  assert.equal(bar.inlines[1].color,'Good');
-  assert.equal(row.columns[2].items[0].text,'10h57');
-});
-
-test('all eight main rows use exact Entra personas and vivid bars',()=>{
+test('card has eight two-module rows per mode and eight shared hidden detail panels',()=>{
   const card=buildNativeCard(input,directory);
-  const panel=card.body.find(n=>n.id==='panel-shifts');
-  const rows=panel.items.filter(n=>/^shift-row-\d+$/.test(n.id||''));
-  assert.equal(rows.length,8);
-  rows.forEach((row,i)=>{
-    const persona=row.columns[0].items[0];
-    assert.equal(persona.properties.id,directory[input.employees[i].name].id);
-    assert.equal(row.columns[1].items[0].type,'RichTextBlock');
-  });
+  const shift=card.body.find(n=>n.id==='panel-shifts');
+  const workday=card.body.find(n=>n.id==='panel-workdays');
+  const details=card.body.find(n=>n.id==='details-area');
+
+  assert.equal(shift.items.length,8);
+  assert.equal(workday.items.length,8);
+  assert.equal(details.items.length,8);
+
+  assert.ok(shift.items.every((r,i)=>r.id==='shift-row-'+(i+1)));
+  assert.ok(workday.items.every((r,i)=>r.id==='workday-row-'+(i+1)));
+  assert.ok(details.items.every((r,i)=>r.id==='employee-detail-'+(i+1) && r.isVisible===false));
 });
 
-test('alternate workday view remains a compact native chart',()=>{
+test('chart toggle switches between two avatar plus chart modes',()=>{
   const card=buildNativeCard(input,directory);
-  const panel=card.body.find(n=>n.id==='panel-workdays');
-  assert.equal(panel.isVisible,false);
-  const chart=all(panel).find(n=>n.id==='workforce-workdays-chart');
-  assert.equal(chart.type,'Chart.HorizontalBar');
-  assert.equal(chart.showBarValues,true);
+  const actionSet=card.body.find(n=>n.id==='chart-view-toggle');
+  assert.equal(actionSet.actions.length,2);
+  assert.equal(actionSet.actions[0].title,'Theo ca');
+  assert.equal(actionSet.actions[1].title,'Công quy đổi');
+  assert.equal(card.body.find(n=>n.id==='panel-shifts').isVisible,true);
+  assert.equal(card.body.find(n=>n.id==='panel-workdays').isVisible,false);
 });
 
-test('detail panel is hidden and each employee becomes a readable two-line micro-card',()=>{
-  const card=buildNativeCard(input,directory);
-  const panel=card.body.find(n=>n.id==='attendance-details-panel');
-  assert.equal(panel.isVisible,false);
-  assert.equal(panel.items.length,8);
-  panel.items.forEach((row,i)=>{
-    assert.equal(row.id,'detail-row-'+(i+1));
-    assert.equal(row.type,'Container');
-    assert.equal(row.items.length,2);
-    assert.equal(row.items[0].type,'RichTextBlock');
-    assert.equal(row.items[1].type,'RichTextBlock');
-    const json=JSON.stringify(row);
-    assert.ok(json.includes(input.employees[i].name));
-    assert.ok(json.includes('công'));
-    assert.ok(json.includes('S  '));
-    assert.ok(json.includes('C  '));
-  });
-});
-
-test('first detail micro-card separates name-summary from morning-afternoon data',()=>{
-  const rows=compactDetailRows(input);
-  assert.equal(rows.length,8);
-  const first=rows[0];
-  const top=first.items[0];
-  const shifts=first.items[1];
-  assert.equal(top.type,'RichTextBlock');
-  assert.equal(shifts.type,'RichTextBlock');
-  assert.ok(JSON.stringify(top).includes('01 · Điêu Văn Mạnh'));
-  assert.ok(JSON.stringify(top).includes('10h57 · 1,37 công · Chưa chốt'));
-  assert.ok(JSON.stringify(shifts).includes('08:37–13:27 · 4h50'));
-  assert.ok(JSON.stringify(shifts).includes('13:27–19:34 · 6h07'));
-});
-
-test('there is no separate quick summary or bulk PersonaSet',()=>{
-  const card=buildNativeCard(input,directory);
-  assert.equal(card.body.some(n=>n.id==='quick-summary'),false);
-  assert.equal(card.body.some(n=>n.id==='chart-personas'),false);
-  assert.equal(all(card).some(n=>n.name==='graph.microsoft.com/users'),false);
-});
-
-test('V17 stays within Teams payload and remains Microsoft-native',()=>{
+test('V18 contract is native, avatar-only, row-tappable and external-resource-free',()=>{
   const card=buildNativeCard(input,directory);
   const qa=auditCard(card,input,directory);
-  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V17_VIVID_BARS_DETAILS');
+
+  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V18_AVATAR_CHART_TAP');
   assert.equal(qa.data_gate,'passed');
-  assert.equal(qa.table_count,0);
-  assert.equal(qa.chart_count,2);
-  assert.equal(qa.donut_count,0);
-  assert.equal(qa.persona_component_count,8);
-  assert.equal(qa.persona_bar_row_count,8);
-  assert.equal(qa.vivid_bar_mode,'richtext_glyphs');
-  assert.equal(qa.detail_layout,'two_row_microcards');
+  assert.deepEqual(qa.row_modules,['avatar','microsoft_native_chart']);
+  assert.equal(qa.employee_row_module_count,2);
+  assert.equal(qa.shift_mini_chart_count,8);
+  assert.equal(qa.workday_mini_chart_count,8);
+  assert.equal(qa.detail_interaction,'row_toggle_visibility');
+  assert.equal(qa.details_hidden_by_default,true);
+  assert.equal(qa.native_microsoft_charts_only,true);
+  assert.equal(qa.native_microsoft_personas,true);
   assert.equal(qa.external_chart_requests,0);
-  assert.ok(qa.bytes<27000);
   assert.equal(all(card).filter(n=>n.type==='Image').length,0);
   assert.equal(JSON.stringify(card).includes('quickchart'),false);
+  assert.ok(qa.bytes<27000);
 });
 
-test('mutating overview or directory binding fails audit',()=>{
+test('mutating data or Entra binding fails closed',()=>{
   const card=buildNativeCard(input,directory);
-  card.body.find(n=>n.id==='overview').items
-    .find(n=>n.id==='overview-status-chart').data[0].data[0].value=99;
+  card.body.find(n=>n.id==='panel-shifts').items[0].items[0].columns[1].items[0]
+    .data[0].data[0].value=99;
   assert.throws(()=>auditCard(card,input,directory),/Layout\/data mismatch/);
 
   const bad=structuredClone(directory);

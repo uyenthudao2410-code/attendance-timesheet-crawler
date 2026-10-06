@@ -225,9 +225,7 @@ export function employeeDetailPanel(e,i) {
 }
 
 function detailTargets(source,index) {
-  return source.employees.map((_,j)=>
-    j===index ? 'employee-detail-'+(j+1) : {elementId:'employee-detail-'+(j+1),isVisible:false}
-  );
+  return ['employee-detail-'+(index+1)];
 }
 
 export function avatarRail(s,directory,avatarUrls={}) {
@@ -439,7 +437,7 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     shift_chart_count:1,
     workday_chart_count:1,
     avatar_rail_count:source.employees.length,
-    detail_interaction:'avatar_tap_toggle',
+    detail_interaction:'avatar_tap_toggle_own_detail',
     detail_buttons:0,
     details_hidden_by_default:true,
     footer_notes:false,

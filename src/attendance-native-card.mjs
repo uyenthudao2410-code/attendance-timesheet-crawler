@@ -306,10 +306,8 @@ function personaForEmployee(e,directory) {
     view:'compact',
     properties:{
       id:u.id,
-      displayName:u.displayName,
-      userPrincipalName:u.userPrincipalName
-    },
-    fallback:text(e.name,{size:'Small',weight:'Bolder'})
+      displayName:u.displayName
+    }
   };
 }
 
@@ -387,49 +385,31 @@ function weightedBar(morning,afternoon,totalScale=720) {
   const rest=Math.max(1,totalScale-used);
   const columns=[];
 
-  if (morning>0) {
-    columns.push({
-      type:'Column',
-      width:morning,
-      items:[{
-        type:'Container',
-        style:'accent',
-        roundedCorners:true,
-        minHeight:'22px',
-        items:[]
-      }]
-    });
-  }
-  if (afternoon>0) {
-    columns.push({
-      type:'Column',
-      width:afternoon,
-      items:[{
-        type:'Container',
-        style:'good',
-        roundedCorners:true,
-        minHeight:'22px',
-        items:[]
-      }]
-    });
-  }
+  if (morning>0) columns.push({
+    type:'Column',
+    width:morning,
+    style:'accent',
+    minHeight:'20px',
+    items:[]
+  });
+
+  if (afternoon>0) columns.push({
+    type:'Column',
+    width:afternoon,
+    style:'good',
+    minHeight:'20px',
+    items:[]
+  });
+
   columns.push({
     type:'Column',
     width:rest,
-    items:[{
-      type:'Container',
-      style:'emphasis',
-      roundedCorners:true,
-      minHeight:'22px',
-      items:[]
-    }]
+    style:'emphasis',
+    minHeight:'20px',
+    items:[]
   });
 
-  return {
-    type:'ColumnSet',
-    spacing:'None',
-    columns
-  };
+  return {type:'ColumnSet',spacing:'None',columns};
 }
 
 function workdayBar(minutes,totalScale=720,status='Đã ghi nhận') {
@@ -470,39 +450,35 @@ export function personaShiftRow(e,i,directory) {
   const morning=shiftTotalMinutes(e,'morning');
   const afternoon=shiftTotalMinutes(e,'afternoon');
   return {
-    type:'Container',
+    type:'ColumnSet',
     id:'shift-row-' + (i+1),
     separator:i>0,
     spacing:'Small',
-    items:[{
-      type:'ColumnSet',
-      spacing:'Small',
-      columns:[
-        {
-          type:'Column',
-          width:36,
-          verticalContentAlignment:'Center',
-          items:[personaCompact(e,directory)]
-        },
-        {
-          type:'Column',
-          width:50,
-          verticalContentAlignment:'Center',
-          items:[weightedBar(morning,afternoon)]
-        },
-        {
-          type:'Column',
-          width:14,
-          verticalContentAlignment:'Center',
-          items:[text(formatRecordedMinutes(recordedMinutes(e)),{
-            size:'Small',
-            weight:'Bolder',
-            horizontalAlignment:'Right',
-            color:statusColor(e)
-          })]
-        }
-      ]
-    }]
+    columns:[
+      {
+        type:'Column',
+        width:36,
+        verticalContentAlignment:'Center',
+        items:[personaCompact(e,directory)]
+      },
+      {
+        type:'Column',
+        width:50,
+        verticalContentAlignment:'Center',
+        items:[weightedBar(morning,afternoon)]
+      },
+      {
+        type:'Column',
+        width:14,
+        verticalContentAlignment:'Center',
+        items:[text(formatRecordedMinutes(recordedMinutes(e)),{
+          size:'Small',
+          weight:'Bolder',
+          horizontalAlignment:'Right',
+          color:statusColor(e)
+        })]
+      }
+    ]
   };
 }
 
@@ -585,6 +561,21 @@ export function compactDetailsTable(s,directory) {
   };
 }
 
+
+export function compactDetailLines(s) {
+  return s.employees.map((e,i)=>text(
+    '**' + String(i+1).padStart(2,'0') + ' · ' + e.name + '**  ·  S ' + e.morning +
+    '  ·  C ' + e.afternoon + '  ·  ' + totalSummary(e),
+    {
+      id:'detail-line-' + (i+1),
+      size:'Small',
+      separator:i>0,
+      spacing:'Small',
+      color:statusColor(e)
+    }
+  ));
+}
+
 export function buildNativeCard(source,directory) {
   const s=validateSource(source), k=s.kpis;
   validateDirectory(s,directory);
@@ -597,48 +588,27 @@ export function buildNativeCard(source,directory) {
   ];
 
   const kpiTile=({label,value,color,icon})=>({
-    type:'Container',
-    style:'default',
-    roundedCorners:true,
-    items:[
-      {
-        type:'ColumnSet',
-        spacing:'None',
-        columns:[
-          {
-            type:'Column',
-            width:'auto',
-            verticalContentAlignment:'Center',
-            items:[{type:'Icon',name:icon,size:'Small',color,fallback:'drop'}]
-          },
-          {
-            type:'Column',
-            width:'stretch',
-            verticalContentAlignment:'Center',
-            items:[text(String(value),{
-              size:'ExtraLarge',
-              weight:'Bolder',
-              color,
-              horizontalAlignment:'Right'
-            })]
-          }
-        ]
-      },
-      text(label,{size:'Small',weight:'Bolder'})
-    ]
+    type:'Column',
+    width:1,
+    items:[{
+      type:'Container',
+      style:'default',
+      roundedCorners:true,
+      items:[
+        {
+          type:'ColumnSet',
+          spacing:'None',
+          columns:[
+            {type:'Column',width:'auto',items:[{type:'Icon',name:icon,size:'Small',color,fallback:'drop'}]},
+            {type:'Column',width:'stretch',items:[text(String(value),{
+              size:'ExtraLarge',weight:'Bolder',color,horizontalAlignment:'Right'
+            })]}
+          ]
+        },
+        text(label,{size:'Small',weight:'Bolder'})
+      ]
+    }]
   });
-
-  const kpiRow=entries=>({
-    type:'ColumnSet',
-    spacing:'Small',
-    columns:entries.map(item=>({
-      type:'Column',
-      width:1,
-      items:[kpiTile(item)]
-    }))
-  });
-
-  const summary=quickSummary(s);
 
   return {
     type:'AdaptiveCard',
@@ -660,65 +630,14 @@ export function buildNativeCard(source,directory) {
         items:[
           sectionTitle('Gauge','TỔNG QUAN'),
           overviewStatusChart(s),
-
-          {
-            type:'Container',
-            id:'kpi-mobile',
-            targetWidth:'atMost:Narrow',
-            spacing:'Small',
-            items:[
-              kpiRow(kpis.slice(0,2)),
-              {...kpiRow(kpis.slice(2)),spacing:'Small'}
-            ]
-          },
-          {
-            type:'Container',
-            id:'kpi-wide',
-            targetWidth:'atLeast:Standard',
-            spacing:'Small',
-            items:[kpiRow(kpis)]
-          },
-
-          {
-            type:'ColumnSet',
-            spacing:'Small',
-            columns:[
-              {
-                type:'Column',
-                width:1,
-                items:[
-                  text(s.total_hours,{size:'Large',weight:'Bolder',color:'Good',horizontalAlignment:'Center'}),
-                  text('Giờ xác nhận',{size:'Small',horizontalAlignment:'Center'})
-                ]
-              },
-              {
-                type:'Column',
-                width:1,
-                items:[
-                  text(formatWorkdays(durationMinutes(s.total_hours)),{size:'Large',weight:'Bolder',color:'Accent',horizontalAlignment:'Center'}),
-                  text('Công xác nhận',{size:'Small',horizontalAlignment:'Center'})
-                ]
-              },
-              {
-                type:'Column',
-                width:1,
-                items:[
-                  text(summary[0].value,{size:'Large',weight:'Bolder',color:'Accent',horizontalAlignment:'Center'}),
-                  text('Công ca sáng',{size:'Small',horizontalAlignment:'Center'})
-                ]
-              },
-              {
-                type:'Column',
-                width:1,
-                items:[
-                  text(summary[1].value,{size:'Large',weight:'Bolder',color:'Good',horizontalAlignment:'Center'}),
-                  text('Công ca chiều',{size:'Small',horizontalAlignment:'Center'})
-                ]
-              }
-            ]
-          },
-
-          text('Có bản ghi ' + s.rate + ' · 1 công = 8 giờ',{size:'Small',isSubtle:true,horizontalAlignment:'Center',spacing:'Small'})
+          {type:'ColumnSet',spacing:'Small',columns:kpis.slice(0,2).map(kpiTile)},
+          {type:'ColumnSet',spacing:'Small',columns:kpis.slice(2).map(kpiTile)},
+          rich([
+            inline(s.total_hours,{weight:'Bolder',color:'Good'}),
+            inline(' giờ xác nhận  ·  '),
+            inline(formatWorkdays(durationMinutes(s.total_hours)),{weight:'Bolder',color:'Accent'}),
+            inline('  ·  Sáng ' + quickSummary(s)[0].value + ' công  ·  Chiều ' + quickSummary(s)[1].value + ' công  ·  ' + s.rate,{size:'Small'})
+          ],{spacing:'Small'})
         ]
       },
 
@@ -755,11 +674,9 @@ export function buildNativeCard(source,directory) {
         spacing:'Small',
         items:[
           rich([
-            inline('■ ',{color:'Accent',weight:'Bolder'}),
-            inline('Sáng',{size:'Small',weight:'Bolder'}),
-            inline('   ■ ',{color:'Good',weight:'Bolder'}),
-            inline('Chiều',{size:'Small',weight:'Bolder'}),
-            inline('   ·   Tổng giờ ở cuối dòng',{size:'Small',isSubtle:true})
+            inline('■ ',{color:'Accent',weight:'Bolder'}), inline('Sáng',{size:'Small',weight:'Bolder'}),
+            inline('   ■ ',{color:'Good',weight:'Bolder'}), inline('Chiều',{size:'Small',weight:'Bolder'}),
+            inline('   · Tổng giờ',{size:'Small',isSubtle:true})
           ]),
           ...s.employees.map((e,i)=>personaShiftRow(e,i,directory))
         ]
@@ -771,8 +688,7 @@ export function buildNativeCard(source,directory) {
         isVisible:false,
         spacing:'Small',
         items:[
-          text('CÔNG QUY ĐỔI',{size:'Small',weight:'Bolder',color:'Accent'}),
-          text('1 công = 8 giờ · giá trị công hiển thị trực tiếp trên chart.',{size:'Small',isSubtle:true}),
+          text('CÔNG QUY ĐỔI · 1 công = 8 giờ',{size:'Small',weight:'Bolder',color:'Accent'}),
           workdayChart(s)
         ]
       },
@@ -793,10 +709,10 @@ export function buildNativeCard(source,directory) {
         id:'attendance-details-panel',
         isVisible:false,
         spacing:'Small',
-        items:[compactDetailsTable(s,directory)]
+        items:compactDetailLines(s)
       },
 
-      text('Quy đổi tham khảo: 1 công = 8 giờ. Thời gian tăng ca được ghi nhận đầy đủ theo dữ liệu thực tế. Sai lệch vui lòng phản hồi P.HC-NS.',
+      text('1 công = 8 giờ · Tăng ca được ghi nhận đầy đủ theo dữ liệu thực tế · Sai lệch vui lòng phản hồi P.HC-NS.',
         {size:'Small',isSubtle:true,spacing:'Small'})
     ]
   };

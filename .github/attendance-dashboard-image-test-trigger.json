@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "enabled": true,
+  "layout_version": "DASHBOARD_V5",
+  "target_date": "2026-10-05",
+  "drive_id": "b!N9dX9HCS6UKEq613WrbxKk_yEmeHt5dCip15hTbDIxd3jbbX-vE9Q4aki4Fvh5Mc",
+  "item_id": "013N4NZ6YXMYGIMR2WQBGJJMKHO2ZEE4IX",
+  "file_name": "attendance-dashboard-v5-2026-10-05.png",
+  "image_sha256": "27e45dcb0ce13bbf3340b4acd66b0a9197853c0e02e48e20e280f79c9ec0f87d",
+  "width": 1080,
+  "height": 1500,
+  "requested_at": "2026-10-06T05:44:34.622Z"
+}

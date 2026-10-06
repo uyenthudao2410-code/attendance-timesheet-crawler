@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V22_IMAGE_AVATAR_RAIL';
+export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V23_GRAPH_PROFILE_PHOTO';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
@@ -118,10 +118,10 @@ const AVATAR_PNG = {
   "Lê Đăng Hiếu": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAABE0lEQVR42u2YMQoCMRBFf4a9iiCidl5BrMRWLCw8gQew8gB2goWwoOBhtLS0FxHFG2hjIbJukt1kMpFNPcx//MmEzADCjyqdYb54amNmU8ULaALlCFaxgRUEpSBwFvkUO5ilmxQcTqNDweE0eiQCLkeXIPyQGPd+6JMouAyOiEosxb0vngibROR3y6C8ab+LcbsBAOisdzicL9Zx20EPo2YdANBabXC83uJ3sAL8e8DEZ/L9ZCgbMK+LqzvIC1hibvU9qySuLn9tmeJ0f3jcLEj7zbwdJBfrCZ+jaGRdLMXFDw6ymfK54SJ+qEO5mKFLNsHccPoSc0Hm6JgD+HjIDQwgl8lcw9k56MpNrzvqorAl3H8By5ZlXkEF6G0AAAAASUVORK5CYII="
 };
 
-function avatarImage(e) {
+function avatarImage(e,avatarUrls={}) {
   return {
     type:'Image',
-    url:AVATAR_PNG[e.name],
+    url:avatarUrls[e.name] || AVATAR_PNG[e.name],
     altText:'',
     style:'Person',
     size:'Small',
@@ -143,7 +143,7 @@ export function overviewStatusChart(s) {
     spacing:'Small',
     data:[{title:'Nhân sự',data:[
       {legend:'Đã chốt',value:closed,color:'categoricalBlue'},
-      {legend:'Chưa chốt',value:open,color:'categoricalTeal'}
+      {legend:'Chưa chốt',value:open,color:'categoricalGreen'}
     ]}],
     fallback:chartFallback()
   };
@@ -166,7 +166,7 @@ export function consolidatedShiftChart(s) {
         title:'\u200B'.repeat(i+1),
         data:[
           ...(morning>0?[{legend:'\u200B',value:chartHours(morning),color:'categoricalBlue'}]:[]),
-          ...(afternoon>0?[{legend:'\u200C',value:chartHours(afternoon),color:'categoricalTeal'}]:[])
+          ...(afternoon>0?[{legend:'\u200C',value:chartHours(afternoon),color:'categoricalGreen'}]:[])
         ]
       };
     }),
@@ -230,7 +230,7 @@ function detailTargets(source,index) {
   );
 }
 
-export function avatarRail(s,directory) {
+export function avatarRail(s,directory,avatarUrls={}) {
   return {
     type:'Container',
     id:'avatar-rail',
@@ -245,12 +245,12 @@ export function avatarRail(s,directory) {
         type:'Action.ToggleVisibility',
         targetElements:detailTargets(s,i)
       },
-      items:[avatarImage(e)]
+      items:[avatarImage(e,avatarUrls)]
     }))
   };
 }
 
-export function buildNativeCard(source,directory) {
+export function buildNativeCard(source,directory,avatarUrls={}) {
   const s=validateSource(source),k=s.kpis;
   validateDirectory(s,directory);
 
@@ -284,7 +284,7 @@ export function buildNativeCard(source,directory) {
     lang:'vi',
     msteams:{width:'Full'},
     body:[
-      text('TEST · NATIVE V21 · COMPACT AVATAR RAIL',{size:'Small',color:'Accent',weight:'Bolder'}),
+      text('TEST · NATIVE V23 · GRAPH PROFILE PHOTO',{size:'Small',color:'Accent',weight:'Bolder'}),
       text('BÁO CÁO CHẤM CÔNG — CẢ NGÀY',{size:'Large',weight:'Bolder',spacing:'Small'}),
       text(s.date_label+' · Cập nhật '+s.updated,{size:'Small',isSubtle:true,spacing:'Small'}),
 
@@ -343,7 +343,7 @@ export function buildNativeCard(source,directory) {
           {
             type:'Column',
             width:'38px',
-            items:[avatarRail(s,directory)]
+            items:[avatarRail(s,directory,avatarUrls)]
           },
           {
             type:'Column',
@@ -369,6 +369,20 @@ export function buildNativeCard(source,directory) {
       },
       {
         type:'Container',
+        id:'shift-legend',
+        spacing:'Small',
+        items:[
+          rich([
+            inline('■ ',{color:'Accent',weight:'Bolder'}),
+            inline('Ca sáng',{size:'Small',weight:'Bolder'}),
+            inline('    ·    ',{size:'Small',isSubtle:true}),
+            inline('■ ',{color:'Good',weight:'Bolder'}),
+            inline('Ca chiều',{size:'Small',weight:'Bolder'})
+          ],{horizontalAlignment:'Center'})
+        ]
+      },
+      {
+        type:'Container',
         id:'details-area',
         spacing:'Small',
         items:s.employees.map(employeeDetailPanel)
@@ -377,7 +391,7 @@ export function buildNativeCard(source,directory) {
   };
 }
 
-export function auditCard(card,source,directory) {
+export function auditCard(card,source,directory,avatarUrls={}) {
   validateSource(source);
   validateDirectory(source,directory);
   const json=JSON.stringify(card);
@@ -396,8 +410,8 @@ export function auditCard(card,source,directory) {
       fail('External or nonmobile visual forbidden');
     }
     if (v.type==='Image') {
-      if (typeof v.url!=='string' || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(v.url)) {
-        fail('Only embedded PNG avatars allowed');
+      if (typeof v.url!=='string' || !/^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(v.url)) {
+        fail('Only embedded PNG/JPEG avatars allowed');
       }
     } else if ('url' in v || 'backgroundImage' in v) {
       fail('No external resources');
@@ -406,7 +420,7 @@ export function auditCard(card,source,directory) {
   };
   walk(card);
 
-  if (json!==JSON.stringify(buildNativeCard(source,directory))) fail('Layout/data mismatch');
+  if (json!==JSON.stringify(buildNativeCard(source,directory,avatarUrls))) fail('Layout/data mismatch');
 
   return {
     layout_version:LAYOUT,
@@ -430,10 +444,12 @@ export function auditCard(card,source,directory) {
     details_hidden_by_default:true,
     footer_notes:false,
     repeated_legends:false,
-    palette:'categoricalBlue_categoricalTeal',
+    palette:'categoricalBlue_categoricalGreen',
+    shift_legend:'Ca sáng | Ca chiều',
     native_microsoft_charts_only:true,
     native_microsoft_personas:false,
-    avatar_render:'embedded_png_initials',
+    avatar_render:Object.keys(avatarUrls).length ? 'graph_profile_photo' : 'embedded_png_fallback',
+    graph_avatar_count:source.employees.filter(e=>Boolean(avatarUrls[e.name])).length,
     external_chart_requests:0,
     image_generation:false,
     render_qa:'pending_real_teams_client'

@@ -3,12 +3,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   LAYOUT, buildNativeCard, auditCard, validateSource, sourceDigest,
-  durationMinutes, hoursFromMinutes, chartHours, sessionMinutes, recordedMinutes, needsReconciliation, reconciliationSummary,
+  durationMinutes, hoursFromMinutes, chartHours, workdaysFromMinutes,
+  formatRecordedMinutes, formatWorkdays, sessionMinutes, recordedMinutes,
   chartName, workforceRecordedHoursChart, aggregateShiftMixChart,
   employeeCompactRow, statusStrip
 } from '../src/attendance-native-card.mjs';
 
 const input=JSON.parse(fs.readFileSync(process.env.NATIVE_TEST_SOURCE || 'test/fixtures/attendance-native-card-input.json','utf8'));
+
 const all=root=>{
   const result=[];
   const walk=v=>{
@@ -28,75 +30,72 @@ test('fixture binding stays unchanged and source validates without mutation',()=
   assert.equal(JSON.stringify(input),before);
 });
 
-test('chart unit is hours while literal display remains h:mm',()=>{
+test('1 workday equals exactly 8 hours and formatting is Vietnamese-friendly',()=>{
   assert.equal(durationMinutes('9h44'),584);
   assert.equal(hoursFromMinutes(584),9.73);
   assert.equal(chartHours(584),9.7);
-  assert.equal(chartHours(27),0.5);
-  assert.equal(durationMinutes('Chưa chốt'),null);
+  assert.equal(workdaysFromMinutes(480),1);
+  assert.equal(workdaysFromMinutes(584),1.22);
+  assert.equal(workdaysFromMinutes(657),1.37);
+  assert.equal(formatRecordedMinutes(657),'10h57');
+  assert.equal(formatWorkdays(657),'1,37 công');
 });
 
-test('recorded minutes sum only sessions with known duration',()=>{
+test('recorded minutes preserve overtime as normal recorded time',()=>{
   assert.equal(recordedMinutes(input.employees[0]),657);
-  assert.equal(recordedMinutes(input.employees[2]),299);
+  assert.equal(recordedMinutes(input.employees[1]),584);
+  assert.equal(recordedMinutes(input.employees[5]),554);
   assert.equal(recordedMinutes(input.employees[6]),248);
   assert.deepEqual(sessionMinutes(input.employees[6].afternoon),[]);
-  assert.equal(needsReconciliation(input.employees[0]),true);
-  assert.equal(needsReconciliation(input.employees[1]),true);
-  assert.equal(needsReconciliation(input.employees[2]),false);
-  assert.equal(needsReconciliation(input.employees[6]),false);
 });
 
-test('main dashboard chart is one horizontal bar chart for all eight employees',()=>{
+test('main mobile chart shows workday equivalents directly on horizontal bars',()=>{
   const c=workforceRecordedHoursChart(input);
   assert.equal(c.type,'Chart.HorizontalBar');
+  assert.equal(c.id,'workforce-workdays-chart');
   assert.equal(c.displayMode,'AbsoluteNoAxis');
   assert.equal(c.showBarValues,true);
   assert.equal(c.data.length,8);
   assert.equal(c.data[0].x,'01 · Văn Mạnh');
   assert.equal(c.data[7].x,'08 · Đăng Hiếu');
-  assert.equal(c.data[0].y,11);
-  assert.equal(c.data[6].y,4.1);
-  assert.equal(c.data[0].color,'attention');
-  assert.equal(c.data[6].color,'warning');
-  assert.equal(c.data[1].color,'attention');
-  assert.equal(c.data[2].color,'good');
+  assert.deepEqual(c.data.map(d=>d.y),[1.37,1.22,0.62,1.13,1,1.15,0.52,1.21]);
+  assert.equal(c.data[0].color,'categoricalMarigold');
+  assert.equal(c.data[1].color,'categoricalBlue');
+  assert.equal(c.data[6].color,'categoricalMarigold');
 });
 
-test('shift mix chart aggregates morning and afternoon in hours',()=>{
+test('shift mix chart is also expressed in workdays',()=>{
   const c=aggregateShiftMixChart(input);
   assert.equal(c.type,'Chart.HorizontalBar.Stacked');
   assert.equal(c.showLegend,true);
   assert.equal(c.showBarValues,true);
-  assert.equal(c.data.length,1);
-  assert.equal(c.data[0].data.length,2);
-  assert.equal(c.data[0].data[0].legend,'Ca sáng');
-  assert.equal(c.data[0].data[1].legend,'Ca chiều');
-  assert.ok(c.data[0].data[0].value>0);
-  assert.ok(c.data[0].data[1].value>0);
+  assert.deepEqual(c.data[0].data.map(d=>[d.legend,d.value]),
+    [['Ca sáng',3.34],['Ca chiều',4.88]]);
 });
 
-test('status strip follows the derived over-8h reconciliation rule',()=>{
+test('status strip is neutral: recorded versus not closed only',()=>{
   assert.deepEqual(statusStrip(input).data[0].data.map(d=>[d.legend,d.value]),
-    [['Trong ngưỡng',2],['Chưa chốt',1],['Cần đối soát >8h',5]]);
-  assert.match(reconciliationSummary(input),/Điêu Văn Mạnh · 10h57/);
-  assert.match(reconciliationSummary(input),/Nguyễn Thị Thục Anh · 9h44/);
-  assert.ok(!reconciliationSummary(input).includes('Lê Thị Phương Linh'));
+    [['Đã ghi nhận',6],['Chưa chốt',2]]);
 });
 
-test('detail rows are easier to scan and preserve all literal employee fields',()=>{
+test('detail rows show recorded hours plus workday equivalent without overtime warnings',()=>{
   input.employees.forEach((e,i)=>{
     const block=employeeCompactRow(e,i);
     assert.equal(block.id,'employee-' + (i+1));
     assert.equal(block.items.length,3);
-    assert.ok(JSON.stringify(block.items[1]).includes('☀  SÁNG'));
-    assert.ok(JSON.stringify(block.items[2]).includes('◐  CHIỀU'));
     const json=JSON.stringify(block);
-    for(const key of ['name','morning','afternoon','total','status']) assert.ok(json.includes(e[key]),i + ' ' + key);
+    for(const key of ['name','morning','afternoon']) assert.ok(json.includes(e[key]),i + ' ' + key);
+    assert.ok(json.includes('IconRun'));
+    assert.ok(json.includes('SÁNG'));
+    assert.ok(json.includes('CHIỀU'));
+    assert.ok(json.includes('công'));
+    assert.ok(!json.includes('Cần đối soát'));
   });
+  assert.ok(JSON.stringify(employeeCompactRow(input.employees[0],0)).includes('10h57 · 1,37 công · Chưa chốt'));
+  assert.ok(JSON.stringify(employeeCompactRow(input.employees[1],1)).includes('9h44 · 1,22 công · Đã ghi nhận'));
 });
 
-test('KPI layout is mobile-first 2x2 and wide 4-across',()=>{
+test('KPI layout remains 2x2 on mobile and neutral',()=>{
   const card=buildNativeCard(input);
   const mobile=card.body.find(n=>n.id==='kpi-mobile');
   const wide=card.body.find(n=>n.id==='kpi-wide');
@@ -104,21 +103,28 @@ test('KPI layout is mobile-first 2x2 and wide 4-across',()=>{
   assert.equal(wide.targetWidth,'atLeast:Standard');
   assert.equal(mobile.items.length,2);
   assert.ok(mobile.items.every(r=>r.columns.length===2));
-  assert.equal(wide.items[0].columns.length,4);
-  assert.deepEqual(wide.items[0].columns.map(c=>c.items[0].text),['8','8','6','5']);
+  assert.deepEqual(wide.items[0].columns.map(c=>c.items[0].text),['8','8','6','2']);
+  assert.deepEqual(wide.items[0].columns.map(c=>c.items[1].text),['Tổng nhân sự','Có dữ liệu','Đã chốt','Chưa chốt']);
 });
 
-test('card contains three separate dashboard charts and no per-person chart list',()=>{
+test('confirmed summary converts 50h40 to 6,33 workdays',()=>{
+  const json=JSON.stringify(buildNativeCard(input));
+  assert.ok(json.includes('50h40'));
+  assert.ok(json.includes('6,33 công'));
+  assert.ok(json.includes('1 công = 8 giờ'));
+});
+
+test('card contains three compact native charts and no per-person chart list',()=>{
   const card=buildNativeCard(input);
   const nodes=all(card);
   assert.equal(nodes.filter(n=>n.type==='Chart.HorizontalBar').length,1);
   assert.equal(nodes.filter(n=>n.type==='Chart.HorizontalBar.Stacked').length,2);
   assert.equal(nodes.filter(n=>n.type==='Table').length,0);
-  assert.equal(all(card).filter(n=>/^employee-\d+$/.test(n.id||'')).length,8);
+  assert.equal(nodes.filter(n=>/^employee-\d+$/.test(n.id||'')).length,8);
   assert.ok(!nodes.some(n=>/^employee-bar-/.test(n.id||'')));
 });
 
-test('details are hidden by default and opened by one toggle action',()=>{
+test('details remain collapsed by default',()=>{
   const card=buildNativeCard(input);
   const panel=card.body.find(n=>n.id==='attendance-details-panel');
   assert.ok(panel);
@@ -128,36 +134,36 @@ test('details are hidden by default and opened by one toggle action',()=>{
   assert.ok(action);
   assert.deepEqual(action.targetElements,['attendance-details-panel']);
   assert.match(action.title,/chi tiết giờ vào \/ ra/i);
-  assert.equal(all(card).filter(n=>n.isVisible===false).length,1);
 });
 
-test('payload is native-only and minute labels are forbidden',()=>{
+test('payload is mobile-first, native-only, and has no overtime alarm language',()=>{
   const card=buildNativeCard(input);
   const qa=auditCard(card,input);
-  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V9_ICONS_OVER8');
+  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V10_WORKDAYS');
   assert.equal(qa.data_gate,'passed');
   assert.equal(qa.employee_count,8);
   assert.equal(qa.table_count,0);
   assert.equal(qa.chart_count,3);
-  assert.equal(qa.chart_unit,'hours');
+  assert.equal(qa.chart_unit,'workdays');
+  assert.equal(qa.workday_conversion_minutes,480);
   assert.equal(qa.external_chart_requests,0);
   assert.equal(qa.all_sessions_visible_by_default,false);
   assert.equal(qa.collapsible_detail_panel,true);
-  assert.equal(qa.reconciliation_rule,'recorded_minutes_gt_480');
-  assert.equal(qa.reconciliation_count,5);
-  assert.ok(all(card).filter(n=>n.type==='Icon').length>=4);
+  assert.ok(all(card).filter(n=>n.type==='Icon').length>=3);
+  assert.ok(all(card).filter(n=>n.type==='IconRun').length>=18);
   assert.ok(qa.bytes<27000);
   const json=JSON.stringify(card);
-  assert.ok(!json.includes('Phút'));
-  assert.ok(!json.includes('phút'));
-  const main=card.body.find(n=>n.id==='workforce-recorded-hours');
+  for(const forbidden of ['Vượt 8h','Cần đối soát >8h','Đỏ: cần đối soát','needsReconciliation']) {
+    assert.ok(!json.includes(forbidden),forbidden);
+  }
+  const main=card.body.find(n=>n.id==='workforce-workdays-chart');
   assert.equal(main.displayMode,'AbsoluteNoAxis');
   assert.equal(main.showBarValues,true);
 });
 
-test('mutating chart values or deleting literal shift line fails audit',()=>{
+test('mutating chart values or deleting a shift line fails audit',()=>{
   const card=buildNativeCard(input);
-  card.body.find(n=>n.id==='workforce-recorded-hours').data[0].y=99;
+  card.body.find(n=>n.id==='workforce-workdays-chart').data[0].y=99;
   assert.throws(()=>auditCard(card,input),/Layout\/data mismatch/);
   const removed=buildNativeCard(input);
   removed.body.find(n=>n.id==='attendance-details-panel').items.find(n=>n.id==='employee-6').items.pop();

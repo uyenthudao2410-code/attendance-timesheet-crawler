@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V11_DUAL_VIEW_TABLE';
+export const LAYOUT = 'ATTENDANCE_MOBILE_HYBRID_V12_STACKED_SHIFTS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
@@ -135,6 +135,101 @@ const sectionTitle = (iconName, label) => ({
 export function chartName(name) {
   const parts = String(name).trim().split(/\s+/);
   return parts.length <= 2 ? name : parts.slice(-2).join(' ');
+}
+
+function shiftTotalMinutes(e, key) {
+  return sessionMinutes(e[key]).reduce((a,b)=>a+b,0);
+}
+
+export function shiftChartCreatePayload(source) {
+  const s=validateSource(source);
+  const categories=s.employees.map((e,i)=>String(i+1).padStart(2,'0') + ' · ' + chartName(e.name));
+  const morning=s.employees.map((e,i)=>{
+    const minutes=shiftTotalMinutes(e,'morning');
+    return {x:chartHours(minutes),y:categories[i],label:minutes ? 'S ' + formatRecordedMinutes(minutes) : ''};
+  });
+  const afternoon=s.employees.map((e,i)=>{
+    const minutes=shiftTotalMinutes(e,'afternoon');
+    return {x:chartHours(minutes),y:categories[i],label:minutes ? 'C ' + formatRecordedMinutes(minutes) : ''};
+  });
+
+  return {
+    width:1100,
+    height:760,
+    devicePixelRatio:2,
+    backgroundColor:'#ffffff',
+    format:'png',
+    chart:{
+      type:'bar',
+      data:{
+        datasets:[
+          {
+            label:'Ca sáng',
+            data:morning,
+            backgroundColor:'#4F46E5',
+            borderColor:'#4338CA',
+            borderWidth:1,
+            borderRadius:10,
+            borderSkipped:false,
+            barThickness:54
+          },
+          {
+            label:'Ca chiều',
+            data:afternoon,
+            backgroundColor:'#14B8A6',
+            borderColor:'#0F766E',
+            borderWidth:1,
+            borderRadius:10,
+            borderSkipped:false,
+            barThickness:54
+          }
+        ]
+      },
+      options:{
+        indexAxis:'y',
+        responsive:false,
+        animation:false,
+        layout:{padding:{top:8,right:18,bottom:8,left:0}},
+        scales:{
+          x:{
+            stacked:true,
+            beginAtZero:true,
+            grid:{display:false},
+            border:{display:false},
+            ticks:{display:false}
+          },
+          y:{
+            stacked:true,
+            grid:{display:false},
+            border:{display:false},
+            ticks:{
+              mirror:true,
+              padding:-12,
+              color:'#ffffff',
+              font:{size:22,weight:'700'}
+            }
+          }
+        },
+        plugins:{
+          legend:{
+            display:true,
+            position:'top',
+            labels:{boxWidth:20,boxHeight:20,font:{size:20,weight:'600'},padding:20}
+          },
+          datalabels:{
+            display:true,
+            color:'#ffffff',
+            anchor:'center',
+            align:'center',
+            clamp:true,
+            font:{size:18,weight:'700'},
+            padding:2
+          },
+          tooltip:{enabled:false}
+        }
+      }
+    }
+  };
 }
 
 export function workdayChart(s) {
@@ -277,7 +372,7 @@ export function compactDetailsTable(s) {
   };
 }
 
-export function buildNativeCard(source) {
+export function buildNativeCard(source, shiftChartUrl) {
   const s=validateSource(source), k=s.kpis;
   const kpis=[
     ['Tổng nhân sự',k.total,'Accent'],
@@ -361,43 +456,49 @@ export function buildNativeCard(source) {
         actions:[
           {
             type:'Action.ToggleVisibility',
-            title:'Công quy đổi',
+            title:'Theo ca',
             style:'positive',
             targetElements:[
-              {elementId:'panel-workdays',isVisible:true},
-              {elementId:'panel-hours',isVisible:false}
+              {elementId:'panel-shifts',isVisible:true},
+              {elementId:'panel-workdays',isVisible:false}
             ]
           },
           {
             type:'Action.ToggleVisibility',
-            title:'Giờ thực tế',
+            title:'Công quy đổi',
             targetElements:[
-              {elementId:'panel-workdays',isVisible:false},
-              {elementId:'panel-hours',isVisible:true}
+              {elementId:'panel-shifts',isVisible:false},
+              {elementId:'panel-workdays',isVisible:true}
             ]
           }
         ]
       },
       {
         type:'Container',
-        id:'panel-workdays',
+        id:'panel-shifts',
         isVisible:true,
         spacing:'Small',
         items:[
-          text('CÔNG QUY ĐỔI THEO NHÂN SỰ',{size:'Small',weight:'Bolder',color:'Accent'}),
-          text('Tên nhân sự nằm sát thanh; giá trị công hiển thị ở cuối thanh.',{size:'Small',isSubtle:true,spacing:'Small'}),
-          workdayChart(s)
+          text('GIỜ THEO CA · CÙNG MỘT THANH',{size:'Small',weight:'Bolder',color:'Accent'}),
+          text('Tên nhân sự chồng trực tiếp trên bar · Sáng và Chiều ghép trên cùng một thanh.',{size:'Small',isSubtle:true,spacing:'Small'}),
+          {
+            type:'Image',
+            id:'shift-overlay-chart',
+            url:shiftChartUrl,
+            size:'Stretch',
+            altText:'Biểu đồ giờ ca sáng và ca chiều theo nhân sự'
+          }
         ]
       },
       {
         type:'Container',
-        id:'panel-hours',
+        id:'panel-workdays',
         isVisible:false,
         spacing:'Small',
         items:[
-          text('GIỜ THỰC TẾ THEO NHÂN SỰ',{size:'Small',weight:'Bolder',color:'Accent'}),
-          text('Tổng thời lượng các phiên đã có thời lượng · đơn vị giờ.',{size:'Small',isSubtle:true,spacing:'Small'}),
-          hoursChart(s)
+          text('CÔNG QUY ĐỔI THEO NHÂN SỰ',{size:'Small',weight:'Bolder',color:'Accent'}),
+          text('1 công = 8 giờ · giá trị hiển thị trực tiếp ở cuối thanh.',{size:'Small',isSubtle:true,spacing:'Small'}),
+          workdayChart(s)
         ]
       },
 
@@ -434,7 +535,7 @@ export function buildNativeCard(source) {
   };
 }
 
-export function auditCard(card, source) {
+export function auditCard(card, source, shiftChartUrl) {
   validateSource(source);
   const json=JSON.stringify(card);
 
@@ -451,16 +552,22 @@ export function auditCard(card, source) {
       ids.add(v.id);
     }
 
-    if (['Image','TabSet','Accordion','Chart.VerticalBar','Chart.VerticalBar.Grouped'].includes(v.type)) {
-      fail('External or nonmobile visual forbidden');
+    if (['TabSet','Accordion','Chart.VerticalBar','Chart.VerticalBar.Grouped'].includes(v.type)) {
+      fail('Nonmobile visual forbidden');
     }
-    if ('url' in v || 'backgroundImage' in v) fail('No external resources');
+    if (v.type==='Image') {
+      if (typeof v.url!=='string' || !/^https:\/\/quickchart\.io\/chart\/render\/[A-Za-z0-9_-]+/.test(v.url)) {
+        fail('Only QuickChart render images are allowed');
+      }
+    } else if ('url' in v || 'backgroundImage' in v) {
+      fail('Unexpected external resource');
+    }
 
     for (const value of Object.values(v)) walk(value);
   };
   walk(card);
 
-  if (json !== JSON.stringify(buildNativeCard(source))) fail('Layout/data mismatch');
+  if (json !== JSON.stringify(buildNativeCard(source, shiftChartUrl))) fail('Layout/data mismatch');
 
   return {
     layout_version:LAYOUT,
@@ -474,12 +581,15 @@ export function auditCard(card, source) {
     table_count:types.filter(t=>t==='Table').length,
     chart_count:types.filter(t=>t.startsWith('Chart.')).length,
     data_gate:'passed',
-    chart_units:['workdays','hours'],
+    chart_units:['stacked_shift_hours','workdays'],
     workday_conversion_minutes:480,
     dual_chart_view:true,
+    shift_chart_name_overlay:true,
+    shift_chart_stacked:true,
     collapsible_detail_panel:true,
     mobile_detail_rows:source.employees.length,
-    external_chart_requests:0,
+    external_chart_requests:1,
+    external_chart_provider:'quickchart.io',
     image_generation:false,
     render_qa:'pending_designer_and_real_teams_clients'
   };

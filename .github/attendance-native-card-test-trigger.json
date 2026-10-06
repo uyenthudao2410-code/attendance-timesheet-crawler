@@ -2,11 +2,11 @@
   "schema_version": 1,
   "enabled": true,
   "mode": "TEST",
-  "layout_version": "ATTENDANCE_MOBILE_NATIVE_V9_ICONS_OVER8",
-  "request_id": "native-20261005-microsoft-v9-icons-over8",
+  "layout_version": "ATTENDANCE_MOBILE_NATIVE_V10_WORKDAYS",
+  "request_id": "native-20261005-microsoft-v10-workdays",
   "chat_id": "19:0e02d613cded448892f27d74cff19d63@thread.v2",
   "source_kind": "design_test_fixture",
   "target_date": "2026-10-05",
   "source_data_sha256": "cedcad7b9226d6009a0e516aa1fcb198cf8e715276a060831125fb9c30336f6e",
-  "retry_seq": 10
+  "retry_seq": 11
 }

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V21_COMPACT_AVATAR_RAIL';
+export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V22_IMAGE_AVATAR_RAIL';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
@@ -107,17 +107,26 @@ const sectionTitle=(iconName,label)=>({
   ]
 });
 
-function personaAvatar(e,directory) {
-  const u=directory[e.name];
+const AVATAR_PNG = {
+  "Điêu Văn Mạnh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAACgklEQVR42tWYv0vjYBjHv3kT7tqS0gvocbQHV2/Ru9lNBX/uHQQHHQQHhU6Ogjg46SIu/Q/USRwdDMVBnMRJuKOC1549h6NHa0iatkeS3hB8uWpsmzZJ03fKQ5L3+fB93p9fwOeN6baDxcVv9VbfHB5+ZTwFbAfKKVjGK7BOQUkv4Oz0x3gNZldN0mu4VnlIr+Fa5SN+gGuWl8DnjfhFvdfyEz/BWXH0T4n9ot5znv6bJL48bjUrbyIxgPn5QRprWh2qaqBQ+IubmzJEsQRJ0uj71dUoJiYiNN7Y+IF8vkbjkZEQNjc/0fj0tIijo9/OKJhKPWBlJYOdnZ+QZR2JxAB2dz9jeDj06j+zs0JDPDcnuFtiXa/j/r6Gvb08stkqeJ7F+vpHhMOs5fdjYxEEg2YaQeAwOhr2ZgwaBiCKRQAAz7OYnn6pTDZbRSBAMD5ulnxmRgDLMri7q3gzSXK5Kn22KvPZWZGWleMYTE29AwCIYskZwK2teMMESSZjODj4glDILGelYtB3PP+yq+trBaWShmj0LZaXPyAS4ZDP15DJqM4Abm/ncHxcaJgkS0vfoao6ANCxBQCKYlgMgzrSaVOtyUn76nVd4qGhIH2+vbVW5fz8EZpmrmKqauDyUvIGkGUZumQoik6Vet4kScPVlQwAuLh4RK1m2MrDPd0J2t2LWZZBLPYGCwvvEY8HIMs69vd/QZb1putnKvXQ0V2Fs/NDMhnD2lod5bK5k5yc/EE63biTuOYs+O0086QgccKecPMq2l/HLb+o+D8HcdKJcsNl6M8Tda9UtMpLOjF0vDSQSKeuk1fuVtsAbizk7QhAnOzMaThbCjqlpqsedaew3aj/DxHeEPav2x1MAAAAAElFTkSuQmCC",
+  "Nguyễn Thị Thục Anh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAACfklEQVR42t2Y30tTYRjHP+d1c2vHraxZxjR3Zs4y7aJMISiI7oISicqyJt2E/Qkh/aKg2+66CrorFbqrLryLhFKicIURW9IEs3KaZtEP2bqYDdc2z3a2s511rg48z3mfD9+H5z3P84DBHynnE27djar6nD8pFRYwE6g8wUoFA9MIKooCl8V5UsHBslRTFB1OJY4oOpxKPGEIuFXiCgz+CMOolya+MBRcCo4SSrFR1PuHpwSLxJDtlkp67xxop6dRAWDkU5j2+0Nx25XWZi63NgPQMvCIV7PzcZvTamHK14FZxHQYDE5yfGhYXwXbNm6gU6nJyPdUQ10cDuCI28U6S7n+Kb7ethMhqfcZPq8bgIVfvwGwlAlO1G/RFzD84ydNlQ5ON9St6re90sHuqvUA3PS/JbT4PQFaN8AbL8YBuLqnhXKR/vMerxJ/vxd4z2AwBMDeaidb11boB3j7zTsC84u47TLnmupTHypJdHtjCvtnvzA+t8BAcDJuP7MCPu+AS5EIF0fHAOjbtQObyZTkc9C1iRrZBkB/IBSv/omv35YB3RnPGpqKpD8Q4uXMHNU2K2e3KWmL429BRXu7iPZ2odhlABS7zL7NVRnFMmkBjAJ9I34eHNqP02pJsFWYTXR6YtfQpVE/156/TrBPdB/GbZfxNSo8/vA5QwU1zK0PQ1M8mU4OcNRTi7yc9lT24ekZAI55alljKlOdVXL61V14OpY2vUuRKM8+hlMAxqAd5WY63K4spjqjdTNJCuawntBzFC2xdssoKq7gEPncROmxZSjRjrpYKqaIK7QsdAq5QBJat06FgEu8qHPYQOkBln2R5FvNDM/7z3bUWmFzUP8PMXXCE5pzmC0AAAAASUVORK5CYII=",
+  "Vũ Đình Tuệ": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAACFUlEQVR42tWYTUsbQRjHfzu1bVSCL6n4SostVoq9hFqpCtJbb/XmwW9QoT1VEHvzQ/gRxGvxUOihl/SFxFoFpaCghYJKKlmjWN0kza4HNWbVutkkuzN5TgM7zPOb/zPP7DMPKG5aqQuMjS5YTnOmZ55ovgIWAlUuWM0vsGJBhQw4N+tpfoO5VVPIhnPyI2TDOfkTKsBd51eguAlV1Puff6ES3FUclRNiVdS7yFN5SaJkueUU3jeTXXT3BDFNi3evV9hPZmzfXwy38HKkDYCUYXI74LzvqfGfxLcMx3lVhewiFtHp7gkihEZvfwOfPvyxfX862AiAcZRlYmyZTNoE4HG4jldvHwDwcS7O+9lNb0K8OL9LOmXaYM6s4141re0BAH5Ekzk4X89gyjBZmk8CcLezhua2wCX1AKKRhLwkiX7Wc+O+UyhNg97+k3FiJ8366oE8wNWVfZJ6xqZa16Mg9Y03c+pZlsRrxrIg9uVExVDTLe4/rLWFN5ansLR7MJZ3xgae3yHcVw/AxtpfduIp+YDbmwa/fx0C8GwoRHXNjdPzmcArE26fgtGInksQgH8Zi4Vvu569VVz/6r5/1clmz7NheXGPo8Os950F1aqZSwqW0p7w8ilaWeWWKirmc4hSmztedxkqs6KWpeJVfkUxDR2/4BxD7BfkdX4KBvDiIi9EAFHOxcoN50rBcqnpaY+6WNhS1D8GUhzY1x+VTfQAAAAASUVORK5CYII=",
+  "Bùi Duy Hoàng": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAABxklEQVR42tWYv0/CQBTHv3dAo0RNiNHFyUGZjPEH+gf4NxgTf4R/QBMX3Y2JS0f9AxyKiZubi3HQkeLkhEw6aGBQaQy1wNWBEEGB0qPXXi/p0Pb1vU+/7+7y7gGSDzKog/dd2E42iTP+OEQUlFewxC8wXlAaBJwbf8RvMLdq0qDhnOLQoOGc4lEZ4HrFpZB8UFnU6xafygTXiSM8KZZFvb884VskUpZbTumNb59DWU23PbOtL7BSAdWHS5g3KsBq/2wNNYX6s/7rJ61BWd5qvDuZQ/310REw6vaPDDWF+ksOytIm4mkNkal5kHgClatDiVJs27D0DGyzDACILaxLPgdJRBhglA+IQFncABkaAwBU9Qt5AEcPsm33rPSE77vTvmx9SbGhpvCxR1A+ToKVCqATMxjZvweJDXe1bV6WnvFvDrJiHlZWazgZn0Y0uSbhIiEtn0di4gB5zq10chbKyk5j1zGKqOVvhZxV+BcJq4GV32BlNZjXR7Arn2I7C7JVM00FqRftCZFH0XCVW7Ko2MpBB23uiO4yhLOiDkrFTnEpT0PHLzjHFPsF2StO3wAiNvJ+BKBeOvMazpWCXqkptEfNCzuI+j+lQaYQg4kcZgAAAABJRU5ErkJggg==",
+  "Nguyễn Thành Long": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAABnklEQVR42tWYzytEURTHv/eOUYaSSJSFzWxeJqQhjaSXlZ3sJLKg/AXSSyiSlYWFKZFY+QcsyOaZhZiFUEqTUqNBXrNjI89G8mO83+++8+7yvdP5fvqe7u2cAxA/zHWGFUU3jZleYmIBrUB5BMuEgTkE5YHA2cjHhIPZdJMHDmeiwwOHM9HjJOAMdDmIH07GvX/0OSm4EhwhKjEV937xhPCSkGy3LJR3e2AIYy3tAIDTQh5du+mvf/MpGXMpGQCQ2FrD1fPjj/jkzjqyD/fiHOxsbMJgXKJd4sXefnDGaAJqry+QausxIrXRBFw+UQEACz0yyiMReoCbF1nkihqaq2sw2ZqkB/imv2M2cwQAULr7EItG6V2SvetLnD8V0FBZhfFEBz1AHToU9RAAUFcR8xnQ4dy6f3uDTP7O11mlzG2OGfUAx8MThjFno1N/vsU3VpErajamOmrdzKeD3Iv1hJ+jaMjaLSoufuPgTncmorYMIe2og3KxhC63EywazrzEoiANdKwD+PGQWzCAe5nMazh7Dnrlpq87aqewLtz/AE3lhV3ptPwbAAAAAElFTkSuQmCC",
+  "Trần Thanh Bình": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAB3UlEQVR42tWYu0vDcBDHv/m1tUWqUnRQUPpwEPGBnRWhdBBUKii66eagf4K6qrjVqSA4qJsO1goFXQQFcarWUnDqY9FB42CqVltaJx+Vtkma1y+/KQnJ3Yfv3YW7Ayg/jFQDy/bdIt87q+k5RlVAIVBywTJqgdUKSrSAE2OPURtMrJpEazg+P0RrOD5/hAa4an4JKD+EFvUq+Sc0wZXj0E+IaVHvP4/+ioTKdosvvEvXM6i3mXmNbXpDGF7sgXuqs+T551sez2kOseMULrbiKOSFZ5NRyEtr7v2f6y5vO2a3PQCA80AcpxuRit8FfGHcx1j0Tzgx7R9Ca7cNlqY6nKxH6AlxsQhEg0l8ZHIAgN4xO905SAziemSj4knOAH3jDpitJgBANJiiB3AhNFpyzyY5XO3c0RPigC+MFcce/J4jsCkOzc4GzB+MwGQx0JWDT8kXRIMJAICtwwrXYBt9RcIwv8VhMBJxgFLmViGnxdmIgUkXAOCVzSJx+SB4VlGlSAr5IjKP77g5TOBs8xZZLid+Lqatm/lWkMixnlByFNVXu0WLin85iNTljtJbBn121FqpWM4vqWWhoxYcb4jVgqzmRzCAEj9yIQIQOY3JDSdKQbnUVHRHXSusFPW/AOYztM1gM5c9AAAAAElFTkSuQmCC",
+  "Lê Thị Phương Linh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAA/klEQVR42mNgGOSAkVIDLD1X/yek5vj2UEa6OpAYR1HLsYz0chi5DmUaCMeRYh4jvR1GamgyDbTjCNnDNNCOI2Qf02BwHD57mRgGOWAaLKGHy36mweQ4bO4YOlE8WEIP3T1DL5MMyuYWsdFbU2TK4OUiz8DAwMCQlL+X4cbt9xSpGxYhOOrAUQeOOnDUgfRwICX9Vlr3VVjI1TxvojOGWFjKDoYnz76QpY5gr26wtWZgIchEjeEJWnZFh1YuHiyhiOwOJlJ6+fR23NAtqAcqFLHZy0SKYno7jmAU08uR+Owh2gG0KMiJCQAmahpGbceRFILUCk2ajlGT61hKQh8AsVd1YBxT2bcAAAAASUVORK5CYII=",
+  "Lê Đăng Hiếu": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAABE0lEQVR42u2YMQoCMRBFf4a9iiCidl5BrMRWLCw8gQew8gB2goWwoOBhtLS0FxHFG2hjIbJukt1kMpFNPcx//MmEzADCjyqdYb54amNmU8ULaALlCFaxgRUEpSBwFvkUO5ilmxQcTqNDweE0eiQCLkeXIPyQGPd+6JMouAyOiEosxb0vngibROR3y6C8ab+LcbsBAOisdzicL9Zx20EPo2YdANBabXC83uJ3sAL8e8DEZ/L9ZCgbMK+LqzvIC1hibvU9qySuLn9tmeJ0f3jcLEj7zbwdJBfrCZ+jaGRdLMXFDw6ymfK54SJ+qEO5mKFLNsHccPoSc0Hm6JgD+HjIDQwgl8lcw9k56MpNrzvqorAl3H8By5ZlXkEF6G0AAAAASUVORK5CYII="
+};
+
+function avatarImage(e) {
   return {
-    type:'Component',
-    name:'graph.microsoft.com/users',
-    view:'compact',
-    properties:{users:[{
-      id:u.id,
-      displayName:u.displayName,
-      userPrincipalName:u.userPrincipalName
-    }]}
+    type:'Image',
+    url:AVATAR_PNG[e.name],
+    altText:'',
+    style:'Person',
+    size:'Small',
+    height:'32px',
+    horizontalAlignment:'Center'
   };
 }
 
@@ -236,7 +245,7 @@ export function avatarRail(s,directory) {
         type:'Action.ToggleVisibility',
         targetElements:detailTargets(s,i)
       },
-      items:[personaAvatar(e,directory)]
+      items:[avatarImage(e)]
     }))
   };
 }
@@ -383,10 +392,16 @@ export function auditCard(card,source,directory) {
       if (ids.has(v.id)) fail('Duplicate element id');
       ids.add(v.id);
     }
-    if (['Image','TabSet','Accordion','Chart.VerticalBar','Chart.VerticalBar.Grouped'].includes(v.type)) {
+    if (['TabSet','Accordion','Chart.VerticalBar','Chart.VerticalBar.Grouped'].includes(v.type)) {
       fail('External or nonmobile visual forbidden');
     }
-    if ('url' in v || 'backgroundImage' in v) fail('No external resources');
+    if (v.type==='Image') {
+      if (typeof v.url!=='string' || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(v.url)) {
+        fail('Only embedded PNG avatars allowed');
+      }
+    } else if ('url' in v || 'backgroundImage' in v) {
+      fail('No external resources');
+    }
     for (const value of Object.values(v)) walk(value);
   };
   walk(card);
@@ -404,6 +419,7 @@ export function auditCard(card,source,directory) {
     kpi_count:4,
     chart_count:types.filter(t=>t.startsWith('Chart.')).length,
     persona_component_count:types.filter(t=>t==='Component').length,
+    image_avatar_count:types.filter(t=>t==='Image').length,
     data_gate:'passed',
     chart_architecture:'single_consolidated_chart',
     shift_chart_count:1,
@@ -416,7 +432,8 @@ export function auditCard(card,source,directory) {
     repeated_legends:false,
     palette:'categoricalBlue_categoricalTeal',
     native_microsoft_charts_only:true,
-    native_microsoft_personas:true,
+    native_microsoft_personas:false,
+    avatar_render:'embedded_png_initials',
     external_chart_requests:0,
     image_generation:false,
     render_qa:'pending_real_teams_client'

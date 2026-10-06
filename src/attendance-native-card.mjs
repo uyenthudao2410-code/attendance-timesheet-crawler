@@ -121,9 +121,15 @@ function personaCompact(e,directory) {
   const u=directory[e.name];
   return {
     type:'Component',
-    name:'graph.microsoft.com/user',
+    name:'graph.microsoft.com/users',
     view:'compact',
-    properties:{id:u.id,displayName:u.displayName}
+    properties:{
+      users:[{
+        id:u.id,
+        displayName:u.displayName,
+        userPrincipalName:u.userPrincipalName
+      }]
+    }
   };
 }
 

@@ -247,21 +247,27 @@ jobs:
         run: |
           set -euo pipefail
           auto=false
-          case "${ATTENDANCE_REQUEST_ID}" in
-            schedule-*|watchdog-*) auto=true ;;
-          esac
+          if [ "${GITHUB_EVENT_NAME}" = "schedule" ]; then
+            auto=true
+          else
+            case "${ATTENDANCE_REQUEST_ID}" in
+              watchdog-*|self-heal-*) auto=true ;;
+            esac
+          fi
           echo "ATTENDANCE_NATIVE_AUTO_PUBLISH=$auto" >> "$GITHUB_ENV"
           echo "V24 native auto-publication: $auto request_id=${ATTENDANCE_REQUEST_ID}"
 
       - name: Install V24 profile-photo optimizer
-        if: ${{ env.ATTENDANCE_NATIVE_AUTO_PUBLISH == 'true' }}
         run: npm install --no-save sharp@0.34.5
 
       - name: Wait for scheduled publication minute
-        if: ${{ env.ATTENDANCE_NATIVE_AUTO_PUBLISH == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
+          if [ "${ATTENDANCE_NATIVE_AUTO_PUBLISH:-false}" != "true" ]; then
+            echo "V24 publication wait skipped for non-production request"
+            exit 0
+          fi
           now="$(date +%s)"
           local_day="$(TZ=Asia/Ho_Chi_Minh date +%F)"
           case "${ATTENDANCE_RUN_SLOT}" in
@@ -283,14 +289,20 @@ jobs:
           fi
 
       - name: Publish V24 Adaptive Card to Teams
-        if: ${{ env.ATTENDANCE_NATIVE_AUTO_PUBLISH == 'true' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MS_TENANT_ID: ${{ secrets.MS_TENANT_ID }}
           MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
           MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
           MS_REFRESH_TOKEN: ${{ secrets.MS_REFRESH_TOKEN }}
-        run: node scripts/post-native-attendance-production.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${ATTENDANCE_NATIVE_AUTO_PUBLISH:-false}" != "true" ]; then
+            echo "ATTENDANCE_NATIVE_PROD=SKIPPED_NON_PRODUCTION_REQUEST"
+            exit 0
+          fi
+          node scripts/post-native-attendance-production.mjs
 
       - name: Build approved AI visual request bundle
         run: node scripts/build-ai-visual-request.mjs

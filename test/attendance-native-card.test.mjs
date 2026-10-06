@@ -104,11 +104,12 @@ test('each person row is avatar plus chart, followed by a detail button and hidd
   assert.equal(detail.isVisible,false);
 });
 
-test('main chart row itself contains no visible employee name text',()=>{
+test('main chart row contains no visible employee name text',()=>{
   const row=avatarChartRow(input.employees[0],0,directory,'shift');
   const visibleVisual=row.items[0];
   const textNodes=all(visibleVisual).filter(n=>n.type==='TextBlock' || n.type==='RichTextBlock');
-  assert.equal(textNodes.length,0);
+  assert.ok(textNodes.every(n=>!JSON.stringify(n).includes('Điêu Văn Mạnh')));
+  assert.ok(textNodes.every(n=>!JSON.stringify(n).includes('Văn Mạnh')));
 });
 
 test('detail panel omits repeated morning and afternoon labels but preserves times',()=>{

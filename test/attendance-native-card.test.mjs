@@ -101,30 +101,18 @@ test('shift rows place Persona left, stacked bar middle and total hours right',(
   assert.equal(cols[2].items[0].text,'10h57');
 });
 
-test('workday rows place Persona left, single bar middle and workday value right',()=>{
-  const row=personaWorkdayRow(input.employees[0],0,directory);
-  assert.equal(row.id,'workday-row-1');
-  const cols=row.items[0].columns;
-  assert.equal(cols.length,3);
-  assert.equal(cols[0].items[0].name,'graph.microsoft.com/user');
-  assert.equal(cols[2].items[0].text,'1,37 công');
-  const bar=cols[1].items[0];
-  assert.equal(bar.type,'ColumnSet');
-  assert.equal(bar.columns.length,2);
-  assert.equal(bar.columns[0].width,657);
-});
-
-test('all eight shift and workday rows are present with exact Entra personas',()=>{
+test('all eight shift rows carry exact Entra personas and workday mode uses one native chart',()=>{
   const card=buildNativeCard(input,directory);
   const shiftPanel=card.body.find(n=>n.id==='panel-shifts');
   const workdayPanel=card.body.find(n=>n.id==='panel-workdays');
-  assert.equal(shiftPanel.items.filter(n=>/^shift-row-\d+$/.test(n.id||'')).length,8);
-  assert.equal(workdayPanel.items.filter(n=>/^workday-row-\d+$/.test(n.id||'')).length,8);
+  assert.equal(shiftPanel.items.filter(n=>/^shift-row-\\d+$/.test(n.id||'')).length,8);
   input.employees.forEach((e,i)=>{
     const shift=shiftPanel.items.find(n=>n.id==='shift-row-'+(i+1));
     const persona=shift.items[0].columns[0].items[0];
     assert.equal(persona.properties.id,directory[e.name].id);
   });
+  assert.ok(workdayPanel.items.some(n=>n.id==='workforce-workdays-chart'));
+  assert.equal(all(workdayPanel).filter(n=>n.type==='Component').length,0);
 });
 
 test('chart toggle switches the two persona-row views',()=>{
@@ -148,7 +136,7 @@ test('there is no separate quick-summary or PersonaSet strip anymore',()=>{
   assert.equal(all(card).some(n=>n.name==='graph.microsoft.com/users'),false);
 });
 
-test('details stay collapsed and preserve exact time literals with Persona',()=>{
+test('details stay collapsed and preserve exact time literals without duplicating personas',()=>{
   const card=buildNativeCard(input,directory);
   const panel=card.body.find(n=>n.id==='attendance-details-panel');
   assert.equal(panel.isVisible,false);
@@ -158,7 +146,8 @@ test('details stay collapsed and preserve exact time literals with Persona',()=>
     const json=JSON.stringify(table.rows[i+1]);
     assert.ok(json.includes(e.morning));
     assert.ok(json.includes(e.afternoon));
-    assert.ok(json.includes(directory[e.name].id));
+    assert.ok(json.includes(e.name));
+    assert.ok(!json.includes(directory[e.name].id));
   });
 });
 
@@ -168,9 +157,10 @@ test('V16 payload is row-based, persona-enabled and Microsoft native',()=>{
   assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V16_PERSONA_BAR_ROWS');
   assert.equal(qa.data_gate,'passed');
   assert.equal(qa.table_count,1);
-  assert.equal(qa.chart_count,1);
+  assert.equal(qa.chart_count,2);
   assert.equal(qa.donut_count,0);
   assert.equal(qa.persona_bar_row_count,8);
+  assert.equal(qa.persona_component_count,8);
   assert.equal(qa.native_microsoft_charts_only,true);
   assert.equal(qa.native_microsoft_personas,true);
   assert.equal(qa.quick_summary_mode,'merged_overview');

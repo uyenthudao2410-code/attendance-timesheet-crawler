@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const LAYOUT = 'ATTENDANCE_MOBILE_HYBRID_V12_STACKED_SHIFTS';
+export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V13_STACKED_SHIFTS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
@@ -28,6 +28,10 @@ export function recordedMinutes(e) {
   return [...sessionMinutes(e.morning), ...sessionMinutes(e.afternoon)].reduce((a,b)=>a+b,0);
 }
 
+export function shiftTotalMinutes(e,key) {
+  return sessionMinutes(e[key]).reduce((a,b)=>a+b,0);
+}
+
 export function chartHours(value) {
   return Math.round(Number(value) / 6) / 10;
 }
@@ -49,14 +53,15 @@ export function validateSource(s) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s?.target_date || '')) fail('Missing report date');
   if (!/^\d{2}:\d{2}$/.test(s.updated || '')) fail('Missing source update time');
 
-  const [yyyy,mm,dd] = s.target_date.split('-');
+  const parts=s.target_date.split('-');
+  const yyyy=parts[0], mm=parts[1], dd=parts[2];
   if (!String(s.date_label).includes(dd + '/' + mm + '/' + yyyy)) fail('Date label mismatch');
 
   if (!Array.isArray(s.employees) || s.employees.length !== 8 || s.kpis?.total !== 8) {
     fail('Exactly eight employees required');
   }
 
-  const names = new Set();
+  const names=new Set();
   for (const e of s.employees) {
     for (const key of ['name','morning','afternoon','total','status']) {
       if (typeof e[key] !== 'string' || !e[key].trim()) fail('Missing employee ' + key);
@@ -78,8 +83,8 @@ export function validateSource(s) {
     }
   }
 
-  const closed = s.employees.filter(e => e.status === 'Đã ghi nhận');
-  const records = s.employees.filter(e => e.morning !== '—' || e.afternoon !== '—');
+  const closed=s.employees.filter(e=>e.status==='Đã ghi nhận');
+  const records=s.employees.filter(e=>e.morning!=='—' || e.afternoon!=='—');
 
   if (closed.length !== s.kpis.closed) fail('KPI/status mismatch');
   if (records.length !== s.kpis.with_record || s.rate !== String(records.length / 8 * 100) + '%') {
@@ -92,28 +97,22 @@ export function validateSource(s) {
   return s;
 }
 
-const text = (value, options={}) => ({type:'TextBlock',text:value,wrap:true,spacing:'None',...options});
-const inline = (value, options={}) => ({type:'TextRun',text:value,...options});
-const rich = (inlines, options={}) => ({type:'RichTextBlock',inlines,spacing:'None',...options});
+const text = (value,options={}) => ({type:'TextBlock',text:value,wrap:true,spacing:'None',...options});
+const inline = (value,options={}) => ({type:'TextRun',text:value,...options});
+const rich = (inlines,options={}) => ({type:'RichTextBlock',inlines,spacing:'None',...options});
 const displayStatus = e => e.status === 'Cần đối soát' ? 'Chưa chốt' : e.status;
 const statusColor = e => displayStatus(e) === 'Chưa chốt' ? 'Warning'
   : displayStatus(e) === 'Đã ghi nhận' ? 'Good' : 'Default';
 const rowStyle = e => displayStatus(e) === 'Chưa chốt' ? 'warning' : 'default';
-const chartFallback = () => text('Biểu đồ chưa được hỗ trợ; dữ liệu chi tiết vẫn có bên dưới.',
+const chartFallback = () => text('Thiết bị này chưa hỗ trợ chart native; xem chi tiết giờ phía dưới.',
   {size:'Small',isSubtle:true});
 
-const PALETTE = [
-  'categoricalBlue',
-  'categoricalTeal',
-  'categoricalGreen',
-  'categoricalPurple',
-  'categoricalMarigold',
-  'categoricalLightBlue',
-  'categoricalLavender',
-  'categoricalLime'
+const PALETTE=[
+  'categoricalBlue','categoricalTeal','categoricalGreen','categoricalPurple',
+  'categoricalMarigold','categoricalLightBlue','categoricalLavender','categoricalLime'
 ];
 
-const sectionTitle = (iconName, label) => ({
+const sectionTitle=(iconName,label)=>({
   type:'ColumnSet',
   spacing:'Medium',
   columns:[
@@ -133,146 +132,40 @@ const sectionTitle = (iconName, label) => ({
 });
 
 export function chartName(name) {
-  const parts = String(name).trim().split(/\s+/);
-  return parts.length <= 2 ? name : parts.slice(-2).join(' ');
+  const parts=String(name).trim().split(/\s+/);
+  return parts.length<=2 ? name : parts.slice(-2).join(' ');
 }
 
-function shiftTotalMinutes(e, key) {
-  return sessionMinutes(e[key]).reduce((a,b)=>a+b,0);
-}
-
-export function shiftChartCreatePayload(source) {
-  const s=validateSource(source);
-  const names=s.employees.map((e,i)=>String(i+1).padStart(2,'0') + ' · ' + chartName(e.name));
-  const morningMinutes=s.employees.map(e=>shiftTotalMinutes(e,'morning'));
-  const afternoonMinutes=s.employees.map(e=>shiftTotalMinutes(e,'afternoon'));
-  const morning=morningMinutes.map(chartHours);
-  const afternoon=afternoonMinutes.map(chartHours);
-  const morningLabels=morningMinutes.map(v=>v ? 'S ' + formatRecordedMinutes(v) : '');
-  const afternoonLabels=afternoonMinutes.map(v=>v ? 'C ' + formatRecordedMinutes(v) : '');
-
-  const chart = String.raw`{
-    type:'bar',
-    data:{
-      labels:${JSON.stringify(names)},
-      datasets:[
-        {
-          label:'Ca sáng',
-          data:${JSON.stringify(morning)},
-          _labels:${JSON.stringify(morningLabels)},
-          _names:${JSON.stringify(names)},
-          backgroundColor:'#4F46E5',
-          borderColor:'#4338CA',
-          borderWidth:1,
-          borderRadius:10,
-          borderSkipped:false,
-          barThickness:58
-        },
-        {
-          label:'Ca chiều',
-          data:${JSON.stringify(afternoon)},
-          _labels:${JSON.stringify(afternoonLabels)},
-          _names:${JSON.stringify(names)},
-          backgroundColor:'#14B8A6',
-          borderColor:'#0F766E',
-          borderWidth:1,
-          borderRadius:10,
-          borderSkipped:false,
-          barThickness:58
-        }
-      ]
-    },
-    options:{
-      indexAxis:'y',
-      responsive:false,
-      animation:false,
-      layout:{padding:{top:6,right:10,bottom:6,left:10}},
-      scales:{
-        x:{
-          stacked:true,
-          beginAtZero:true,
-          grid:{display:false},
-          border:{display:false},
-          ticks:{display:false}
-        },
-        y:{
-          stacked:true,
-          grid:{display:false},
-          border:{display:false},
-          ticks:{display:false}
-        }
-      },
-      plugins:{
-        legend:{
-          display:true,
-          position:'top',
-          align:'start',
-          labels:{
-            boxWidth:18,
-            boxHeight:18,
-            font:{size:18,weight:'600'},
-            padding:18
-          }
-        },
-        datalabels:{
-          labels:{
-            name:{
-              display:function(ctx){
-                var i=ctx.dataIndex;
-                var morningValue=ctx.chart.data.datasets[0].data[i] || 0;
-                return (ctx.datasetIndex===0 && morningValue>0) ||
-                  (ctx.datasetIndex===1 && morningValue===0 && ctx.dataset.data[i]>0);
-              },
-              formatter:function(value,ctx){
-                var i=ctx.dataIndex;
-                var shiftLabel=ctx.dataset._labels[i] || '';
-                return [ctx.dataset._names[i],shiftLabel];
-              },
-              color:'#ffffff',
-              anchor:'start',
-              align:'right',
-              offset:8,
-              clamp:true,
-              font:{size:16,weight:'700'},
-              textAlign:'left',
-              textStrokeColor:'rgba(0,0,0,0.18)',
-              textStrokeWidth:2
-            },
-            shift:{
-              display:function(ctx){
-                var i=ctx.dataIndex;
-                if(!ctx.dataset.data[i]) return false;
-                var morningValue=ctx.chart.data.datasets[0].data[i] || 0;
-                if(ctx.datasetIndex===0 && morningValue>0) return false;
-                if(ctx.datasetIndex===1 && morningValue===0) return false;
-                return true;
-              },
-              formatter:function(value,ctx){
-                return ctx.dataset._labels[ctx.dataIndex] || '';
-              },
-              color:'#ffffff',
-              anchor:'center',
-              align:'center',
-              clamp:true,
-              font:{size:17,weight:'700'},
-              textStrokeColor:'rgba(0,0,0,0.16)',
-              textStrokeWidth:2
-            }
-          }
-        },
-        tooltip:{enabled:false}
-      }
-    }
-  }`;
-
+export function nativeShiftChart(s) {
   return {
-    version:'4',
-    width:1100,
-    height:760,
-    devicePixelRatio:2,
-    backgroundColor:'#ffffff',
-    format:'png',
-    chart
+    type:'Chart.HorizontalBar.Stacked',
+    id:'workforce-shifts-chart',
+    title:'Giờ theo ca',
+    showTitle:false,
+    showLegend:true,
+    showBarValues:true,
+    xAxisTitle:'Giờ',
+    spacing:'Small',
+    data:s.employees.map((e,i)=>{
+      const morning=shiftTotalMinutes(e,'morning');
+      const afternoon=shiftTotalMinutes(e,'afternoon');
+      return {
+        title:String(i+1).padStart(2,'0') + ' · ' + chartName(e.name),
+        data:[
+          ...(morning>0 ? [{
+            legend:'Ca sáng',
+            value:chartHours(morning),
+            color:'categoricalBlue'
+          }] : []),
+          ...(afternoon>0 ? [{
+            legend:'Ca chiều',
+            value:chartHours(afternoon),
+            color:'categoricalTeal'
+          }] : [])
+        ]
+      };
+    }),
+    fallback:chartFallback()
   };
 }
 
@@ -295,28 +188,9 @@ export function workdayChart(s) {
   };
 }
 
-export function hoursChart(s) {
-  return {
-    type:'Chart.HorizontalBar',
-    id:'workforce-hours-chart',
-    title:'Giờ thực tế theo nhân sự',
-    showTitle:false,
-    showLegend:false,
-    showBarValues:true,
-    displayMode:'AbsoluteNoAxis',
-    spacing:'Small',
-    data:s.employees.map((e,i)=>({
-      x:String(i+1).padStart(2,'0') + ' · ' + chartName(e.name),
-      y:chartHours(recordedMinutes(e)),
-      color:PALETTE[i % PALETTE.length]
-    })),
-    fallback:chartFallback()
-  };
-}
-
 export function aggregateShiftMixChart(s) {
-  const morning = s.employees.flatMap(e=>sessionMinutes(e.morning)).reduce((a,b)=>a+b,0);
-  const afternoon = s.employees.flatMap(e=>sessionMinutes(e.afternoon)).reduce((a,b)=>a+b,0);
+  const morning=s.employees.flatMap(e=>sessionMinutes(e.morning)).reduce((a,b)=>a+b,0);
+  const afternoon=s.employees.flatMap(e=>sessionMinutes(e.afternoon)).reduce((a,b)=>a+b,0);
 
   return {
     type:'Chart.HorizontalBar.Stacked',
@@ -338,7 +212,7 @@ export function aggregateShiftMixChart(s) {
 }
 
 export function statusStrip(s) {
-  const data = [
+  const data=[
     {
       legend:'Đã ghi nhận',
       color:'categoricalBlue',
@@ -365,10 +239,11 @@ export function statusStrip(s) {
 }
 
 function totalSummary(e) {
-  return formatRecordedMinutes(recordedMinutes(e)) + ' · ' + formatWorkdays(recordedMinutes(e)) + ' · ' + displayStatus(e);
+  return formatRecordedMinutes(recordedMinutes(e)) + ' · ' +
+    formatWorkdays(recordedMinutes(e)) + ' · ' + displayStatus(e);
 }
 
-const tableCell = (items, style='default') => ({
+const tableCell=(items,style='default')=>({
   type:'TableCell',
   style,
   verticalContentAlignment:'Center',
@@ -416,7 +291,7 @@ export function compactDetailsTable(s) {
   };
 }
 
-export function buildNativeCard(source, shiftChartUrl) {
+export function buildNativeCard(source) {
   const s=validateSource(source), k=s.kpis;
   const kpis=[
     ['Tổng nhân sự',k.total,'Accent'],
@@ -425,7 +300,7 @@ export function buildNativeCard(source, shiftChartUrl) {
     ['Chưa chốt',s.employees.filter(e=>displayStatus(e)!=='Đã ghi nhận').length,'Warning']
   ];
 
-  const kpiColumns = entries => ({
+  const kpiColumns=entries=>({
     type:'ColumnSet',
     spacing:'None',
     columns:entries.map(([label,value,color])=>({
@@ -446,7 +321,7 @@ export function buildNativeCard(source, shiftChartUrl) {
     lang:'vi',
     msteams:{width:'Full'},
     body:[
-      text('TEST · HYBRID V12 · MOBILE FIRST',{size:'Small',color:'Accent',weight:'Bolder'}),
+      text('TEST · NATIVE V13 · MICROSOFT CHART',{size:'Small',color:'Accent',weight:'Bolder'}),
       text('BÁO CÁO CHẤM CÔNG — CẢ NGÀY',{size:'Large',weight:'Bolder',spacing:'Small'}),
       text(s.date_label + ' · Cập nhật ' + s.updated,{size:'Small',isSubtle:true,spacing:'Small'}),
 
@@ -523,15 +398,10 @@ export function buildNativeCard(source, shiftChartUrl) {
         isVisible:true,
         spacing:'Small',
         items:[
-          text('GIỜ THEO CA · CÙNG MỘT THANH',{size:'Small',weight:'Bolder',color:'Accent'}),
-          text('Tên nhân sự chồng trực tiếp trên bar · Sáng và Chiều ghép trên cùng một thanh.',{size:'Small',isSubtle:true,spacing:'Small'}),
-          {
-            type:'Image',
-            id:'shift-overlay-chart',
-            url:shiftChartUrl,
-            size:'Stretch',
-            altText:'Biểu đồ giờ ca sáng và ca chiều theo nhân sự'
-          }
+          text('GIỜ THEO CA · NATIVE MICROSOFT',{size:'Small',weight:'Bolder',color:'Accent'}),
+          text('Mỗi nhân sự một thanh: Sáng + Chiều ghép trên cùng hàng · giá trị hiển thị trên từng phần.',
+            {size:'Small',isSubtle:true,spacing:'Small'}),
+          nativeShiftChart(s)
         ]
       },
       {
@@ -541,7 +411,8 @@ export function buildNativeCard(source, shiftChartUrl) {
         spacing:'Small',
         items:[
           text('CÔNG QUY ĐỔI THEO NHÂN SỰ',{size:'Small',weight:'Bolder',color:'Accent'}),
-          text('1 công = 8 giờ · giá trị hiển thị trực tiếp ở cuối thanh.',{size:'Small',isSubtle:true,spacing:'Small'}),
+          text('1 công = 8 giờ · giá trị công hiển thị trực tiếp trên chart native.',
+            {size:'Small',isSubtle:true,spacing:'Small'}),
           workdayChart(s)
         ]
       },
@@ -568,9 +439,7 @@ export function buildNativeCard(source, shiftChartUrl) {
         id:'attendance-details-panel',
         isVisible:false,
         spacing:'Small',
-        items:[
-          compactDetailsTable(s)
-        ]
+        items:[compactDetailsTable(s)]
       },
 
       text('Quy đổi tham khảo: 1 công = 8 giờ. Thời gian tăng ca được ghi nhận đầy đủ theo dữ liệu thực tế. Sai lệch vui lòng phản hồi P.HC-NS.',
@@ -579,7 +448,7 @@ export function buildNativeCard(source, shiftChartUrl) {
   };
 }
 
-export function auditCard(card, source, shiftChartUrl) {
+export function auditCard(card,source) {
   validateSource(source);
   const json=JSON.stringify(card);
 
@@ -596,22 +465,16 @@ export function auditCard(card, source, shiftChartUrl) {
       ids.add(v.id);
     }
 
-    if (['TabSet','Accordion','Chart.VerticalBar','Chart.VerticalBar.Grouped'].includes(v.type)) {
-      fail('Nonmobile visual forbidden');
+    if (['Image','TabSet','Accordion','Chart.VerticalBar','Chart.VerticalBar.Grouped'].includes(v.type)) {
+      fail('External or nonmobile visual forbidden');
     }
-    if (v.type==='Image') {
-      if (typeof v.url!=='string' || !/^https:\/\/quickchart\.io\/chart\/render\/[A-Za-z0-9_-]+/.test(v.url)) {
-        fail('Only QuickChart render images are allowed');
-      }
-    } else if ('url' in v || 'backgroundImage' in v) {
-      fail('Unexpected external resource');
-    }
+    if ('url' in v || 'backgroundImage' in v) fail('No external resources');
 
     for (const value of Object.values(v)) walk(value);
   };
   walk(card);
 
-  if (json !== JSON.stringify(buildNativeCard(source, shiftChartUrl))) fail('Layout/data mismatch');
+  if (json !== JSON.stringify(buildNativeCard(source))) fail('Layout/data mismatch');
 
   return {
     layout_version:LAYOUT,
@@ -628,12 +491,11 @@ export function auditCard(card, source, shiftChartUrl) {
     chart_units:['stacked_shift_hours','workdays'],
     workday_conversion_minutes:480,
     dual_chart_view:true,
-    shift_chart_name_overlay:true,
     shift_chart_stacked:true,
+    native_microsoft_charts_only:true,
     collapsible_detail_panel:true,
     mobile_detail_rows:source.employees.length,
-    external_chart_requests:1,
-    external_chart_provider:'quickchart.io',
+    external_chart_requests:0,
     image_generation:false,
     render_qa:'pending_designer_and_real_teams_clients'
   };

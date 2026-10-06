@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   LAYOUT, buildNativeCard, auditCard, validateSource, sourceDigest,
-  durationMinutes, hoursFromMinutes, chartHours, sessionMinutes, recordedMinutes,
+  durationMinutes, hoursFromMinutes, chartHours, sessionMinutes, recordedMinutes, needsReconciliation, reconciliationSummary,
   chartName, workforceRecordedHoursChart, aggregateShiftMixChart,
   employeeCompactRow, statusStrip
 } from '../src/attendance-native-card.mjs';
@@ -41,6 +41,10 @@ test('recorded minutes sum only sessions with known duration',()=>{
   assert.equal(recordedMinutes(input.employees[2]),299);
   assert.equal(recordedMinutes(input.employees[6]),248);
   assert.deepEqual(sessionMinutes(input.employees[6].afternoon),[]);
+  assert.equal(needsReconciliation(input.employees[0]),true);
+  assert.equal(needsReconciliation(input.employees[1]),true);
+  assert.equal(needsReconciliation(input.employees[2]),false);
+  assert.equal(needsReconciliation(input.employees[6]),false);
 });
 
 test('main dashboard chart is one horizontal bar chart for all eight employees',()=>{
@@ -55,7 +59,8 @@ test('main dashboard chart is one horizontal bar chart for all eight employees',
   assert.equal(c.data[6].y,4.1);
   assert.equal(c.data[0].color,'attention');
   assert.equal(c.data[6].color,'warning');
-  assert.equal(c.data[1].color,'good');
+  assert.equal(c.data[1].color,'attention');
+  assert.equal(c.data[2].color,'good');
 });
 
 test('shift mix chart aggregates morning and afternoon in hours',()=>{
@@ -71,9 +76,12 @@ test('shift mix chart aggregates morning and afternoon in hours',()=>{
   assert.ok(c.data[0].data[1].value>0);
 });
 
-test('status strip remains compact and source-driven',()=>{
+test('status strip follows the derived over-8h reconciliation rule',()=>{
   assert.deepEqual(statusStrip(input).data[0].data.map(d=>[d.legend,d.value]),
-    [['Đã ghi nhận',6],['Chưa chốt',1],['Cần đối soát',1]]);
+    [['Trong ngưỡng',2],['Chưa chốt',1],['Cần đối soát >8h',5]]);
+  assert.match(reconciliationSummary(input),/Điêu Văn Mạnh · 10h57/);
+  assert.match(reconciliationSummary(input),/Nguyễn Thị Thục Anh · 9h44/);
+  assert.ok(!reconciliationSummary(input).includes('Lê Thị Phương Linh'));
 });
 
 test('detail rows are easier to scan and preserve all literal employee fields',()=>{
@@ -81,8 +89,8 @@ test('detail rows are easier to scan and preserve all literal employee fields',(
     const block=employeeCompactRow(e,i);
     assert.equal(block.id,'employee-' + (i+1));
     assert.equal(block.items.length,3);
-    assert.ok(JSON.stringify(block.items[1]).includes('SÁNG'));
-    assert.ok(JSON.stringify(block.items[2]).includes('CHIỀU'));
+    assert.ok(JSON.stringify(block.items[1]).includes('☀  SÁNG'));
+    assert.ok(JSON.stringify(block.items[2]).includes('◐  CHIỀU'));
     const json=JSON.stringify(block);
     for(const key of ['name','morning','afternoon','total','status']) assert.ok(json.includes(e[key]),i + ' ' + key);
   });
@@ -97,7 +105,7 @@ test('KPI layout is mobile-first 2x2 and wide 4-across',()=>{
   assert.equal(mobile.items.length,2);
   assert.ok(mobile.items.every(r=>r.columns.length===2));
   assert.equal(wide.items[0].columns.length,4);
-  assert.deepEqual(wide.items[0].columns.map(c=>c.items[0].text),['8','8','6','2']);
+  assert.deepEqual(wide.items[0].columns.map(c=>c.items[0].text),['8','8','6','5']);
 });
 
 test('card contains three separate dashboard charts and no per-person chart list',()=>{
@@ -126,7 +134,7 @@ test('details are hidden by default and opened by one toggle action',()=>{
 test('payload is native-only and minute labels are forbidden',()=>{
   const card=buildNativeCard(input);
   const qa=auditCard(card,input);
-  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V8_COLLAPSIBLE_DETAILS');
+  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V9_ICONS_OVER8');
   assert.equal(qa.data_gate,'passed');
   assert.equal(qa.employee_count,8);
   assert.equal(qa.table_count,0);
@@ -135,6 +143,9 @@ test('payload is native-only and minute labels are forbidden',()=>{
   assert.equal(qa.external_chart_requests,0);
   assert.equal(qa.all_sessions_visible_by_default,false);
   assert.equal(qa.collapsible_detail_panel,true);
+  assert.equal(qa.reconciliation_rule,'recorded_minutes_gt_480');
+  assert.equal(qa.reconciliation_count,5);
+  assert.ok(all(card).filter(n=>n.type==='Icon').length>=4);
   assert.ok(qa.bytes<27000);
   const json=JSON.stringify(card);
   assert.ok(!json.includes('Phút'));

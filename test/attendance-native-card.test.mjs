@@ -102,16 +102,20 @@ test('each shift row has exactly two visual modules: avatar-only PersonaSet and 
   assert.equal(chart.type,'Chart.HorizontalBar.Stacked');
   assert.equal(chart.showBarValues,true);
 
-  assert.equal(all(row).filter(n=>n.type==='TextBlock' || n.type==='RichTextBlock').length,0);
+  assert.equal(columns[0].items.length,1);
+  assert.equal(columns[1].items.length,1);
 });
 
-test('each workday row has the same two-module contract',()=>{
-  const row=avatarChartRow(input.employees[1],1,directory,'workday');
-  const columns=row.items[0].columns;
-  assert.equal(columns.length,2);
-  assert.equal(columns[0].items[0].name,'graph.microsoft.com/users');
-  assert.equal(columns[1].items[0].type,'Chart.HorizontalBar');
-  assert.equal(columns[1].items[0].showBarValues,true);
+test('workday mode is one compact native Microsoft summary chart',()=>{
+  const card=buildNativeCard(input,directory);
+  const panel=card.body.find(n=>n.id==='panel-workdays');
+  assert.equal(panel.isVisible,false);
+  const chart=panel.items.find(n=>n.id==='workforce-workdays-chart');
+  assert.equal(chart.type,'Chart.HorizontalBar');
+  assert.equal(chart.showBarValues,true);
+  assert.equal(chart.displayMode,'AbsoluteNoAxis');
+  assert.equal(chart.data.length,8);
+  assert.deepEqual(chart.data.map(d=>d.y),[1.37,1.22,0.62,1.13,1,1.15,0.52,1.21]);
 });
 
 test('tap on either row toggles that employee detail panel',()=>{
@@ -141,11 +145,11 @@ test('card has eight two-module rows per mode and eight shared hidden detail pan
   const details=card.body.find(n=>n.id==='details-area');
 
   assert.equal(shift.items.length,8);
-  assert.equal(workday.items.length,8);
+  assert.equal(workday.items.length,2);
   assert.equal(details.items.length,8);
 
   assert.ok(shift.items.every((r,i)=>r.id==='shift-row-'+(i+1)));
-  assert.ok(workday.items.every((r,i)=>r.id==='workday-row-'+(i+1)));
+  assert.ok(workday.items.some(n=>n.id==='workforce-workdays-chart'));
   assert.ok(details.items.every((r,i)=>r.id==='employee-detail-'+(i+1) && r.isVisible===false));
 });
 
@@ -168,7 +172,8 @@ test('V18 contract is native, avatar-only, row-tappable and external-resource-fr
   assert.deepEqual(qa.row_modules,['avatar','microsoft_native_chart']);
   assert.equal(qa.employee_row_module_count,2);
   assert.equal(qa.shift_mini_chart_count,8);
-  assert.equal(qa.workday_mini_chart_count,8);
+  assert.equal(qa.workday_mini_chart_count,0);
+  assert.equal(qa.workday_summary_chart_count,1);
   assert.equal(qa.detail_interaction,'row_toggle_visibility');
   assert.equal(qa.details_hidden_by_default,true);
   assert.equal(qa.native_microsoft_charts_only,true);

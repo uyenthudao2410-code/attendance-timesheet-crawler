@@ -19,7 +19,7 @@ export function sessionMinutes(value) {
   return value.split('; ').flatMap(session=>{
     const m=/^\d{2}:\d{2}–\d{2}:\d{2} \((\d+h[0-5]\d)\)$/.exec(session);
     if (m) return [durationMinutes(m[1])];
-    if (/^\d{2}:\d{2}–—$/.test(session)) return [];
+    if (/^(?:\d{2}:\d{2}–—|—–\d{2}:\d{2})$/.test(session)) return [];
     fail('Unknown session syntax');
   });
 }
@@ -85,7 +85,7 @@ export function validateSource(s) {
   const closed=s.employees.filter(e=>e.status==='Đã ghi nhận');
   const records=s.employees.filter(e=>e.morning!=='—' || e.afternoon!=='—');
   if (closed.length!==s.kpis.closed) fail('KPI/status mismatch');
-  if (records.length!==s.kpis.with_record || s.rate!==String(records.length/8*100)+'%') fail('Record KPI mismatch');
+  if (records.length!==s.kpis.with_record || s.rate!==String(Math.round(records.length/8*100))+'%') fail('Record KPI mismatch');
   if (durationMinutes(s.total_hours)!==closed.reduce((n,e)=>n+durationMinutes(e.total),0)) fail('Confirmed hours mismatch');
   return s;
 }

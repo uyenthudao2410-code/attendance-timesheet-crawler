@@ -2,11 +2,11 @@
   "schema_version": 1,
   "enabled": true,
   "mode": "TEST",
-  "layout_version": "ATTENDANCE_MOBILE_NATIVE_V19_FUTURE_AVATAR_DETAILS",
-  "request_id": "native-20261005-microsoft-v19-future-avatar-details-r2",
+  "layout_version": "ATTENDANCE_MOBILE_NATIVE_V20_AVATAR_ONLY_BRIGHT",
+  "request_id": "native-20261005-microsoft-v20-avatar-only-bright",
   "chat_id": "19:0e02d613cded448892f27d74cff19d63@thread.v2",
   "source_kind": "design_test_fixture",
   "target_date": "2026-10-05",
   "source_data_sha256": "cedcad7b9226d6009a0e516aa1fcb198cf8e715276a060831125fb9c30336f6e",
-  "retry_seq": 29
+  "retry_seq": 30
 }

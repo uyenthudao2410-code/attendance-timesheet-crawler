@@ -76,11 +76,13 @@ test('status strip remains compact and source-driven',()=>{
     [['Đã ghi nhận',6],['Chưa chốt',1],['Cần đối soát',1]]);
 });
 
-test('detail section is compact and preserves all literal employee fields',()=>{
+test('detail rows are easier to scan and preserve all literal employee fields',()=>{
   input.employees.forEach((e,i)=>{
     const block=employeeCompactRow(e,i);
     assert.equal(block.id,'employee-' + (i+1));
-    assert.equal(block.items.length,2);
+    assert.equal(block.items.length,3);
+    assert.ok(JSON.stringify(block.items[1]).includes('SÁNG'));
+    assert.ok(JSON.stringify(block.items[2]).includes('CHIỀU'));
     const json=JSON.stringify(block);
     for(const key of ['name','morning','afternoon','total','status']) assert.ok(json.includes(e[key]),i + ' ' + key);
   });
@@ -108,26 +110,31 @@ test('card contains three separate dashboard charts and no per-person chart list
   assert.ok(!nodes.some(n=>/^employee-bar-/.test(n.id||'')));
 });
 
-test('all eight employee details are visible by default',()=>{
+test('details are hidden by default and opened by one toggle action',()=>{
   const card=buildNativeCard(input);
-  input.employees.forEach((_,i)=>{
-    const block=card.body.find(n=>n.id==='employee-' + (i+1));
-    assert.ok(block);
-    assert.ok(!all(block).some(n=>n.isVisible===false));
-  });
-  assert.equal(all(card).filter(n=>n.isVisible===false).length,0);
+  const panel=card.body.find(n=>n.id==='attendance-details-panel');
+  assert.ok(panel);
+  assert.equal(panel.isVisible,false);
+  assert.equal(panel.items.filter(n=>/^employee-\\d+$/.test(n.id||'')).length,8);
+  const action=all(card).find(n=>n.type==='Action.ToggleVisibility');
+  assert.ok(action);
+  assert.deepEqual(action.targetElements,['attendance-details-panel']);
+  assert.match(action.title,/chi tiết giờ vào \/ ra/i);
+  assert.equal(all(card).filter(n=>n.isVisible===false).length,1);
 });
 
 test('payload is native-only and minute labels are forbidden',()=>{
   const card=buildNativeCard(input);
   const qa=auditCard(card,input);
-  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V7_MOBILE_FIRST');
+  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V8_COLLAPSIBLE_DETAILS');
   assert.equal(qa.data_gate,'passed');
   assert.equal(qa.employee_count,8);
   assert.equal(qa.table_count,0);
   assert.equal(qa.chart_count,3);
   assert.equal(qa.chart_unit,'hours');
   assert.equal(qa.external_chart_requests,0);
+  assert.equal(qa.all_sessions_visible_by_default,false);
+  assert.equal(qa.collapsible_detail_panel,true);
   assert.ok(qa.bytes<27000);
   const json=JSON.stringify(card);
   assert.ok(!json.includes('Phút'));
@@ -142,7 +149,7 @@ test('mutating chart values or deleting literal shift line fails audit',()=>{
   card.body.find(n=>n.id==='workforce-recorded-hours').data[0].y=99;
   assert.throws(()=>auditCard(card,input),/Layout\/data mismatch/);
   const removed=buildNativeCard(input);
-  removed.body.find(n=>n.id==='employee-6').items.pop();
+  removed.body.find(n=>n.id==='attendance-details-panel').items.find(n=>n.id==='employee-6').items.pop();
   assert.throws(()=>auditCard(removed,input),/Layout\/data mismatch/);
 });
 

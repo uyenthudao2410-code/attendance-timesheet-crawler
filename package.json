@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Read-only TimeMark/DaysCamera attendance crawler for GitHub Actions",
   "scripts": {
-    "test": "node --test",
+    "test": "node --test \"test/**/*.test.mjs\"",
     "crawl": "node scripts/attendance-crawl.mjs"
   },
   "engines": {

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V13_STACKED_SHIFTS';
+export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V14_DONUT_PERSONA';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
@@ -47,6 +47,21 @@ export function formatRecordedMinutes(value) {
 
 export function formatWorkdays(value) {
   return workdaysFromMinutes(value).toFixed(2).replace('.',',') + ' công';
+}
+
+
+export function validateDirectory(source,directory) {
+  if (!directory || typeof directory!=='object') fail('Employee directory missing');
+  for (const e of source.employees) {
+    const u=directory[e.name];
+    if (!u || typeof u!=='object') fail('Directory user missing: ' + e.name);
+    if (!/^[0-9a-f-]{36}$/i.test(String(u.id||''))) fail('Invalid Entra id: ' + e.name);
+    if (u.displayName !== e.name) fail('Directory display name mismatch: ' + e.name);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(u.userPrincipalName||''))) {
+      fail('Invalid UPN: ' + e.name);
+    }
+  }
+  return directory;
 }
 
 export function validateSource(s) {
@@ -238,6 +253,76 @@ export function statusStrip(s) {
   };
 }
 
+export function shiftDonut(s) {
+  const morning=s.employees.flatMap(e=>sessionMinutes(e.morning)).reduce((a,b)=>a+b,0);
+  const afternoon=s.employees.flatMap(e=>sessionMinutes(e.afternoon)).reduce((a,b)=>a+b,0);
+  const morningWorkdays=workdaysFromMinutes(morning);
+  const afternoonWorkdays=workdaysFromMinutes(afternoon);
+  return {
+    type:'Chart.Donut',
+    id:'shift-donut',
+    colorSet:'categorical',
+    showLegend:true,
+    spacing:'Small',
+    data:[
+      {legend:'Ca sáng · ' + morningWorkdays.toFixed(2).replace('.',',') + ' công',value:morningWorkdays},
+      {legend:'Ca chiều · ' + afternoonWorkdays.toFixed(2).replace('.',',') + ' công',value:afternoonWorkdays}
+    ],
+    fallback:chartFallback()
+  };
+}
+
+export function statusDonut(s) {
+  const closed=s.employees.filter(e=>displayStatus(e)==='Đã ghi nhận').length;
+  const open=s.employees.length-closed;
+  return {
+    type:'Chart.Donut',
+    id:'status-donut',
+    colorSet:'categorical',
+    showLegend:true,
+    spacing:'Small',
+    data:[
+      {legend:'Đã ghi nhận · ' + closed,value:closed},
+      {legend:'Chưa chốt · ' + open,value:open}
+    ],
+    fallback:chartFallback()
+  };
+}
+
+function personaForEmployee(e,directory) {
+  const u=directory[e.name];
+  return {
+    type:'Component',
+    name:'graph.microsoft.com/user',
+    view:'compact',
+    properties:{
+      id:u.id,
+      displayName:u.displayName,
+      userPrincipalName:u.userPrincipalName
+    },
+    fallback:text(e.name,{size:'Small',weight:'Bolder'})
+  };
+}
+
+export function personaSet(source,directory) {
+  return {
+    type:'Component',
+    name:'graph.microsoft.com/users',
+    view:'compact',
+    properties:{
+      users:source.employees.map(e=>{
+        const u=directory[e.name];
+        return {
+          id:u.id,
+          displayName:u.displayName,
+          userPrincipalName:u.userPrincipalName
+        };
+      })
+    },
+    fallback:text(source.employees.map(e=>e.name).join(' · '),{size:'Small',isSubtle:true})
+  };
+}
+
 function totalSummary(e) {
   return formatRecordedMinutes(recordedMinutes(e)) + ' · ' +
     formatWorkdays(recordedMinutes(e)) + ' · ' + displayStatus(e);
@@ -250,7 +335,7 @@ const tableCell=(items,style='default')=>({
   items
 });
 
-export function compactDetailsTable(s) {
+export function compactDetailsTable(s,directory) {
   return {
     type:'Table',
     id:'details-table-compact',
@@ -269,7 +354,7 @@ export function compactDetailsTable(s) {
         type:'TableRow',
         cells:[
           tableCell([
-            text(String(i+1).padStart(2,'0') + ' · ' + e.name,{size:'Small',weight:'Bolder'})
+            personaForEmployee(e,directory)
           ],rowStyle(e)),
           tableCell([
             rich([
@@ -291,8 +376,9 @@ export function compactDetailsTable(s) {
   };
 }
 
-export function buildNativeCard(source) {
+export function buildNativeCard(source,directory) {
   const s=validateSource(source), k=s.kpis;
+  validateDirectory(s,directory);
   const kpis=[
     ['Tổng nhân sự',k.total,'Accent'],
     ['Có dữ liệu',k.with_record,'Good'],
@@ -418,10 +504,70 @@ export function buildNativeCard(source) {
       },
 
       sectionTitle('DataTrending','CHỈ SỐ NHANH'),
-      text('Phân bổ công ghi nhận theo ca',{size:'Small',weight:'Bolder'}),
-      aggregateShiftMixChart(s),
-      text('Tình trạng chấm công',{size:'Small',weight:'Bolder',spacing:'Small'}),
-      statusStrip(s),
+      {
+        type:'Container',
+        id:'quick-mobile',
+        targetWidth:'atMost:Narrow',
+        spacing:'Small',
+        items:[
+          {
+            type:'Container',
+            style:'emphasis',
+            roundedCorners:true,
+            items:[
+              text('CƠ CẤU THEO CA',{size:'Small',weight:'Bolder',color:'Accent'}),
+              shiftDonut(s)
+            ]
+          },
+          {
+            type:'Container',
+            style:'emphasis',
+            roundedCorners:true,
+            spacing:'Small',
+            items:[
+              text('TRẠNG THÁI CHẤM CÔNG',{size:'Small',weight:'Bolder',color:'Accent'}),
+              statusDonut(s)
+            ]
+          }
+        ]
+      },
+      {
+        type:'ColumnSet',
+        id:'quick-wide',
+        targetWidth:'atLeast:Standard',
+        spacing:'Small',
+        columns:[
+          {
+            type:'Column',
+            width:1,
+            items:[{
+              type:'Container',
+              style:'emphasis',
+              roundedCorners:true,
+              items:[
+                text('CƠ CẤU THEO CA',{size:'Small',weight:'Bolder',color:'Accent'}),
+                shiftDonut(s)
+              ]
+            }]
+          },
+          {
+            type:'Column',
+            width:1,
+            items:[{
+              type:'Container',
+              style:'emphasis',
+              roundedCorners:true,
+              items:[
+                text('TRẠNG THÁI CHẤM CÔNG',{size:'Small',weight:'Bolder',color:'Accent'}),
+                statusDonut(s)
+              ]
+            }]
+          }
+        ]
+      },
+      sectionTitle('People','NHÂN SỰ HÔM NAY'),
+      text('Tài khoản Microsoft 365 đã được đối chiếu theo danh sách chấm công.',{size:'Small',isSubtle:true,spacing:'Small'}),
+      personaSet(s,directory),
 
       sectionTitle('Clock','CHI TIẾT GIỜ VÀO / RA'),
       {
@@ -439,7 +585,7 @@ export function buildNativeCard(source) {
         id:'attendance-details-panel',
         isVisible:false,
         spacing:'Small',
-        items:[compactDetailsTable(s)]
+        items:[compactDetailsTable(s,directory)]
       },
 
       text('Quy đổi tham khảo: 1 công = 8 giờ. Thời gian tăng ca được ghi nhận đầy đủ theo dữ liệu thực tế. Sai lệch vui lòng phản hồi P.HC-NS.',
@@ -448,8 +594,9 @@ export function buildNativeCard(source) {
   };
 }
 
-export function auditCard(card,source) {
+export function auditCard(card,source,directory) {
   validateSource(source);
+  validateDirectory(source,directory);
   const json=JSON.stringify(card);
 
   if (Buffer.byteLength(json)>27000) fail('Card payload budget exceeded');
@@ -474,7 +621,7 @@ export function auditCard(card,source) {
   };
   walk(card);
 
-  if (json !== JSON.stringify(buildNativeCard(source))) fail('Layout/data mismatch');
+  if (json !== JSON.stringify(buildNativeCard(source,directory))) fail('Layout/data mismatch');
 
   return {
     layout_version:LAYOUT,
@@ -487,12 +634,15 @@ export function auditCard(card,source) {
     kpi_count:4,
     table_count:types.filter(t=>t==='Table').length,
     chart_count:types.filter(t=>t.startsWith('Chart.')).length,
+    donut_count:types.filter(t=>t==='Chart.Donut').length,
+    persona_component_count:types.filter(t=>t==='Component').length,
     data_gate:'passed',
     chart_units:['stacked_shift_hours','workdays'],
     workday_conversion_minutes:480,
     dual_chart_view:true,
     shift_chart_stacked:true,
     native_microsoft_charts_only:true,
+    native_microsoft_personas:true,
     collapsible_detail_panel:true,
     mobile_detail_rows:source.employees.length,
     external_chart_requests:0,

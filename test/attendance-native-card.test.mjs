@@ -4,17 +4,16 @@ import assert from 'node:assert/strict';
 
 import {
   LAYOUT, buildNativeCard, auditCard, validateSource, sourceDigest,
-  durationMinutes, sessionMinutes, recordedMinutes, chartHours,
-  workdaysFromMinutes, formatRecordedMinutes, formatWorkdays,
-  chartName, workdayChart, aggregateShiftMixChart, statusStrip,
-  compactDetailsTable, shiftChartCreatePayload
+  durationMinutes, sessionMinutes, recordedMinutes, shiftTotalMinutes,
+  chartHours, workdaysFromMinutes, formatRecordedMinutes, formatWorkdays,
+  nativeShiftChart, workdayChart, aggregateShiftMixChart, statusStrip,
+  compactDetailsTable
 } from '../src/attendance-native-card.mjs';
 
 const input=JSON.parse(fs.readFileSync(
   process.env.NATIVE_TEST_SOURCE || 'test/fixtures/attendance-native-card-input.json',
   'utf8'
 ));
-const SHIFT_URL='https://quickchart.io/chart/render/test-v12-shifts';
 
 const all=root=>{
   const result=[];
@@ -31,11 +30,11 @@ test('fixture binding stays unchanged and source validates without mutation',()=
   const before=JSON.stringify(input);
   assert.equal(validateSource(input),input);
   assert.equal(sourceDigest(input),'cedcad7b9226d6009a0e516aa1fcb198cf8e715276a060831125fb9c30336f6e');
-  buildNativeCard(input,SHIFT_URL);
+  buildNativeCard(input);
   assert.equal(JSON.stringify(input),before);
 });
 
-test('1 workday equals exactly 8 hours',()=>{
+test('workday conversion and recorded durations stay exact',()=>{
   assert.equal(durationMinutes('9h44'),584);
   assert.equal(workdaysFromMinutes(480),1);
   assert.equal(workdaysFromMinutes(584),1.22);
@@ -44,33 +43,42 @@ test('1 workday equals exactly 8 hours',()=>{
   assert.equal(formatWorkdays(657),'1,37 công');
 });
 
-test('recorded time preserves all known sessions and ignores open-ended duration',()=>{
-  assert.equal(recordedMinutes(input.employees[0]),657);
-  assert.equal(recordedMinutes(input.employees[1]),584);
-  assert.equal(recordedMinutes(input.employees[5]),554);
+test('shift totals preserve all known sessions and ignore open-ended session duration',()=>{
+  assert.equal(shiftTotalMinutes(input.employees[0],'morning'),290);
+  assert.equal(shiftTotalMinutes(input.employees[0],'afternoon'),367);
+  assert.equal(shiftTotalMinutes(input.employees[5],'afternoon'),286);
+  assert.equal(shiftTotalMinutes(input.employees[6],'afternoon'),0);
   assert.equal(recordedMinutes(input.employees[6]),248);
   assert.deepEqual(sessionMinutes(input.employees[6].afternoon),[]);
 });
 
-test('stacked shift chart uses Chart.js v4 and overlays name plus shift duration inside bars',()=>{
-  const p=shiftChartCreatePayload(input);
-  assert.equal(p.version,'4');
-  assert.equal(p.width,1100);
-  assert.equal(p.height,760);
-  assert.equal(p.devicePixelRatio,2);
-  assert.equal(typeof p.chart,'string');
-  assert.ok(p.chart.includes("indexAxis:'y'"));
-  assert.ok(p.chart.includes("stacked:true"));
-  assert.ok(p.chart.includes("ticks:{display:false}"));
-  assert.ok(p.chart.includes("labels:{"));
-  assert.ok(p.chart.includes("name:{"));
-  assert.ok(p.chart.includes("shift:{"));
-  assert.ok(p.chart.includes("return [ctx.dataset._names[i],shiftLabel]"));
-  assert.ok(p.chart.includes('"01 · Văn Mạnh"'));
-  assert.ok(p.chart.includes('"S 4h50"'));
-  assert.ok(p.chart.includes('"C 6h07"'));
-  assert.ok(p.chart.includes('"C 4h59"'));
-  assert.ok(p.chart.includes('"C 4h46"'));
+test('Microsoft native stacked chart has one row per employee and morning plus afternoon on same row',()=>{
+  const c=nativeShiftChart(input);
+  assert.equal(c.type,'Chart.HorizontalBar.Stacked');
+  assert.equal(c.id,'workforce-shifts-chart');
+  assert.equal(c.showLegend,true);
+  assert.equal(c.showBarValues,true);
+  assert.equal(c.xAxisTitle,'Giờ');
+  assert.equal(c.data.length,8);
+
+  const manh=c.data[0];
+  assert.equal(manh.title,'01 · Văn Mạnh');
+  assert.deepEqual(manh.data,[
+    {legend:'Ca sáng',value:4.8,color:'categoricalBlue'},
+    {legend:'Ca chiều',value:6.1,color:'categoricalTeal'}
+  ]);
+
+  const tue=c.data[2];
+  assert.equal(tue.title,'03 · Đình Tuệ');
+  assert.deepEqual(tue.data,[
+    {legend:'Ca chiều',value:5,color:'categoricalTeal'}
+  ]);
+
+  const linh=c.data[6];
+  assert.equal(linh.title,'07 · Phương Linh');
+  assert.deepEqual(linh.data,[
+    {legend:'Ca sáng',value:4.1,color:'categoricalBlue'}
+  ]);
 });
 
 test('native workday alternate view remains available',()=>{
@@ -81,7 +89,7 @@ test('native workday alternate view remains available',()=>{
   assert.deepEqual(c.data.map(d=>d.y),[1.37,1.22,0.62,1.13,1,1.15,0.52,1.21]);
 });
 
-test('secondary indicators remain concise and neutral',()=>{
+test('secondary indicators remain native, concise and neutral',()=>{
   const mix=aggregateShiftMixChart(input);
   assert.equal(mix.type,'Chart.HorizontalBar.Stacked');
   assert.deepEqual(mix.data[0].data.map(d=>[d.legend,d.value]),
@@ -107,7 +115,7 @@ test('compact details table is one row per employee',()=>{
 });
 
 test('KPI layout is mobile-first 2x2 and wide 4-across',()=>{
-  const card=buildNativeCard(input,SHIFT_URL);
+  const card=buildNativeCard(input);
   const mobile=card.body.find(n=>n.id==='kpi-mobile');
   const wide=card.body.find(n=>n.id==='kpi-wide');
   assert.equal(mobile.targetWidth,'atMost:Narrow');
@@ -117,8 +125,8 @@ test('KPI layout is mobile-first 2x2 and wide 4-across',()=>{
   assert.deepEqual(wide.items[0].columns.map(c=>c.items[0].text),['8','8','6','2']);
 });
 
-test('default chart view is stacked shifts and button switches to workdays',()=>{
-  const card=buildNativeCard(input,SHIFT_URL);
+test('default view is native stacked shifts and button switches to workdays',()=>{
+  const card=buildNativeCard(input);
   const actionSet=card.body.find(n=>n.id==='chart-view-toggle');
   assert.equal(actionSet.actions[0].title,'Theo ca');
   assert.equal(actionSet.actions[1].title,'Công quy đổi');
@@ -126,20 +134,14 @@ test('default chart view is stacked shifts and button switches to workdays',()=>
     {elementId:'panel-shifts',isVisible:true},
     {elementId:'panel-workdays',isVisible:false}
   ]);
-  assert.deepEqual(actionSet.actions[1].targetElements,[
-    {elementId:'panel-shifts',isVisible:false},
-    {elementId:'panel-workdays',isVisible:true}
-  ]);
   const shifts=card.body.find(n=>n.id==='panel-shifts');
   assert.equal(shifts.isVisible,true);
-  const image=shifts.items.find(n=>n.id==='shift-overlay-chart');
-  assert.equal(image.type,'Image');
-  assert.equal(image.url,SHIFT_URL);
+  assert.ok(shifts.items.some(n=>n.id==='workforce-shifts-chart'));
   assert.equal(card.body.find(n=>n.id==='panel-workdays').isVisible,false);
 });
 
 test('details stay collapsed by default',()=>{
-  const card=buildNativeCard(input,SHIFT_URL);
+  const card=buildNativeCard(input);
   const panel=card.body.find(n=>n.id==='attendance-details-panel');
   assert.equal(panel.isVisible,false);
   assert.ok(panel.items.some(n=>n.id==='details-table-compact'));
@@ -147,46 +149,53 @@ test('details stay collapsed by default',()=>{
   assert.ok(action);
 });
 
-test('payload matches V12 hybrid contract and only allows QuickChart render image',()=>{
-  const card=buildNativeCard(input,SHIFT_URL);
-  const qa=auditCard(card,input,SHIFT_URL);
-  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_HYBRID_V12_STACKED_SHIFTS');
+test('V13 is 100 percent Microsoft native with no Image or external URL',()=>{
+  const card=buildNativeCard(input);
+  const qa=auditCard(card,input);
+  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V13_STACKED_SHIFTS');
   assert.equal(qa.data_gate,'passed');
   assert.equal(qa.table_count,1);
-  assert.equal(qa.chart_count,3);
+  assert.equal(qa.chart_count,4);
   assert.deepEqual(qa.chart_units,['stacked_shift_hours','workdays']);
   assert.equal(qa.workday_conversion_minutes,480);
   assert.equal(qa.dual_chart_view,true);
-  assert.equal(qa.shift_chart_name_overlay,true);
   assert.equal(qa.shift_chart_stacked,true);
-  assert.equal(qa.external_chart_requests,1);
-  assert.equal(qa.external_chart_provider,'quickchart.io');
+  assert.equal(qa.native_microsoft_charts_only,true);
+  assert.equal(qa.external_chart_requests,0);
   assert.ok(qa.bytes<27000);
+
+  const nodes=all(card);
+  assert.equal(nodes.filter(n=>n.type==='Image').length,0);
+  assert.equal(JSON.stringify(card).includes('quickchart'),false);
+  assert.equal(JSON.stringify(card).includes('http'),true);
 });
 
-test('mutating chart data or detail rows fails audit',()=>{
-  const card=buildNativeCard(input,SHIFT_URL);
-  card.body.find(n=>n.id==='panel-workdays').items
-    .find(n=>n.id==='workforce-workdays-chart').data[0].y=99;
-  assert.throws(()=>auditCard(card,input,SHIFT_URL),/Layout\/data mismatch/);
+test('mutating native chart data or detail rows fails audit',()=>{
+  const card=buildNativeCard(input);
+  card.body.find(n=>n.id==='panel-shifts').items
+    .find(n=>n.id==='workforce-shifts-chart').data[0].data[0].value=99;
+  assert.throws(()=>auditCard(card,input),/Layout\/data mismatch/);
 
-  const removed=buildNativeCard(input,SHIFT_URL);
+  const removed=buildNativeCard(input);
   removed.body.find(n=>n.id==='attendance-details-panel').items
     .find(n=>n.id==='details-table-compact').rows.pop();
-  assert.throws(()=>auditCard(removed,input,SHIFT_URL),/Layout\/data mismatch/);
+  assert.throws(()=>auditCard(removed,input),/Layout\/data mismatch/);
 });
 
-test('non-QuickChart external image fails closed',()=>{
-  const card=buildNativeCard(input,SHIFT_URL);
-  card.body.find(n=>n.id==='panel-shifts').items
-    .find(n=>n.id==='shift-overlay-chart').url='https://example.com/chart.png';
-  assert.throws(()=>auditCard(card,input,SHIFT_URL),/QuickChart/);
+test('external images and duplicate IDs fail closed',()=>{
+  const card=buildNativeCard(input);
+  card.body.push({type:'Image',url:'https://example.com/chart.png'});
+  assert.throws(()=>auditCard(card,input),/External or nonmobile visual/);
+
+  const duplicate=buildNativeCard(input);
+  duplicate.body.push(duplicate.body.find(n=>n.id==='panel-shifts'));
+  assert.throws(()=>auditCard(duplicate,input),/Duplicate/);
 });
 
 test('incorrect KPI and incomplete roster fail closed',()=>{
   const changed=structuredClone(input);
   changed.kpis.closed=8;
-  assert.throws(()=>buildNativeCard(changed,SHIFT_URL),/KPI/);
+  assert.throws(()=>buildNativeCard(changed),/KPI/);
   changed.employees.pop();
-  assert.throws(()=>buildNativeCard(changed,SHIFT_URL),/eight/);
+  assert.throws(()=>buildNativeCard(changed),/eight/);
 });

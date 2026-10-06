@@ -199,6 +199,12 @@ function compactShift(value) {
 }
 
 export function employeeDetailPanel(e,i) {
+  const summary =
+    e.name + ' · ' +
+    formatRecordedMinutes(recordedMinutes(e)) + ' · ' +
+    formatWorkdays(recordedMinutes(e)) + ' · ' +
+    displayStatus(e) + '\n' +
+    compactShift(e.morning) + '  |  ' + compactShift(e.afternoon);
   return {
     type:'Container',
     id:'employee-detail-'+(i+1),
@@ -207,19 +213,7 @@ export function employeeDetailPanel(e,i) {
     roundedCorners:true,
     spacing:'Small',
     items:[
-      rich([
-        inline(String(i+1).padStart(2,'0')+' · '+e.name,{size:'Small',weight:'Bolder'}),
-        inline('   '),
-        inline(
-          formatRecordedMinutes(recordedMinutes(e))+' · '+formatWorkdays(recordedMinutes(e))+' · '+displayStatus(e),
-          {size:'Small',weight:'Bolder',color:statusColor(e)}
-        )
-      ]),
-      rich([
-        inline(compactShift(e.morning),{size:'Small',weight:'Bolder',color:'Accent'}),
-        inline('    |    ',{size:'Small',isSubtle:true}),
-        inline(compactShift(e.afternoon),{size:'Small',weight:'Bolder',color:'Good'})
-      ],{spacing:'Small'})
+      text(summary,{size:'Small',weight:'Bolder',color:statusColor(e)})
     ]
   };
 }

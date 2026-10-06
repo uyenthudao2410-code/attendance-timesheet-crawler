@@ -26,6 +26,8 @@ jobs:
           node-version: "22"
       - name: Validate native card and literal attendance data
         run: node --test test/attendance-native-card.test.mjs
+      - name: Install avatar optimizer
+        run: npm install --no-save sharp@0.34.5
       - name: Publish native Adaptive Card to TEST only
         env:
           GITHUB_TOKEN: ${{ github.token }}

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildNativeCard, auditCard, validateSource, sourceDigest,
-  durationMinutes, sessionMinutes, confirmedChart, shiftsChart, desktopTable, mobileTable
+  durationMinutes, sessionMinutes, groupedShiftChart, employeeDetailTable, chartName
 } from '../src/attendance-native-card.mjs';
 
 const sourcePath = process.env.NATIVE_TEST_SOURCE || 'test/fixtures/attendance-native-card-input.json';
@@ -13,53 +13,76 @@ test('source fields validate against the 8-person fixture', () => {
   assert.equal(validateSource(input), input);
   assert.equal(sourceDigest(input), 'cedcad7b9226d6009a0e516aa1fcb198cf8e715276a060831125fb9c30336f6e');
 });
+
 test('duration conversion never rounds display values', () => {
   assert.equal(durationMinutes('9h44'),584);
   assert.equal(durationMinutes('9h02'),542);
   assert.equal(durationMinutes('Chưa chốt'),null);
   assert.equal(durationMinutes('—'),null);
 });
+
 test('multiple sessions stay separate and an open session is absent, not zero', () => {
   assert.deepEqual(sessionMinutes(input.employees[5].afternoon),[259,27]);
   assert.deepEqual(sessionMinutes(input.employees[6].afternoon),[]);
 });
-test('unconfirmed employees do not receive invented confirmed totals', () => {
-  const c=confirmedChart(input);
-  assert.equal(c.data.length,6);
-  assert.deepEqual(c.data.map(v=>v.y),[584,299,542,479,554,582]);
-  assert.ok(c.data.every(v=>!v.x.startsWith('01')&&!v.x.startsWith('07')));
+
+test('chart labels use readable employee names instead of numeric STT only', () => {
+  assert.equal(chartName('Điêu Văn Mạnh'),'Văn Mạnh');
+  assert.equal(chartName('Nguyễn Thị Thục Anh'),'Thục Anh');
+  assert.equal(chartName('Lê Thị Phương Linh'),'Phương Linh');
 });
-test('shift chart includes all eight employees and retains separate afternoon sessions', () => {
-  const c=shiftsChart(input);
+
+test('first mobile chart contains four employees with large readable name labels', () => {
+  const c=groupedShiftChart(input,[0,1,2,3],true);
   assert.equal(c.type,'Chart.VerticalBar.Grouped');
   assert.equal(c.stacked,true);
-  assert.equal(new Set(c.data.flatMap(v=>v.values.map(p=>p.x))).size,8);
+  assert.equal(c.showLegend,true);
+  const names=new Set(c.data.flatMap(v=>v.values.map(p=>p.x)));
+  assert.deepEqual([...names].sort(),['Duy Hoàng','Thục Anh','Văn Mạnh','Đình Tuệ'].sort());
+  assert.equal(names.size,4);
+});
+
+test('second chart keeps Thanh Bình second afternoon session separate', () => {
+  const c=groupedShiftChart(input,[4,5,6,7],false);
+  assert.equal(c.type,'Chart.VerticalBar.Grouped');
+  assert.equal(c.showLegend,false);
   assert.equal(c.data.length,3);
-  assert.deepEqual(c.data[2].values,[{x:'06',y:27}]);
+  assert.deepEqual(c.data[2].values,[{x:'Thanh Bình',y:27}]);
 });
-test('one real table determines all desktop column widths', () => {
-  const a=desktopTable(input),b=mobileTable(input);
-  assert.equal(a.rows.length,9);
-  assert.equal(b.rows.length,9);
-  assert.equal(a.columns.length,4);
+
+test('each chart has a matching compact two-column detail table directly usable on mobile', () => {
+  const a=employeeDetailTable(input,[0,1,2,3]);
+  const b=employeeDetailTable(input,[4,5,6,7]);
+  assert.equal(a.columns.length,2);
   assert.equal(b.columns.length,2);
-  assert.ok(a.columns.every(c=>Number.isInteger(c.width)));
-  assert.ok(a.rows.every(r=>r.cells.length===4));
+  assert.equal(a.rows.length,4);
+  assert.equal(b.rows.length,4);
+  assert.ok(a.rows.every(r=>r.cells.length===2));
   assert.ok(b.rows.every(r=>r.cells.length===2));
-  assert.equal(a.targetWidth,'atLeast:Standard');
-  assert.equal(b.targetWidth,'atMost:Narrow');
+  const json=JSON.stringify([a,b]);
+  for (const e of input.employees) {
+    for (const field of ['name','morning','afternoon','total','status']) assert.ok(json.includes(e[field]));
+  }
 });
-test('native card preserves literal input and uses no image URL or formatter callback', () => {
+
+test('native v2 card has two charts, two inline detail tables and responsive KPI layouts', () => {
   const before=JSON.stringify(input);
   const card=buildNativeCard(input);
   const qa=auditCard(card,input);
   assert.equal(JSON.stringify(input),before);
   assert.equal(qa.data_gate,'passed');
+  assert.equal(qa.chart_count,2);
+  assert.equal(qa.table_count,2);
   assert.equal(qa.external_chart_requests,0);
   assert.equal(qa.render_qa,'pending_designer_and_real_teams_clients');
   const json=JSON.stringify(card);
+  assert.ok(json.includes('"targetWidth":"atLeast:Standard"'));
+  assert.ok(json.includes('"targetWidth":"atMost:Narrow"'));
+  assert.ok(json.includes('01–04 · NHÓM 1'));
+  assert.ok(json.includes('05–08 · NHÓM 2'));
   for(const forbidden of ['quickchart','livegap','data:image','"color":"Light"','"isVisible.dynamic"']) assert.ok(!json.includes(forbidden));
 });
+
 test('mismatched KPI and incomplete roster fail closed', () => {
   const changed=structuredClone(input);
   changed.kpis.closed=8;

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V14_DONUT_PERSONA';
+export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V15_COMPACT_DASHBOARD';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
@@ -287,6 +287,17 @@ export function statusDonut(s) {
   };
 }
 
+export function quickSummary(s) {
+  const morning=s.employees.flatMap(e=>sessionMinutes(e.morning)).reduce((a,b)=>a+b,0);
+  const afternoon=s.employees.flatMap(e=>sessionMinutes(e.afternoon)).reduce((a,b)=>a+b,0);
+  const closed=s.employees.filter(e=>displayStatus(e)==='Đã ghi nhận').length;
+  return [
+    {label:'Ca sáng',value:workdaysFromMinutes(morning).toFixed(2).replace('.',','),unit:'công',color:'Accent'},
+    {label:'Ca chiều',value:workdaysFromMinutes(afternoon).toFixed(2).replace('.',','),unit:'công',color:'Good'},
+    {label:'Đã chốt',value:closed + '/' + s.employees.length,unit:(s.employees.length-closed) + ' chưa chốt',color:'Good'}
+  ];
+}
+
 function personaForEmployee(e,directory) {
   const u=directory[e.name];
   return {
@@ -377,26 +388,58 @@ export function compactDetailsTable(s,directory) {
 export function buildNativeCard(source,directory) {
   const s=validateSource(source), k=s.kpis;
   validateDirectory(s,directory);
+
   const kpis=[
-    ['Tổng nhân sự',k.total,'Accent'],
-    ['Có dữ liệu',k.with_record,'Good'],
-    ['Đã chốt',k.closed,'Good'],
-    ['Chưa chốt',s.employees.filter(e=>displayStatus(e)!=='Đã ghi nhận').length,'Warning']
+    {label:'Tổng nhân sự',value:k.total,color:'Accent',icon:'People'},
+    {label:'Có dữ liệu',value:k.with_record,color:'Good',icon:'DataBarHorizontal'},
+    {label:'Đã chốt',value:k.closed,color:'Good',icon:'CheckmarkCircle'},
+    {label:'Chưa chốt',value:s.employees.filter(e=>displayStatus(e)!=='Đã ghi nhận').length,color:'Warning',icon:'Clock'}
   ];
 
-  const kpiColumns=entries=>({
+  const kpiTile = ({label,value,color,icon}) => ({
+    type:'Container',
+    style:'emphasis',
+    roundedCorners:true,
+    spacing:'Small',
+    items:[
+      {
+        type:'ColumnSet',
+        spacing:'None',
+        columns:[
+          {
+            type:'Column',
+            width:'auto',
+            verticalContentAlignment:'Center',
+            items:[{type:'Icon',name:icon,size:'Small',color,fallback:'drop'}]
+          },
+          {
+            type:'Column',
+            width:'stretch',
+            verticalContentAlignment:'Center',
+            items:[text(String(value),{
+              size:'ExtraLarge',
+              weight:'Bolder',
+              color,
+              horizontalAlignment:'Right'
+            })]
+          }
+        ]
+      },
+      text(label,{size:'Small',weight:'Bolder'})
+    ]
+  });
+
+  const kpiRow = entries => ({
     type:'ColumnSet',
-    spacing:'None',
-    columns:entries.map(([label,value,color])=>({
+    spacing:'Small',
+    columns:entries.map(item=>({
       type:'Column',
       width:1,
-      spacing:'Small',
-      items:[
-        text(String(value),{size:'ExtraLarge',weight:'Bolder',color,horizontalAlignment:'Center'}),
-        text(label,{size:'Small',horizontalAlignment:'Center'})
-      ]
+      items:[kpiTile(item)]
     }))
   });
+
+  const summary=quickSummary(s);
 
   return {
     type:'AdaptiveCard',
@@ -405,7 +448,7 @@ export function buildNativeCard(source,directory) {
     lang:'vi',
     msteams:{width:'Full'},
     body:[
-      text('TEST · NATIVE V13 · MICROSOFT CHART',{size:'Small',color:'Accent',weight:'Bolder'}),
+      text('TEST · NATIVE V15 · MOBILE FIRST',{size:'Small',color:'Accent',weight:'Bolder'}),
       text('BÁO CÁO CHẤM CÔNG — CẢ NGÀY',{size:'Large',weight:'Bolder',spacing:'Small'}),
       text(s.date_label + ' · Cập nhật ' + s.updated,{size:'Small',isSubtle:true,spacing:'Small'}),
 
@@ -413,22 +456,18 @@ export function buildNativeCard(source,directory) {
         type:'Container',
         id:'kpi-mobile',
         targetWidth:'atMost:Narrow',
-        style:'emphasis',
-        roundedCorners:true,
         spacing:'Small',
         items:[
-          kpiColumns(kpis.slice(0,2)),
-          {...kpiColumns(kpis.slice(2)),spacing:'Small'}
+          kpiRow(kpis.slice(0,2)),
+          {...kpiRow(kpis.slice(2)),spacing:'Small'}
         ]
       },
       {
         type:'Container',
         id:'kpi-wide',
         targetWidth:'atLeast:Standard',
-        style:'emphasis',
-        roundedCorners:true,
         spacing:'Small',
-        items:[kpiColumns(kpis)]
+        items:[kpiRow(kpis)]
       },
 
       {
@@ -476,14 +515,30 @@ export function buildNativeCard(source,directory) {
           }
         ]
       },
+
+      {
+        type:'Container',
+        id:'chart-personas',
+        style:'emphasis',
+        roundedCorners:true,
+        spacing:'Small',
+        items:[
+          rich([
+            {type:'IconRun',name:'People',size:'Small',color:'Accent',fallback:'drop'},
+            inline('  8 nhân sự',{size:'Small',weight:'Bolder'})
+          ]),
+          personaSet(s,directory)
+        ]
+      },
+
       {
         type:'Container',
         id:'panel-shifts',
         isVisible:true,
         spacing:'Small',
         items:[
-          text('GIỜ THEO CA · NATIVE MICROSOFT',{size:'Small',weight:'Bolder',color:'Accent'}),
-          text('Mỗi nhân sự một thanh: Sáng + Chiều ghép trên cùng hàng · giá trị hiển thị trên từng phần.',
+          text('GIỜ THEO CA',{size:'Small',weight:'Bolder',color:'Accent'}),
+          text('Sáng + Chiều trên cùng một thanh · giá trị hiển thị theo giờ.',
             {size:'Small',isSubtle:true,spacing:'Small'}),
           nativeShiftChart(s)
         ]
@@ -494,78 +549,36 @@ export function buildNativeCard(source,directory) {
         isVisible:false,
         spacing:'Small',
         items:[
-          text('CÔNG QUY ĐỔI THEO NHÂN SỰ',{size:'Small',weight:'Bolder',color:'Accent'}),
-          text('1 công = 8 giờ · giá trị công hiển thị trực tiếp trên chart native.',
+          text('CÔNG QUY ĐỔI',{size:'Small',weight:'Bolder',color:'Accent'}),
+          text('1 công = 8 giờ · giá trị hiển thị trực tiếp trên chart.',
             {size:'Small',isSubtle:true,spacing:'Small'}),
           workdayChart(s)
         ]
       },
 
-      sectionTitle('DataTrending','CHỈ SỐ NHANH'),
       {
         type:'Container',
-        id:'quick-mobile',
-        targetWidth:'atMost:Narrow',
-        spacing:'Small',
+        id:'quick-summary',
+        style:'emphasis',
+        roundedCorners:true,
+        spacing:'Medium',
         items:[
+          text('TÓM TẮT NHANH',{size:'Small',weight:'Bolder',color:'Accent'}),
           {
-            type:'Container',
-            style:'emphasis',
-            roundedCorners:true,
-            items:[
-              text('CƠ CẤU THEO CA',{size:'Small',weight:'Bolder',color:'Accent'}),
-              shiftDonut(s)
-            ]
-          },
-          {
-            type:'Container',
-            style:'emphasis',
-            roundedCorners:true,
+            type:'ColumnSet',
             spacing:'Small',
-            items:[
-              text('TRẠNG THÁI CHẤM CÔNG',{size:'Small',weight:'Bolder',color:'Accent'}),
-              statusDonut(s)
-            ]
+            columns:summary.map(item=>({
+              type:'Column',
+              width:1,
+              items:[
+                text(item.value,{size:'Large',weight:'Bolder',color:item.color,horizontalAlignment:'Center'}),
+                text(item.label,{size:'Small',weight:'Bolder',horizontalAlignment:'Center'}),
+                text(item.unit,{size:'Small',isSubtle:true,horizontalAlignment:'Center'})
+              ]
+            }))
           }
         ]
       },
-      {
-        type:'ColumnSet',
-        id:'quick-wide',
-        targetWidth:'atLeast:Standard',
-        spacing:'Small',
-        columns:[
-          {
-            type:'Column',
-            width:1,
-            items:[{
-              type:'Container',
-              style:'emphasis',
-              roundedCorners:true,
-              items:[
-                text('CƠ CẤU THEO CA',{size:'Small',weight:'Bolder',color:'Accent'}),
-                shiftDonut(s)
-              ]
-            }]
-          },
-          {
-            type:'Column',
-            width:1,
-            items:[{
-              type:'Container',
-              style:'emphasis',
-              roundedCorners:true,
-              items:[
-                text('TRẠNG THÁI CHẤM CÔNG',{size:'Small',weight:'Bolder',color:'Accent'}),
-                statusDonut(s)
-              ]
-            }]
-          }
-        ]
-      },
-      sectionTitle('People','NHÂN SỰ HÔM NAY'),
-      text('Tài khoản Microsoft 365 đã được đối chiếu theo danh sách chấm công.',{size:'Small',isSubtle:true,spacing:'Small'}),
-      personaSet(s,directory),
 
       sectionTitle('Clock','CHI TIẾT GIỜ VÀO / RA'),
       {
@@ -641,6 +654,8 @@ export function auditCard(card,source,directory) {
     shift_chart_stacked:true,
     native_microsoft_charts_only:true,
     native_microsoft_personas:true,
+    quick_summary_mode:'compact_metrics',
+    personas_in_chart_section:true,
     collapsible_detail_panel:true,
     mobile_detail_rows:source.employees.length,
     external_chart_requests:0,

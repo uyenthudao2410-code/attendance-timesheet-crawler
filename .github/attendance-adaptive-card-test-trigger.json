@@ -81,5 +81,6 @@
   ],
   "requested_at": "2026-10-06T13:05:00+07:00",
   "layout_version": "MOBILE_V8_LIVEGAP",
-  "test_variant": "livegap-chart-one-line-colored-rows"
+  "test_variant": "livegap-chart-one-line-colored-rows",
+  "retry_seq": 1
 }

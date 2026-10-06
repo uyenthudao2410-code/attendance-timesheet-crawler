@@ -1,12 +1,13 @@
 import { createHash } from 'node:crypto';
 
-export const LAYOUT = 'ATTENDANCE_MS_NATIVE_V2';
+export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V3';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
 const DATA_KEYS = ['target_date', 'date_label', 'updated', 'kpis', 'total_hours', 'rate', 'attention_summary', 'employees'];
-const fail = (message) => { throw new Error(`NATIVE_CARD_GATE: ${message}`); };
-export const digest = (v) => createHash('sha256').update(v).digest('hex');
-export const sourceDigest = (s) => digest(JSON.stringify(Object.fromEntries(DATA_KEYS.map(k => [k, s[k]]))));
+const fail = message => { throw new Error(`NATIVE_CARD_GATE: ${message}`); };
+export const digest = value => createHash('sha256').update(value).digest('hex');
+export const sourceDigest = s => digest(JSON.stringify(Object.fromEntries(DATA_KEYS.map(k => [k, s[k]]))));
 
+// Conversion is for chart geometry and validation only. Display strings stay literal.
 export function durationMinutes(value) {
   const match = /^(\d+)h([0-5]\d)$/.exec(String(value));
   return match ? Number(match[1]) * 60 + Number(match[2]) : null;
@@ -16,7 +17,7 @@ export function sessionMinutes(value) {
   return value.split('; ').flatMap(session => {
     const m = /^\d{2}:\d{2}–\d{2}:\d{2} \((\d+h[0-5]\d)\)$/.exec(session);
     if (m) return [durationMinutes(m[1])];
-    if (/^\d{2}:\d{2}–—$/.test(session)) return [];
+    if (/^\d{2}:\d{2}–—$/.test(session)) return []; // Missing is NOT zero.
     fail('Unknown session syntax');
   });
 }
@@ -50,210 +51,139 @@ export function validateSource(s) {
   return s;
 }
 
-const t = (text, options = {}) => ({type:'TextBlock', text, wrap:true, spacing:'None', ...options});
-const run = (text, options = {}) => ({type:'TextRun', text, ...options});
+const text = (value, options = {}) => ({type:'TextBlock', text:value, wrap:true, spacing:'None', ...options});
+const inline = (value, options = {}) => ({type:'TextRun', text:value, ...options});
 const rich = (inlines, options = {}) => ({type:'RichTextBlock', inlines, spacing:'None', ...options});
-const statusColor = e => e.status === 'Cần đối soát' ? 'Attention' : e.status === 'Chưa chốt' ? 'Warning' : e.status === 'Đã ghi nhận' ? 'Good' : 'Default';
-const rowStyle = (e, i) => e.status === 'Cần đối soát' ? 'attention' : e.status === 'Chưa chốt' ? 'warning' : i % 2 ? 'emphasis' : 'default';
-const cell = (items, style='default') => ({type:'TableCell', style, verticalContentAlignment:'Center', items});
-const icon = (name, color='Accent') => ({type:'Icon', name, color, size:'Small', style:'Regular', fallback:'drop'});
+const statusColor = e => e.status === 'Cần đối soát' ? 'Attention'
+  : e.status === 'Chưa chốt' ? 'Warning' : e.status === 'Đã ghi nhận' ? 'Good' : 'Default';
+const chartFallback = () => text('Biểu đồ chưa được hỗ trợ trên thiết bị này; giờ và trạng thái vẫn hiển thị đầy đủ.', {size:'Small',isSubtle:true});
 
-const section = (name, text) => ({
-  type:'ColumnSet',
-  spacing:'Small',
-  columns:[
-    {type:'Column', width:'24px', verticalContentAlignment:'Center', items:[icon(name)]},
-    {type:'Column', width:'stretch', items:[t(text,{size:'Medium',weight:'Bolder'})]}
-  ]
-});
-
-function chartFallback() {
-  return t('Thiết bị này chưa hiển thị biểu đồ native. Toàn bộ giờ vào/ra vẫn có ngay bên dưới.',
-    {size:'Small', color:'Default'});
+export function employeeSegments(e) {
+  return ['morning','afternoon'].flatMap(slot => sessionMinutes(e[slot]).map((value, i) => ({
+    legend:slot === 'morning' ? (i ? `Sáng · phiên ${i+1}` : 'Sáng')
+      : (i ? `Chiều · phiên ${i+1}` : 'Chiều'),
+    value,
+    color:slot === 'morning' ? 'categoricalBlue' : i ? 'categoricalTeal' : 'categoricalGreen'
+  })));
 }
 
-export function chartName(name) {
-  const parts = String(name).trim().split(/\s+/);
-  return parts.length <= 2 ? name : parts.slice(-2).join(' ');
-}
-
-export function groupedShiftChart(s, indexes, showLegend=true) {
-  const picked = indexes.map(i => s.employees[i]);
-  const series = [];
-  for (const slot of ['morning','afternoon']) {
-    const parsed = picked.map(e => sessionMinutes(e[slot]));
-    const max = Math.max(0, ...parsed.map(a => a.length));
-    for (let sessionIndex=0; sessionIndex<max; sessionIndex++) {
-      series.push({
-        legend:slot === 'morning'
-          ? 'Ca sáng'
-          : sessionIndex === 0 ? 'Ca chiều' : `Chiều · phiên ${sessionIndex+1}`,
-        color:slot === 'morning'
-          ? 'categoricalBlue'
-          : sessionIndex === 0 ? 'categoricalGreen' : 'categoricalTeal',
-        values:parsed.flatMap((sessions, localIndex) => sessions[sessionIndex] === undefined
-          ? []
-          : [{x:chartName(picked[localIndex].name), y:sessions[sessionIndex]}])
-      });
-    }
-  }
+// A single-row native stacked chart encodes the mix of known sessions, NOT
+// comparable daily totals. The native number at the end is in integer minutes.
+export function employeeShiftChart(e, i) {
+  const data = employeeSegments(e);
+  if (!data.length) return text('Chưa có phiên đủ thời lượng để vẽ thanh.', {size:'Small',isSubtle:true});
   return {
-    type:'Chart.VerticalBar.Grouped',
-    title:'Thời lượng theo ca',
-    showTitle:false,
-    stacked:true,
-    showBarValues:false,
-    showLegend,
-    yAxisTitle:'Phút',
-    yMin:0,
-    spacing:'Small',
-    data:series,
+    type:'Chart.HorizontalBar.Stacked', id:`employee-shifts-${i+1}`,
+    title:`Cơ cấu phiên của ${e.name}`, showTitle:false, showLegend:false, spacing:'None',
+    data:[{title:'Phút phiên đã ghi nhận', data}],
     fallback:chartFallback()
   };
 }
 
-function statusText(e, size='Small') {
-  return rich([
-    run(e.total,{weight:'Bolder',color:statusColor(e),size}),
-    run(` · ${e.status}`,{color:statusColor(e),size})
-  ]);
-}
-
-export function employeeDetailTable(s, indexes) {
-  const picked = indexes.map(i => s.employees[i]);
+export function employeeBlock(e, i) {
+  const color = statusColor(e);
+  // Do not duplicate "Chưa chốt" when total and status are the same.
+  const status = e.total === e.status ? e.total : `${e.total} · ${e.status}`;
   return {
-    type:'Table',
-    columns:[{width:36},{width:64}],
-    firstRowAsHeader:false,
-    showGridLines:false,
-    spacing:'Small',
-    rows:picked.map((e, localIndex) => {
-      const globalIndex = indexes[localIndex];
-      const style=rowStyle(e,globalIndex);
-      return {
-        type:'TableRow',
-        cells:[
-          cell([
-            t(`${String(globalIndex+1).padStart(2,'0')}  ${e.name}`,{size:'Small',weight:'Bolder'}),
-            statusText(e)
-          ],style),
-          cell([
-            rich([run('Sáng  ',{weight:'Bolder',color:'Accent',size:'Small'}),run(e.morning,{size:'Small'})]),
-            rich([run('Chiều  ',{weight:'Bolder',color:'Good',size:'Small'}),run(e.afternoon,{size:'Small'})],{spacing:'Small'})
-          ],style)
-        ]
-      };
-    })
+    type:'Container', id:`employee-${i+1}`, separator:i>0, spacing:'Small',
+    items:[
+      rich([
+        inline(`${String(i+1).padStart(2,'0')}  ${e.name}`, {weight:'Bolder'}),
+        inline('  ·  ', {isSubtle:true}),
+        inline(status, {weight:'Bolder',color,size:'Small'})
+      ]),
+      employeeShiftChart(e,i),
+      rich([
+        inline('Sáng  ', {weight:'Bolder',color:'Accent',size:'Small'}),
+        inline(e.morning, {size:'Small'}),
+        inline('   |   ', {size:'Small',isSubtle:true}),
+        inline('Chiều  ', {weight:'Bolder',color:'Good',size:'Small'}),
+        inline(e.afternoon, {size:'Small'})
+      ], {spacing:'None'})
+    ]
   };
 }
 
-function responsiveKpis(kpis) {
-  const makeColumns = entries => ({
-    type:'ColumnSet',
-    spacing:'None',
-    columns:entries.map(([label,value,color]) => ({
-      type:'Column',
-      width:1,
-      spacing:'Small',
-      items:[
-        t(String(value),{size:'ExtraLarge',weight:'Bolder',color,horizontalAlignment:'Center'}),
-        t(label,{size:'Small',horizontalAlignment:'Center'})
-      ]
-    }))
-  });
-  return [
-    {
-      type:'Container',
-      targetWidth:'atLeast:Standard',
-      style:'emphasis',
-      showBorder:true,
-      roundedCorners:true,
-      spacing:'Small',
-      items:[makeColumns(kpis)]
-    },
-    {
-      type:'Container',
-      targetWidth:'atMost:Narrow',
-      style:'emphasis',
-      showBorder:true,
-      roundedCorners:true,
-      spacing:'Small',
-      items:[
-        makeColumns(kpis.slice(0,2)),
-        {...makeColumns(kpis.slice(2)),spacing:'Small'}
-      ]
-    }
-  ];
-}
-
-function employeeGroup(s, indexes, label, showLegend) {
+// All confirmed totals share ONE native absolute scale. Unconfirmed people are
+// not converted to zero, and their session sums never enter this comparison.
+export function confirmedChart(s) {
+  const data = s.employees.flatMap(e => e.status === 'Đã ghi nhận'
+    ? [{x:`${e.name} · ${e.total}`, y:durationMinutes(e.total), color:'categoricalGreen'}] : []);
+  if (!data.length) return text('Chưa có tổng công đã chốt để so sánh.', {size:'Small'});
   return {
-    type:'Container',
-    style:'default',
-    showBorder:true,
-    roundedCorners:true,
-    spacing:'Medium',
-    items:[
-      {
-        type:'ColumnSet',
-        spacing:'None',
-        columns:[
-          {type:'Column',width:'stretch',items:[t(label,{size:'Small',weight:'Bolder',color:'Accent'})]},
-          {type:'Column',width:'auto',items:[t('Cột = thời lượng phiên',{size:'Small',isSubtle:true,horizontalAlignment:'Right'})]}
-        ]
-      },
-      groupedShiftChart(s,indexes,showLegend),
-      t('GIỜ VÀO / RA · TỔNG / TRẠNG THÁI',{size:'Small',weight:'Bolder',color:'Accent',separator:true,spacing:'Small'}),
-      employeeDetailTable(s,indexes)
-    ]
+    type:'Chart.HorizontalBar', id:'confirmed-comparison',
+    title:'So sánh tổng công đã chốt (phút)', showTitle:false,
+    displayMode:'AbsoluteNoAxis', showLegend:false, spacing:'Small',
+    xAxisTitle:'Phút đã chốt', data, fallback:chartFallback()
+  };
+}
+export function statusStrip(s) {
+  const data = [
+    ['Đã ghi nhận','good'],['Chưa chốt','warning'],
+    ['Cần đối soát','attention'],['Chưa có bản ghi','neutral']
+  ].map(([legend,color]) => ({legend,color,value:s.employees.filter(e=>e.status===legend).length}))
+    .filter(p=>p.value>0);
+  return {
+    type:'Chart.HorizontalBar.Stacked', id:'status-strip',
+    title:'Cơ cấu trạng thái', showTitle:false, showLegend:true, spacing:'Small',
+    data:[{title:'Trạng thái nhân sự',data}], fallback:chartFallback()
   };
 }
 
 export function buildNativeCard(source) {
   const s=validateSource(source), k=s.kpis;
-  const kpis=[
-    ['Tổng nhân sự',k.total,'Accent'],
-    ['Có dữ liệu',k.with_record,'Good'],
-    ['Đã chốt',k.closed,'Good'],
-    ['Cần kiểm tra',k.attention,'Attention']
-  ];
+  const kpis=[['Tổng nhân sự',k.total,'Accent'],['Có dữ liệu',k.with_record,'Good'],
+    ['Đã chốt',k.closed,'Good'],['Cần kiểm tra',k.attention,'Attention']];
   return {
-    type:'AdaptiveCard',
-    $schema:'https://adaptivecards.io/schemas/adaptive-card.json',
-    version:'1.5',
-    lang:'vi',
-    msteams:{width:'Full'},
+    type:'AdaptiveCard', $schema:'https://adaptivecards.io/schemas/adaptive-card.json',
+    version:'1.5', lang:'vi', msteams:{width:'Full'},
     body:[
-      t('TEST · ADAPTIVE CARD NATIVE V2',{size:'Small',weight:'Bolder',color:'Accent'}),
-      t('BÁO CÁO CHẤM CÔNG — CẢ NGÀY',{size:'Large',weight:'Bolder',spacing:'Small'}),
+      text('TEST · NATIVE V3', {size:'Small',color:'Accent',weight:'Bolder'}),
+      text('BÁO CÁO CHẤM CÔNG — CẢ NGÀY', {size:'Large',weight:'Bolder',spacing:'Small'}),
+      text(`${s.date_label} · Cập nhật ${s.updated}`, {size:'Small',isSubtle:true,spacing:'Small'}),
       {
-        type:'ColumnSet',
-        spacing:'Small',
-        columns:[
-          {type:'Column',width:'stretch',items:[t(s.date_label,{size:'Small',isSubtle:true})]},
-          {type:'Column',width:'auto',items:[t(`Cập nhật ${s.updated}`,{size:'Small',isSubtle:true,horizontalAlignment:'Right'})]}
+        type:'Container', id:'kpi-strip', style:'emphasis', roundedCorners:true, spacing:'Small',
+        items:[{
+          type:'ColumnSet',spacing:'None',
+          columns:kpis.map(([label,value,color])=>({
+            type:'Column',width:1,spacing:'Small',items:[
+              text(String(value),{size:'ExtraLarge',weight:'Bolder',color,horizontalAlignment:'Center'}),
+              text(label,{size:'Small',horizontalAlignment:'Center'})
+            ]
+          }))
+        }]
+      },
+      rich([
+        inline('Tổng giờ xác nhận  ',{size:'Small'}),
+        inline(s.total_hours,{weight:'Bolder',size:'Large',color:'Good'}),
+        inline('   ·   Có bản ghi  ',{size:'Small'}),
+        inline(s.rate,{weight:'Bolder',size:'Medium'})
+      ],{spacing:'Small'}),
+      statusStrip(s),
+      {
+        type:'ActionSet',spacing:'Small',actions:[{
+          type:'Action.ToggleVisibility',title:'So sánh tổng công đã chốt',
+          targetElements:['confirmed-panel']
+        }]
+      },
+      {
+        type:'Container',id:'confirmed-panel',isVisible:false,spacing:'Small',
+        items:[
+          text('TỔNG ĐÃ CHỐT · SO SÁNH CÙNG THANG PHÚT',{size:'Small',weight:'Bolder',color:'Accent'}),
+          confirmedChart(s),
+          text('Chỉ so sánh tổng đã chốt. Người chưa chốt vẫn có đầy đủ thông tin bên dưới.',{size:'Small',isSubtle:true})
         ]
       },
-      ...responsiveKpis(kpis),
-      rich([
-        run('Tổng giờ xác nhận  ',{color:'Accent',size:'Small'}),
-        run(s.total_hours,{weight:'Bolder',size:'Medium'}),
-        run('   ·   Có bản ghi  ',{color:'Good',size:'Small'}),
-        run(s.rate,{weight:'Bolder',size:'Medium'})
-      ],{spacing:'Small'}),
-      section('DataBarVertical','GIỜ CÔNG THEO NHÂN SỰ'),
-      t('Chia 2 cụm để tên và cột lớn, dễ đọc trên điện thoại. Mỗi chart đi kèm giờ sáng/chiều ngay bên dưới.',
+      text('NHÂN SỰ · THANH THEO CA & GIỜ VÀO / RA',{size:'Medium',weight:'Bolder',spacing:'Small'}),
+      text('Xanh dương: sáng · Xanh lá: chiều · Xanh ngọc: phiên bổ sung.',{size:'Small',isSubtle:true,spacing:'Small'}),
+      ...s.employees.map(employeeBlock),
+      text('Thanh màu thể hiện cơ cấu phiên; số cuối thanh là phút của các phiên đã có thời lượng, không phải tổng công đã chốt.',
         {size:'Small',isSubtle:true,spacing:'Small'}),
-      employeeGroup(s,[0,1,2,3],'01–04 · NHÓM 1',true),
-      employeeGroup(s,[4,5,6,7],'05–08 · NHÓM 2',false),
-      {
-        type:'Container',
-        style:'attention',
-        roundedCorners:true,
-        spacing:'Medium',
-        items:[t(`Cần chú ý: ${s.attention_summary}`,{size:'Small',weight:'Bolder',color:'Attention'})]
-      },
-      t('Lưu ý: Cột biểu đồ chỉ biểu diễn các phiên đã có thời lượng. Tổng công/trạng thái được giữ nguyên theo dữ liệu nguồn ở từng hàng nhân sự.',
+      ...(s.attention_summary ? [{
+        type:'Container',style:'attention',roundedCorners:true,spacing:'Small',
+        items:[text(`Cần chú ý: ${s.attention_summary}`,{size:'Small',color:'Attention',weight:'Bolder'})]
+      }] : []),
+      text('Số liệu phục vụ đối soát, không mặc nhiên là công chính thức. Sai lệch vui lòng phản hồi P.HC-NS.',
         {size:'Small',isSubtle:true,spacing:'Small'})
     ]
   };
@@ -263,38 +193,28 @@ export function auditCard(card, source) {
   validateSource(source);
   const json=JSON.stringify(card);
   if (Buffer.byteLength(json)>27000) fail('Card payload budget exceeded');
-  const types=[];
-  const walk=v => {
+  const ids=new Set(), types=[];
+  const walk=v=>{
     if (typeof v==='function' || typeof v==='undefined') fail('Not pure JSON');
     if (!v || typeof v!=='object') return;
     if (v.type) types.push(v.type);
-    if (['Image','TabSet','Accordion'].includes(v.type)) fail('External/preview visual forbidden in native test');
-    if ('url' in v || 'backgroundImage' in v) fail('No external resources in native card');
-    for (const value of Object.values(v)) walk(value);
+    if (v.id) {if(ids.has(v.id)) fail('Duplicate element id'); ids.add(v.id);}
+    if (['Image','Table','TabSet','Accordion','Chart.VerticalBar','Chart.VerticalBar.Grouped'].includes(v.type)) fail('Noncompact or external visual forbidden');
+    if ('url' in v || 'backgroundImage' in v) fail('No external resources');
+    for(const value of Object.values(v)) walk(value);
   };
   walk(card);
-  for (const e of source.employees) {
-    for (const field of ['name','morning','afternoon','total','status']) {
-      if (!json.includes(e[field])) fail(`Missing literal ${field}`);
-    }
-  }
-  if (types.filter(v => v==='Chart.VerticalBar.Grouped').length !== 2) fail('Exactly two grouped employee charts required');
-  if (types.filter(v => v==='Table').length !== 2) fail('Exactly two employee detail tables required');
+  // Exact model comparison also audits chart numbers, visible fields, source order,
+  // per-person association, unknown sessions, KPI values and toggle targets.
+  if (json !== JSON.stringify(buildNativeCard(source))) fail('Layout/data mismatch');
   return {
-    layout_version:LAYOUT,
-    source_kind:'design_test_fixture',
-    target_date:source.target_date,
-    source_data_sha256:sourceDigest(source),
-    card_sha256:digest(json),
-    bytes:Buffer.byteLength(json),
-    employee_count:source.employees.length,
-    kpi_count:4,
-    chart_count:2,
-    table_count:2,
-    data_gate:'passed',
-    native_schema_contract:'checked_documented_fields',
-    external_chart_requests:0,
-    image_generation:false,
+    layout_version:LAYOUT,source_kind:'design_test_fixture',target_date:source.target_date,
+    source_data_sha256:sourceDigest(source),card_sha256:digest(json),bytes:Buffer.byteLength(json),
+    employee_count:source.employees.length,kpi_count:4,table_count:0,
+    chart_count:types.filter(t=>t.startsWith('Chart.')).length,
+    data_gate:'passed',native_schema_contract:'documented_native_elements',
+    external_chart_requests:0,image_generation:false,
+    all_sessions_visible_by_default:true,
     render_qa:'pending_designer_and_real_teams_clients'
   };
 }

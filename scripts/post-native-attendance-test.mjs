@@ -182,6 +182,7 @@ async function main() {
 
   stage='card_build';
   const card=buildNativeCard(source,directory,avatarUrls);
+  console.log(`ATTENDANCE_NATIVE_RAW_PAYLOAD_BYTES=${Buffer.byteLength(JSON.stringify(card))}`);
   const qa=auditCard(card,source,directory,avatarUrls);
   fs.mkdirSync('output-native',{recursive:true});
   fs.writeFileSync('output-native/card.json',JSON.stringify(card,null,2)+'\n');

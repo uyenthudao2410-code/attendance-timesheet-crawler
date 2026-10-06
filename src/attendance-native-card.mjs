@@ -143,92 +143,136 @@ function shiftTotalMinutes(e, key) {
 
 export function shiftChartCreatePayload(source) {
   const s=validateSource(source);
-  const categories=s.employees.map((e,i)=>String(i+1).padStart(2,'0') + ' · ' + chartName(e.name));
-  const morning=s.employees.map((e,i)=>{
-    const minutes=shiftTotalMinutes(e,'morning');
-    return {x:chartHours(minutes),y:categories[i],label:minutes ? 'S ' + formatRecordedMinutes(minutes) : ''};
-  });
-  const afternoon=s.employees.map((e,i)=>{
-    const minutes=shiftTotalMinutes(e,'afternoon');
-    return {x:chartHours(minutes),y:categories[i],label:minutes ? 'C ' + formatRecordedMinutes(minutes) : ''};
-  });
+  const names=s.employees.map((e,i)=>String(i+1).padStart(2,'0') + ' · ' + chartName(e.name));
+  const morningMinutes=s.employees.map(e=>shiftTotalMinutes(e,'morning'));
+  const afternoonMinutes=s.employees.map(e=>shiftTotalMinutes(e,'afternoon'));
+  const morning=morningMinutes.map(chartHours);
+  const afternoon=afternoonMinutes.map(chartHours);
+  const morningLabels=morningMinutes.map(v=>v ? 'S ' + formatRecordedMinutes(v) : '');
+  const afternoonLabels=afternoonMinutes.map(v=>v ? 'C ' + formatRecordedMinutes(v) : '');
+
+  const chart = String.raw\`{
+    type:'bar',
+    data:{
+      labels:\${JSON.stringify(names)},
+      datasets:[
+        {
+          label:'Ca sáng',
+          data:\${JSON.stringify(morning)},
+          _labels:\${JSON.stringify(morningLabels)},
+          _names:\${JSON.stringify(names)},
+          backgroundColor:'#4F46E5',
+          borderColor:'#4338CA',
+          borderWidth:1,
+          borderRadius:10,
+          borderSkipped:false,
+          barThickness:58
+        },
+        {
+          label:'Ca chiều',
+          data:\${JSON.stringify(afternoon)},
+          _labels:\${JSON.stringify(afternoonLabels)},
+          _names:\${JSON.stringify(names)},
+          backgroundColor:'#14B8A6',
+          borderColor:'#0F766E',
+          borderWidth:1,
+          borderRadius:10,
+          borderSkipped:false,
+          barThickness:58
+        }
+      ]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:false,
+      animation:false,
+      layout:{padding:{top:6,right:10,bottom:6,left:10}},
+      scales:{
+        x:{
+          stacked:true,
+          beginAtZero:true,
+          grid:{display:false},
+          border:{display:false},
+          ticks:{display:false}
+        },
+        y:{
+          stacked:true,
+          grid:{display:false},
+          border:{display:false},
+          ticks:{display:false}
+        }
+      },
+      plugins:{
+        legend:{
+          display:true,
+          position:'top',
+          align:'start',
+          labels:{
+            boxWidth:18,
+            boxHeight:18,
+            font:{size:18,weight:'600'},
+            padding:18
+          }
+        },
+        datalabels:{
+          labels:{
+            name:{
+              display:function(ctx){
+                var i=ctx.dataIndex;
+                var morningValue=ctx.chart.data.datasets[0].data[i] || 0;
+                return (ctx.datasetIndex===0 && morningValue>0) ||
+                  (ctx.datasetIndex===1 && morningValue===0 && ctx.dataset.data[i]>0);
+              },
+              formatter:function(value,ctx){
+                var i=ctx.dataIndex;
+                var shiftLabel=ctx.dataset._labels[i] || '';
+                return [ctx.dataset._names[i],shiftLabel];
+              },
+              color:'#ffffff',
+              anchor:'start',
+              align:'right',
+              offset:8,
+              clamp:true,
+              font:{size:16,weight:'700'},
+              textAlign:'left',
+              textStrokeColor:'rgba(0,0,0,0.18)',
+              textStrokeWidth:2
+            },
+            shift:{
+              display:function(ctx){
+                var i=ctx.dataIndex;
+                if(!ctx.dataset.data[i]) return false;
+                var morningValue=ctx.chart.data.datasets[0].data[i] || 0;
+                if(ctx.datasetIndex===0 && morningValue>0) return false;
+                if(ctx.datasetIndex===1 && morningValue===0) return false;
+                return true;
+              },
+              formatter:function(value,ctx){
+                return ctx.dataset._labels[ctx.dataIndex] || '';
+              },
+              color:'#ffffff',
+              anchor:'center',
+              align:'center',
+              clamp:true,
+              font:{size:17,weight:'700'},
+              textStrokeColor:'rgba(0,0,0,0.16)',
+              textStrokeWidth:2
+            }
+          }
+        },
+        tooltip:{enabled:false}
+      }
+    }
+  }\`;
 
   return {
+    version:'4',
     width:1100,
     height:760,
     devicePixelRatio:2,
     backgroundColor:'#ffffff',
     format:'png',
-    chart:{
-      type:'bar',
-      data:{
-        datasets:[
-          {
-            label:'Ca sáng',
-            data:morning,
-            backgroundColor:'#4F46E5',
-            borderColor:'#4338CA',
-            borderWidth:1,
-            borderRadius:10,
-            borderSkipped:false,
-            barThickness:54
-          },
-          {
-            label:'Ca chiều',
-            data:afternoon,
-            backgroundColor:'#14B8A6',
-            borderColor:'#0F766E',
-            borderWidth:1,
-            borderRadius:10,
-            borderSkipped:false,
-            barThickness:54
-          }
-        ]
-      },
-      options:{
-        indexAxis:'y',
-        responsive:false,
-        animation:false,
-        layout:{padding:{top:8,right:18,bottom:8,left:0}},
-        scales:{
-          x:{
-            stacked:true,
-            beginAtZero:true,
-            grid:{display:false},
-            border:{display:false},
-            ticks:{display:false}
-          },
-          y:{
-            stacked:true,
-            grid:{display:false},
-            border:{display:false},
-            ticks:{
-              mirror:true,
-              padding:-12,
-              color:'#ffffff',
-              font:{size:22,weight:'700'}
-            }
-          }
-        },
-        plugins:{
-          legend:{
-            display:true,
-            position:'top',
-            labels:{boxWidth:20,boxHeight:20,font:{size:20,weight:'600'},padding:20}
-          },
-          datalabels:{
-            display:true,
-            color:'#ffffff',
-            anchor:'center',
-            align:'center',
-            clamp:true,
-            font:{size:18,weight:'700'},
-            padding:2
-          },
-          tooltip:{enabled:false}
-        }
-      }
-    }
+    chart
   };
 }
 

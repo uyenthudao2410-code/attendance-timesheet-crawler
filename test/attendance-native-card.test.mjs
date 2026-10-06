@@ -48,12 +48,12 @@ test('workday conversion and source durations remain exact',()=>{
   assert.equal(sessionMinutes(input.employees[6].afternoon).length,0);
 });
 
-test('overview is compact and uses bright blue-teal status colors',()=>{
+test('overview is compact and uses bright blue-green status colors',()=>{
   const c=overviewStatusChart(input);
   assert.equal(c.type,'Chart.HorizontalBar.Stacked');
   assert.deepEqual(c.data[0].data,[
     {legend:'Đã chốt',value:6,color:'categoricalBlue'},
-    {legend:'Chưa chốt',value:2,color:'categoricalTeal'}
+    {legend:'Chưa chốt',value:2,color:'categoricalGreen'}
   ]);
 });
 
@@ -67,10 +67,10 @@ test('one consolidated shift chart carries all eight employees',()=>{
   assert.equal(c.data.length,8);
   assert.deepEqual(c.data[0].data,[
     {legend:'\u200B',value:4.8,color:'categoricalBlue'},
-    {legend:'\u200C',value:6.1,color:'categoricalTeal'}
+    {legend:'\u200C',value:6.1,color:'categoricalGreen'}
   ]);
   assert.deepEqual(c.data[2].data,[
-    {legend:'\u200C',value:5,color:'categoricalTeal'}
+    {legend:'\u200C',value:5,color:'categoricalGreen'}
   ]);
 });
 
@@ -152,6 +152,31 @@ test('no per-person mini charts, no per-person detail buttons, no footer notes',
   assert.equal(card.body.some(n=>n.id==='report-legend'),false);
 });
 
+test('single shared shift legend identifies morning and afternoon colors',()=>{
+  const card=buildNativeCard(input,directory);
+  const legend=card.body.find(n=>n.id==='shift-legend');
+  assert.ok(legend);
+  const json=JSON.stringify(legend);
+  assert.ok(json.includes('Ca sáng'));
+  assert.ok(json.includes('Ca chiều'));
+});
+
+test('Graph profile photo map overrides initials without exposing names beside avatars',()=>{
+  const graphAvatars=Object.fromEntries(
+    input.employees.map(e=>[e.name,'data:image/jpeg;base64,/9j/2Q=='])
+  );
+  const card=buildNativeCard(input,directory,graphAvatars);
+  const qa=auditCard(card,input,directory,graphAvatars);
+  assert.equal(qa.avatar_render,'graph_profile_photo');
+  assert.equal(qa.graph_avatar_count,8);
+  assert.equal(qa.image_avatar_count,8);
+  const rail=card.body.find(n=>n.id==='compact-chart-grid').columns[0].items[0];
+  rail.items.forEach((slot,i)=>{
+    assert.equal(slot.items[0].url,'data:image/jpeg;base64,/9j/2Q==');
+    assert.equal(JSON.stringify(slot).includes(input.employees[i].name),false);
+  });
+});
+
 test('details area contains only eight hidden detail panels and consumes no space until opened',()=>{
   const card=buildNativeCard(input,directory);
   const details=card.body.find(n=>n.id==='details-area');
@@ -160,11 +185,11 @@ test('details area contains only eight hidden detail panels and consumes no spac
   assert.ok(details.items.every((d,i)=>d.id==='employee-detail-'+(i+1) && d.isVisible===false));
 });
 
-test('V22 contract is one-chart architecture with image-only avatars',()=>{
+test('V23 contract supports real Graph photos with image-only avatars',()=>{
   const card=buildNativeCard(input,directory);
   const qa=auditCard(card,input,directory);
 
-  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V22_IMAGE_AVATAR_RAIL');
+  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V23_GRAPH_PROFILE_PHOTO');
   assert.equal(qa.data_gate,'passed');
   assert.equal(qa.chart_architecture,'single_consolidated_chart');
   assert.equal(qa.shift_chart_count,1);
@@ -175,10 +200,12 @@ test('V22 contract is one-chart architecture with image-only avatars',()=>{
   assert.equal(qa.details_hidden_by_default,true);
   assert.equal(qa.footer_notes,false);
   assert.equal(qa.repeated_legends,false);
-  assert.equal(qa.palette,'categoricalBlue_categoricalTeal');
+  assert.equal(qa.palette,'categoricalBlue_categoricalGreen');
+  assert.equal(qa.shift_legend,'Ca sáng | Ca chiều');
   assert.equal(qa.native_microsoft_charts_only,true);
   assert.equal(qa.native_microsoft_personas,false);
-  assert.equal(qa.avatar_render,'embedded_png_initials');
+  assert.equal(qa.avatar_render,'embedded_png_fallback');
+  assert.equal(qa.graph_avatar_count,0);
   assert.equal(qa.image_avatar_count,8);
   assert.equal(qa.persona_component_count,0);
   assert.equal(qa.external_chart_requests,0);

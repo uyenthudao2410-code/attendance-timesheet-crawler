@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V6_DASHBOARD';
+export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V7_MOBILE_FIRST';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
 const DATA_KEYS = ['target_date', 'date_label', 'updated', 'kpis', 'total_hours', 'rate', 'attention_summary', 'employees'];
 const fail = message => { throw new Error('NATIVE_CARD_GATE: ' + message); };
@@ -13,6 +13,9 @@ export function durationMinutes(value) {
 }
 export function hoursFromMinutes(value) {
   return Number((Number(value) / 60).toFixed(2));
+}
+export function chartHours(value) {
+  return Number((Number(value) / 60).toFixed(1));
 }
 export function sessionMinutes(value) {
   if (value === '—') return [];
@@ -58,8 +61,8 @@ const inline = (value, options = {}) => ({type:'TextRun', text:value, ...options
 const rich = (inlines, options = {}) => ({type:'RichTextBlock', inlines, spacing:'None', ...options});
 const statusColor = e => e.status === 'Cần đối soát' ? 'Attention'
   : e.status === 'Chưa chốt' ? 'Warning' : e.status === 'Đã ghi nhận' ? 'Good' : 'Default';
-const rowStyle = (e, i) => e.status === 'Cần đối soát' ? 'attention'
-  : e.status === 'Chưa chốt' ? 'warning' : i % 2 ? 'emphasis' : 'default';
+const rowStyle = e => e.status === 'Cần đối soát' ? 'attention'
+  : e.status === 'Chưa chốt' ? 'warning' : 'default';
 const chartFallback = () => text('Biểu đồ chưa được hỗ trợ; giờ vào/ra vẫn hiển thị đầy đủ.',
   {size:'Small',isSubtle:true});
 
@@ -87,15 +90,15 @@ export function workforceRecordedHoursChart(s) {
   return {
     type:'Chart.HorizontalBar',
     id:'workforce-recorded-hours',
-    title:'Thời lượng phiên đã ghi nhận',
+    title:'Giờ công theo nhân sự',
     showTitle:false,
     showLegend:false,
-    showBarValues:false,
-    xAxisTitle:'Giờ',
+    showBarValues:true,
+    displayMode:'AbsoluteNoAxis',
     spacing:'Small',
     data:s.employees.map((e,i)=>({
       x:String(i+1).padStart(2,'0') + ' · ' + chartName(e.name),
-      y:hoursFromMinutes(recordedMinutes(e)),
+      y:chartHours(recordedMinutes(e)),
       color:statusChartColor(e)
     })),
     fallback:chartFallback()
@@ -107,16 +110,16 @@ export function aggregateShiftMixChart(s) {
   return {
     type:'Chart.HorizontalBar.Stacked',
     id:'shift-mix',
-    title:'Cơ cấu thời lượng đã ghi nhận',
+    title:'Phân bổ giờ theo ca',
     showTitle:false,
     showLegend:true,
-    showBarValues:false,
+    showBarValues:true,
     spacing:'Small',
     data:[{
-      title:'Sáng / Chiều',
+      title:'Tổng giờ phiên',
       data:[
-        {legend:'Ca sáng',value:hoursFromMinutes(morning),color:'categoricalBlue'},
-        {legend:'Ca chiều',value:hoursFromMinutes(afternoon),color:'categoricalGreen'}
+        {legend:'Ca sáng',value:chartHours(morning),color:'categoricalBlue'},
+        {legend:'Ca chiều',value:chartHours(afternoon),color:'categoricalGreen'}
       ]
     }],
     fallback:chartFallback()
@@ -129,7 +132,7 @@ export function employeeCompactRow(e, i) {
   return {
     type:'Container',
     id:'employee-' + (i+1),
-    style:rowStyle(e,i),
+    style:rowStyle(e),
     roundedCorners:true,
     separator:i>0,
     spacing:'Small',
@@ -186,9 +189,9 @@ export function statusStrip(s) {
     title:'Cơ cấu trạng thái',
     showTitle:false,
     showLegend:true,
-    showBarValues:false,
+    showBarValues:true,
     spacing:'Small',
-    data:[{title:'8 nhân sự',data}],
+    data:[{title:'Trạng thái',data}],
     fallback:chartFallback()
   };
 }
@@ -201,6 +204,20 @@ export function buildNativeCard(source) {
     ['Đã chốt',k.closed,'Good'],
     ['Cần kiểm tra',k.attention,'Attention']
   ];
+  const kpiColumns = entries => ({
+    type:'ColumnSet',
+    spacing:'None',
+    columns:entries.map(([label,value,color])=>({
+      type:'Column',
+      width:1,
+      spacing:'Small',
+      items:[
+        text(String(value),{size:'ExtraLarge',weight:'Bolder',color,horizontalAlignment:'Center'}),
+        text(label,{size:'Small',horizontalAlignment:'Center'})
+      ]
+    }))
+  });
+
   return {
     type:'AdaptiveCard',
     $schema:'https://adaptivecards.io/schemas/adaptive-card.json',
@@ -208,21 +225,32 @@ export function buildNativeCard(source) {
     lang:'vi',
     msteams:{width:'Full'},
     body:[
-      text('TEST · NATIVE V6 · DASHBOARD',{size:'Small',color:'Accent',weight:'Bolder'}),
+      text('TEST · NATIVE V7 · MOBILE FIRST',{size:'Small',color:'Accent',weight:'Bolder'}),
       text('BÁO CÁO CHẤM CÔNG — CẢ NGÀY',{size:'Large',weight:'Bolder',spacing:'Small'}),
       text(s.date_label + ' · Cập nhật ' + s.updated,{size:'Small',isSubtle:true,spacing:'Small'}),
+
       {
-        type:'Container',id:'kpi-strip',style:'emphasis',roundedCorners:true,spacing:'Small',
-        items:[{
-          type:'ColumnSet',spacing:'None',
-          columns:kpis.map(([label,value,color])=>({
-            type:'Column',width:1,spacing:'Small',items:[
-              text(String(value),{size:'ExtraLarge',weight:'Bolder',color,horizontalAlignment:'Center'}),
-              text(label,{size:'Small',horizontalAlignment:'Center'})
-            ]
-          }))
-        }]
+        type:'Container',
+        id:'kpi-mobile',
+        targetWidth:'atMost:Narrow',
+        style:'emphasis',
+        roundedCorners:true,
+        spacing:'Small',
+        items:[
+          kpiColumns(kpis.slice(0,2)),
+          {...kpiColumns(kpis.slice(2)),spacing:'Small'}
+        ]
       },
+      {
+        type:'Container',
+        id:'kpi-wide',
+        targetWidth:'atLeast:Standard',
+        style:'emphasis',
+        roundedCorners:true,
+        spacing:'Small',
+        items:[kpiColumns(kpis)]
+      },
+
       rich([
         inline('Tổng giờ xác nhận  ',{size:'Small'}),
         inline(s.total_hours,{weight:'Bolder',size:'Large',color:'Good'}),
@@ -230,24 +258,32 @@ export function buildNativeCard(source) {
         inline(s.rate,{weight:'Bolder',size:'Medium'})
       ],{spacing:'Small'}),
 
-      text('TỔNG HỢP NHÂN SỰ',{size:'Medium',weight:'Bolder',spacing:'Medium'}),
-      text('Thanh ngang = tổng thời lượng các phiên đã có thời lượng. Màu thể hiện trạng thái; trục dùng giờ.',
+      text('GIỜ CÔNG THEO NHÂN SỰ',{size:'Medium',weight:'Bolder',spacing:'Medium'}),
+      text('Giá trị hiển thị trực tiếp ở cuối thanh · đơn vị giờ · làm tròn 0,1 giờ.',
         {size:'Small',isSubtle:true,spacing:'Small'}),
       workforceRecordedHoursChart(s),
+      text('Xanh: đã ghi nhận · Vàng: chưa chốt · Đỏ: cần đối soát',
+        {size:'Small',isSubtle:true,spacing:'Small'}),
 
       text('CHỈ SỐ NHANH',{size:'Medium',weight:'Bolder',spacing:'Medium'}),
+      text('Phân bổ các phiên đã có thời lượng',{size:'Small',weight:'Bolder'}),
       aggregateShiftMixChart(s),
+      text('Tình trạng chấm công',{size:'Small',weight:'Bolder',spacing:'Small'}),
       statusStrip(s),
 
-      text('GIỜ VÀO / RA',{size:'Medium',weight:'Bolder',spacing:'Medium'}),
-      text('Mỗi người chỉ 2 dòng: tổng/trạng thái và đầy đủ ca sáng · ca chiều.',
+      text('CHI TIẾT GIỜ VÀO / RA',{size:'Medium',weight:'Bolder',spacing:'Medium'}),
+      text('Giữ đủ dữ liệu nhưng nén còn 2 dòng mỗi nhân sự.',
         {size:'Small',isSubtle:true,spacing:'Small'}),
       ...s.employees.map(employeeCompactRow),
 
       ...(s.attention_summary ? [{
-        type:'Container',style:'attention',roundedCorners:true,spacing:'Small',
+        type:'Container',
+        style:'attention',
+        roundedCorners:true,
+        spacing:'Small',
         items:[text('Cần chú ý: ' + s.attention_summary,{size:'Small',color:'Attention',weight:'Bolder'})]
       }] : []),
+
       text('Số liệu phục vụ đối soát, không mặc nhiên là công chính thức. Sai lệch vui lòng phản hồi P.HC-NS.',
         {size:'Small',isSubtle:true,spacing:'Small'})
     ]

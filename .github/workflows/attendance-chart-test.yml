@@ -1,0 +1,72 @@
+name: Attendance Chart Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/attendance-chart-test-trigger.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: attendance-chart-test
+  cancel-in-progress: false
+
+jobs:
+  post-chart:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Render deterministic chart from trigger
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check --quiet matplotlib
+          python - <<'PY'
+          import json
+          import matplotlib.pyplot as plt
+
+          with open('.github/attendance-chart-test-trigger.json', encoding='utf-8') as f:
+              t = json.load(f)
+          c = t['status_counts']
+          labels = ['Đã ghi nhận đầy đủ','Chưa chốt','Cần đối soát/lỗi nguồn','Chưa có bản ghi']
+          values = [c['recorded'], c['not_final'], c['source_error'], c['no_record']]
+
+          fig, ax = plt.subplots(figsize=(12,5.6))
+          bars = ax.barh(labels, values)
+          ax.set_title('TRẠNG THÁI CHẤM CÔNG — CẢ NGÀY 05/10/2026', fontsize=18, fontweight='bold', pad=18)
+          ax.text(0.5,1.01,
+                  '8 nhân sự · Có dữ liệu 8/8 · Đã chốt 6 · Cần kiểm tra 2 · Tổng giờ xác nhận 50h40',
+                  transform=ax.transAxes, ha='center', va='bottom', fontsize=11)
+          ax.set_xlabel('Số nhân sự')
+          ax.set_xlim(0,8)
+          ax.invert_yaxis()
+          ax.grid(axis='x', alpha=0.2)
+          for bar, value in zip(bars, values):
+              ax.text(value+0.08, bar.get_y()+bar.get_height()/2, str(value),
+                      va='center', fontsize=12, fontweight='bold')
+          fig.tight_layout()
+          fig.savefig('/tmp/attendance-chart-test.png', dpi=160, bbox_inches='tight')
+          PY
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Post inline chart + dashboard link to TEST Teams
+        env:
+          MS_TENANT_ID: ${{ secrets.MS_TENANT_ID }}
+          MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
+          MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
+          MS_REFRESH_TOKEN: ${{ secrets.MS_REFRESH_TOKEN }}
+        run: node scripts/post-attendance-chart-test.mjs

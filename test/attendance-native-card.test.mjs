@@ -6,7 +6,8 @@ import {
   LAYOUT, buildNativeCard, auditCard, validateSource, validateDirectory, sourceDigest,
   durationMinutes, sessionMinutes, shiftTotalMinutes,
   workdaysFromMinutes, formatRecordedMinutes, formatWorkdays,
-  overviewStatusChart, employeeShiftMiniChart, avatarChartRow, employeeDetailPanel
+  overviewStatusChart, consolidatedShiftChart, consolidatedWorkdayChart,
+  avatarRail, employeeDetailPanel
 } from '../src/attendance-native-card.mjs';
 
 const input=JSON.parse(fs.readFileSync(
@@ -47,133 +48,132 @@ test('workday conversion and source durations remain exact',()=>{
   assert.equal(sessionMinutes(input.employees[6].afternoon).length,0);
 });
 
-test('overview uses future teal and purple status palette',()=>{
+test('overview is compact and uses bright blue-teal status colors',()=>{
   const c=overviewStatusChart(input);
   assert.equal(c.type,'Chart.HorizontalBar.Stacked');
   assert.deepEqual(c.data[0].data,[
-    {legend:'Đã chốt',value:6,color:'categoricalLightBlue'},
-    {legend:'Chưa chốt',value:2,color:'divergingCyan'}
+    {legend:'Đã chốt',value:6,color:'categoricalBlue'},
+    {legend:'Chưa chốt',value:2,color:'categoricalTeal'}
   ]);
 });
 
-test('mini chart has no visible category title or repeated text legends',()=>{
-  const c=employeeShiftMiniChart(input.employees[0],0);
+test('one consolidated shift chart carries all eight employees',()=>{
+  const c=consolidatedShiftChart(input);
   assert.equal(c.type,'Chart.HorizontalBar.Stacked');
+  assert.equal(c.id,'workforce-shift-chart');
   assert.equal(c.showLegend,false);
   assert.equal(c.showBarValues,true);
   assert.equal(c.displayMode,'AbsoluteNoAxis');
-  assert.equal(c.title,'\u200B');
-  assert.equal(c.data[0].title,'\u200B');
+  assert.equal(c.data.length,8);
   assert.deepEqual(c.data[0].data,[
-    {value:4.8,color:'categoricalLightBlue'},
-    {value:6.1,color:'divergingCyan'}
+    {legend:'\u200B',value:4.8,color:'categoricalBlue'},
+    {legend:'\u200C',value:6.1,color:'categoricalTeal'}
   ]);
-  assert.equal(JSON.stringify(c).includes('Unknown'),false);
-  assert.equal(JSON.stringify(c).includes('Sáng'),false);
-  assert.equal(JSON.stringify(c).includes('Chiều'),false);
+  assert.deepEqual(c.data[2].data,[
+    {legend:'\u200C',value:5,color:'categoricalTeal'}
+  ]);
 });
 
-test('each person row is avatar plus chart, followed by a detail button and hidden detail',()=>{
-  const row=avatarChartRow(input.employees[0],0,directory,'shift');
-  assert.equal(row.id,'shift-row-1');
-  assert.equal(row.items.length,3);
-
-  const visual=row.items[0];
-  assert.equal(visual.type,'ColumnSet');
-  assert.equal(visual.columns.length,2);
-  assert.deepEqual(visual.columns.map(c=>c.width),['32px','stretch']);
-
-  const avatar=visual.columns[0].items[0];
-  assert.equal(avatar.type,'Component');
-  assert.equal(avatar.name,'graph.microsoft.com/users');
-  assert.equal(avatar.properties.users.length,1);
-  assert.equal(avatar.properties.users[0].id,directory['Điêu Văn Mạnh'].id);
-
-  const chart=visual.columns[1].items[0];
-  assert.equal(chart.type,'Chart.HorizontalBar.Stacked');
-  assert.equal(chart.showBarValues,true);
-
-  const actionSet=row.items[1];
-  assert.equal(actionSet.type,'ActionSet');
-  assert.equal(actionSet.actions.length,1);
-  assert.equal(actionSet.actions[0].title,'Chi tiết');
-  assert.deepEqual(actionSet.actions[0].targetElements,['employee-detail-1']);
-
-  const detail=row.items[2];
-  assert.equal(detail.id,'employee-detail-1');
-  assert.equal(detail.isVisible,false);
+test('one consolidated workday chart carries all eight employees',()=>{
+  const c=consolidatedWorkdayChart(input);
+  assert.equal(c.type,'Chart.HorizontalBar');
+  assert.equal(c.id,'workforce-workdays-chart');
+  assert.equal(c.showLegend,false);
+  assert.equal(c.showBarValues,true);
+  assert.equal(c.displayMode,'AbsoluteNoAxis');
+  assert.equal(c.data.length,8);
+  assert.deepEqual(c.data.map(d=>d.y),[1.37,1.22,0.62,1.13,1,1.15,0.52,1.21]);
 });
 
-test('main chart row contains no visible employee name text',()=>{
-  const row=avatarChartRow(input.employees[0],0,directory,'shift');
-  const visibleVisual=row.items[0];
-  const textNodes=all(visibleVisual).filter(n=>n.type==='TextBlock' || n.type==='RichTextBlock');
-  assert.ok(textNodes.every(n=>!JSON.stringify(n).includes('Điêu Văn Mạnh')));
-  assert.ok(textNodes.every(n=>!JSON.stringify(n).includes('Văn Mạnh')));
+test('avatar rail contains exactly eight avatar slots and no detail buttons',()=>{
+  const rail=avatarRail(input,directory);
+  assert.equal(rail.id,'avatar-rail');
+  assert.equal(rail.items.length,8);
+  rail.items.forEach((slot,i)=>{
+    assert.equal(slot.id,'avatar-slot-'+(i+1));
+    assert.equal(slot.minHeight,'46px');
+    assert.equal(slot.items.length,1);
+    const persona=slot.items[0];
+    assert.equal(persona.type,'Component');
+    assert.equal(persona.name,'graph.microsoft.com/users');
+    assert.equal(persona.properties.users.length,1);
+    assert.equal(persona.properties.users[0].id,directory[input.employees[i].name].id);
+    assert.equal(slot.selectAction.type,'Action.ToggleVisibility');
+  });
+  assert.equal(all(rail).filter(n=>n.type==='ActionSet').length,0);
 });
 
-test('detail panel omits repeated morning and afternoon labels but preserves times',()=>{
+test('avatar tap opens its own detail and closes all other details',()=>{
+  const rail=avatarRail(input,directory);
+  const targets=rail.items[2].selectAction.targetElements;
+  assert.equal(targets.length,8);
+  assert.equal(targets[2],'employee-detail-3');
+  targets.forEach((t,i)=>{
+    if(i===2) return;
+    assert.deepEqual(t,{elementId:'employee-detail-'+(i+1),isVisible:false});
+  });
+});
+
+test('detail panels are hidden and preserve complete attendance data',()=>{
   const d=employeeDetailPanel(input.employees[0],0);
+  assert.equal(d.id,'employee-detail-1');
+  assert.equal(d.isVisible,false);
   const json=JSON.stringify(d);
   for(const value of [
     'Điêu Văn Mạnh','10h57','1,37 công','Chưa chốt',
     '08:37–13:27 · 4h50','13:27–19:34 · 6h07'
   ]) assert.ok(json.includes(value),value);
-  assert.equal(json.includes('SÁNG'),false);
-  assert.equal(json.includes('CHIỀU'),false);
 });
 
-test('all eight shift rows include their own detail button and local hidden detail',()=>{
+test('card chart grid has only avatar rail plus one active chart column',()=>{
   const card=buildNativeCard(input,directory);
-  const panel=card.body.find(n=>n.id==='panel-shifts');
-  assert.equal(panel.items.length,8);
-  panel.items.forEach((row,i)=>{
-    assert.equal(row.id,'shift-row-'+(i+1));
-    assert.equal(row.items[1].id,'detail-action-'+(i+1));
-    assert.equal(row.items[2].id,'employee-detail-'+(i+1));
-    assert.equal(row.items[2].isVisible,false);
-  });
-  assert.equal(card.body.some(n=>n.id==='details-area'),false);
+  const grid=card.body.find(n=>n.id==='compact-chart-grid');
+  assert.ok(grid);
+  assert.equal(grid.columns.length,2);
+  assert.deepEqual(grid.columns.map(c=>c.width),['38px','stretch']);
+  assert.equal(grid.columns[0].items.length,1);
+  assert.equal(grid.columns[0].items[0].id,'avatar-rail');
+  const chartColumn=grid.columns[1];
+  assert.equal(chartColumn.items.length,2);
+  assert.equal(chartColumn.items[0].id,'shift-chart-container');
+  assert.equal(chartColumn.items[0].isVisible,true);
+  assert.equal(chartColumn.items[1].id,'workday-chart-container');
+  assert.equal(chartColumn.items[1].isVisible,false);
 });
 
-test('workday mode stays compact as one Microsoft native chart',()=>{
+test('no per-person mini charts, no per-person detail buttons, no footer notes',()=>{
   const card=buildNativeCard(input,directory);
-  const panel=card.body.find(n=>n.id==='panel-workdays');
-  assert.equal(panel.isVisible,false);
-  const chart=panel.items.find(n=>n.id==='workforce-workdays-chart');
-  assert.equal(chart.type,'Chart.HorizontalBar');
-  assert.equal(chart.showBarValues,true);
-  assert.equal(chart.data.length,8);
-});
-
-test('footer notes and repeated shift legends are completely removed',()=>{
-  const card=buildNativeCard(input,directory);
-  assert.equal(card.body.some(n=>n.id==='report-legend'),false);
   const json=JSON.stringify(card);
-  assert.equal(json.includes('GHI CHÚ'),false);
-  assert.equal(json.includes('Màu tím = ca sáng'),false);
-  assert.equal(json.includes('Màu xanh ngọc = ca chiều'),false);
+  assert.equal(/shift-chart-\d+/.test(json),false);
+  assert.equal(json.includes('detail-action-'),false);
+  assert.equal(json.includes('Chi tiết'),false);
+  assert.equal(card.body.some(n=>n.id==='report-legend'),false);
 });
 
-test('V20 contract is native, future-colored and external-resource-free',()=>{
+test('details area contains only eight hidden detail panels and consumes no space until opened',()=>{
+  const card=buildNativeCard(input,directory);
+  const details=card.body.find(n=>n.id==='details-area');
+  assert.ok(details);
+  assert.equal(details.items.length,8);
+  assert.ok(details.items.every((d,i)=>d.id==='employee-detail-'+(i+1) && d.isVisible===false));
+});
+
+test('V21 contract is one-chart architecture and compact',()=>{
   const card=buildNativeCard(input,directory);
   const qa=auditCard(card,input,directory);
 
-  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V20_AVATAR_ONLY_BRIGHT');
+  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V21_COMPACT_AVATAR_RAIL');
   assert.equal(qa.data_gate,'passed');
-  assert.deepEqual(qa.row_modules,['avatar','microsoft_native_chart']);
-  assert.equal(qa.employee_row_module_count,2);
-  assert.equal(qa.shift_mini_chart_count,8);
-  assert.equal(qa.workday_mini_chart_count,0);
-  assert.equal(qa.workday_summary_chart_count,1);
-  assert.equal(qa.detail_interaction,'per_person_detail_button');
+  assert.equal(qa.chart_architecture,'single_consolidated_chart');
+  assert.equal(qa.shift_chart_count,1);
+  assert.equal(qa.workday_chart_count,1);
+  assert.equal(qa.avatar_rail_count,8);
+  assert.equal(qa.detail_interaction,'avatar_tap_toggle');
+  assert.equal(qa.detail_buttons,0);
   assert.equal(qa.details_hidden_by_default,true);
-  assert.equal(qa.repeated_shift_legends,false);
-  assert.equal(qa.chart_category_label,'zero_width');
-  assert.equal(qa.future_palette,'lightblue_cyan');
-  assert.equal(qa.avatar_column_width,'32px');
   assert.equal(qa.footer_notes,false);
-  assert.equal(qa.segment_legends_omitted,true);
+  assert.equal(qa.repeated_legends,false);
+  assert.equal(qa.palette,'categoricalBlue_categoricalTeal');
   assert.equal(qa.native_microsoft_charts_only,true);
   assert.equal(qa.native_microsoft_personas,true);
   assert.equal(qa.external_chart_requests,0);
@@ -182,10 +182,10 @@ test('V20 contract is native, future-colored and external-resource-free',()=>{
   assert.ok(qa.bytes<27000);
 });
 
-test('mutating data or Entra binding fails closed',()=>{
+test('mutating chart data or Entra binding fails closed',()=>{
   const card=buildNativeCard(input,directory);
-  card.body.find(n=>n.id==='panel-shifts').items[0].items[0].columns[1].items[0]
-    .data[0].data[0].value=99;
+  const grid=card.body.find(n=>n.id==='compact-chart-grid');
+  grid.columns[1].items[0].items[0].data[0].data[0].value=99;
   assert.throws(()=>auditCard(card,input,directory),/Layout\/data mismatch/);
 
   const bad=structuredClone(directory);

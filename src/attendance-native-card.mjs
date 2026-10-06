@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V7_MOBILE_FIRST';
+export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V8_COLLAPSIBLE_DETAILS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
 const DATA_KEYS = ['target_date', 'date_label', 'updated', 'kpis', 'total_hours', 'rate', 'attention_summary', 'employees'];
 const fail = message => { throw new Error('NATIVE_CARD_GATE: ' + message); };
@@ -142,7 +142,7 @@ export function employeeCompactRow(e, i) {
         spacing:'None',
         columns:[
           {type:'Column',width:'stretch',items:[
-            text(String(i+1).padStart(2,'0') + '  ' + e.name,{size:'Small',weight:'Bolder'})
+            text(String(i+1).padStart(2,'0') + ' · ' + e.name,{size:'Small',weight:'Bolder'})
           ]},
           {type:'Column',width:'auto',items:[
             text(statusSummary(e),{size:'Small',weight:'Bolder',color:statusColor(e),horizontalAlignment:'Right'})
@@ -150,12 +150,13 @@ export function employeeCompactRow(e, i) {
         ]
       },
       rich([
-        inline('Sáng  ',{weight:'Bolder',color:'Accent',size:'Small'}),
-        inline(e.morning,{size:'Small'}),
-        inline('   •   ',{size:'Small',isSubtle:true}),
-        inline('Chiều  ',{weight:'Bolder',color:'Good',size:'Small'}),
+        inline('SÁNG  ',{weight:'Bolder',color:'Accent',size:'Small'}),
+        inline(e.morning,{size:'Small'})
+      ],{spacing:'Small'}),
+      rich([
+        inline('CHIỀU  ',{weight:'Bolder',color:'Good',size:'Small'}),
         inline(e.afternoon,{size:'Small'})
-      ],{spacing:'None'})
+      ],{spacing:'Small'})
     ]
   };
 }
@@ -271,10 +272,30 @@ export function buildNativeCard(source) {
       text('Tình trạng chấm công',{size:'Small',weight:'Bolder',spacing:'Small'}),
       statusStrip(s),
 
-      text('CHI TIẾT GIỜ VÀO / RA',{size:'Medium',weight:'Bolder',spacing:'Medium'}),
-      text('Giữ đủ dữ liệu nhưng nén còn 2 dòng mỗi nhân sự.',
-        {size:'Small',isSubtle:true,spacing:'Small'}),
-      ...s.employees.map(employeeCompactRow),
+      {
+        type:'ActionSet',
+        id:'details-toggle',
+        spacing:'Medium',
+        actions:[{
+          type:'Action.ToggleVisibility',
+          title:'Xem / Ẩn chi tiết giờ vào / ra (8)',
+          targetElements:['attendance-details-panel']
+        }]
+      },
+      {
+        type:'Container',
+        id:'attendance-details-panel',
+        isVisible:false,
+        style:'default',
+        roundedCorners:true,
+        spacing:'Small',
+        items:[
+          text('CHI TIẾT GIỜ VÀO / RA',{size:'Medium',weight:'Bolder'}),
+          text('Đủ giờ Sáng / Chiều của 8 nhân sự · bấm nút phía trên để thu gọn.',
+            {size:'Small',isSubtle:true,spacing:'Small'}),
+          ...s.employees.map(employeeCompactRow)
+        ]
+      },
 
       ...(s.attention_summary ? [{
         type:'Container',
@@ -323,7 +344,8 @@ export function auditCard(card, source) {
     native_schema_contract:'documented_native_elements',
     external_chart_requests:0,
     image_generation:false,
-    all_sessions_visible_by_default:true,
+    all_sessions_visible_by_default:false,
+    collapsible_detail_panel:true,
     render_qa:'pending_designer_and_real_teams_clients'
   };
 }

@@ -7,7 +7,7 @@ import {
   durationMinutes, sessionMinutes, recordedMinutes, chartHours,
   workdaysFromMinutes, formatRecordedMinutes, formatWorkdays,
   chartName, workdayChart, hoursChart, aggregateShiftMixChart,
-  statusStrip, mobileDetailsTable, wideDetailsTable
+  statusStrip, compactDetailsTable
 } from '../src/attendance-native-card.mjs';
 
 const input=JSON.parse(fs.readFileSync(
@@ -84,10 +84,10 @@ test('shift mix chart uses workdays and status strip stays neutral',()=>{
     [['Đã ghi nhận',6],['Chưa chốt',2]]);
 });
 
-test('mobile details are one table row per employee with full data',()=>{
-  const table=mobileDetailsTable(input);
+test('compact details are one table row per employee with full data',()=>{
+  const table=compactDetailsTable(input);
   assert.equal(table.type,'Table');
-  assert.equal(table.targetWidth,'atMost:Narrow');
+  assert.equal(table.id,'details-table-compact');
   assert.equal(table.columns.length,2);
   assert.equal(table.rows.length,9);
   input.employees.forEach((e,i)=>{
@@ -100,15 +100,6 @@ test('mobile details are one table row per employee with full data',()=>{
     assert.ok(json.includes('công'));
   });
   assert.ok(JSON.stringify(table.rows[1]).includes('10h57 · 1,37 công · Chưa chốt'));
-});
-
-test('wide details use one row per employee with four clear columns',()=>{
-  const table=wideDetailsTable(input);
-  assert.equal(table.type,'Table');
-  assert.equal(table.targetWidth,'atLeast:Standard');
-  assert.equal(table.columns.length,4);
-  assert.equal(table.rows.length,9);
-  assert.ok(table.rows.slice(1).every(r=>r.cells.length===4));
 });
 
 test('KPI layout remains responsive and neutral',()=>{
@@ -141,13 +132,13 @@ test('chart view switch explicitly shows one view and hides the other',()=>{
   assert.equal(card.body.find(n=>n.id==='panel-hours').isVisible,false);
 });
 
-test('details stay collapsed by default and include both mobile and wide tables',()=>{
+test('details stay collapsed by default with one compact table',()=>{
   const card=buildNativeCard(input);
   const panel=card.body.find(n=>n.id==='attendance-details-panel');
   assert.ok(panel);
   assert.equal(panel.isVisible,false);
-  assert.ok(panel.items.some(n=>n.id==='details-table-mobile'));
-  assert.ok(panel.items.some(n=>n.id==='details-table-wide'));
+  assert.ok(panel.items.some(n=>n.id==='details-table-compact'));
+  assert.equal(panel.items.filter(n=>n.type==='Table').length,1);
   const action=all(card).find(n=>n.type==='Action.ToggleVisibility' && n.title==='Xem / Ẩn chi tiết (8)');
   assert.ok(action);
   assert.deepEqual(action.targetElements,['attendance-details-panel']);
@@ -160,7 +151,7 @@ test('payload matches V11 contract and uses only native resources',()=>{
   assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V11_DUAL_VIEW_TABLE');
   assert.equal(qa.data_gate,'passed');
   assert.equal(qa.employee_count,8);
-  assert.equal(qa.table_count,2);
+  assert.equal(qa.table_count,1);
   assert.equal(qa.chart_count,4);
   assert.deepEqual(qa.chart_units,['workdays','hours']);
   assert.equal(qa.workday_conversion_minutes,480);
@@ -185,7 +176,7 @@ test('mutating a chart value or deleting a detail row fails audit',()=>{
 
   const removed=buildNativeCard(input);
   removed.body.find(n=>n.id==='attendance-details-panel').items
-    .find(n=>n.id==='details-table-mobile').rows.pop();
+    .find(n=>n.id==='details-table-compact').rows.pop();
   assert.throws(()=>auditCard(removed,input),/Layout\/data mismatch/);
 });
 

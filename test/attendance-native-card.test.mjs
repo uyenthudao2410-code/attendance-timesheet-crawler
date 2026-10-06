@@ -85,7 +85,7 @@ test('one consolidated workday chart carries all eight employees',()=>{
   assert.deepEqual(c.data.map(d=>d.y),[1.37,1.22,0.62,1.13,1,1.15,0.52,1.21]);
 });
 
-test('avatar rail contains exactly eight avatar slots and no detail buttons',()=>{
+test('avatar rail contains exactly eight image-only avatar slots and no names',()=>{
   const rail=avatarRail(input,directory);
   assert.equal(rail.id,'avatar-rail');
   assert.equal(rail.items.length,8);
@@ -93,11 +93,13 @@ test('avatar rail contains exactly eight avatar slots and no detail buttons',()=
     assert.equal(slot.id,'avatar-slot-'+(i+1));
     assert.equal(slot.minHeight,'46px');
     assert.equal(slot.items.length,1);
-    const persona=slot.items[0];
-    assert.equal(persona.type,'Component');
-    assert.equal(persona.name,'graph.microsoft.com/users');
-    assert.equal(persona.properties.users.length,1);
-    assert.equal(persona.properties.users[0].id,directory[input.employees[i].name].id);
+    const avatar=slot.items[0];
+    assert.equal(avatar.type,'Image');
+    assert.equal(avatar.style,'Person');
+    assert.equal(avatar.height,'32px');
+    assert.equal(avatar.altText,'');
+    assert.match(avatar.url,/^data:image\/png;base64,[A-Za-z0-9+/=]+$/);
+    assert.equal(JSON.stringify(slot).includes(input.employees[i].name),false);
     assert.equal(slot.selectAction.type,'Action.ToggleVisibility');
   });
   assert.equal(all(rail).filter(n=>n.type==='ActionSet').length,0);
@@ -158,11 +160,11 @@ test('details area contains only eight hidden detail panels and consumes no spac
   assert.ok(details.items.every((d,i)=>d.id==='employee-detail-'+(i+1) && d.isVisible===false));
 });
 
-test('V21 contract is one-chart architecture and compact',()=>{
+test('V22 contract is one-chart architecture with image-only avatars',()=>{
   const card=buildNativeCard(input,directory);
   const qa=auditCard(card,input,directory);
 
-  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V21_COMPACT_AVATAR_RAIL');
+  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V22_IMAGE_AVATAR_RAIL');
   assert.equal(qa.data_gate,'passed');
   assert.equal(qa.chart_architecture,'single_consolidated_chart');
   assert.equal(qa.shift_chart_count,1);
@@ -175,9 +177,12 @@ test('V21 contract is one-chart architecture and compact',()=>{
   assert.equal(qa.repeated_legends,false);
   assert.equal(qa.palette,'categoricalBlue_categoricalTeal');
   assert.equal(qa.native_microsoft_charts_only,true);
-  assert.equal(qa.native_microsoft_personas,true);
+  assert.equal(qa.native_microsoft_personas,false);
+  assert.equal(qa.avatar_render,'embedded_png_initials');
+  assert.equal(qa.image_avatar_count,8);
+  assert.equal(qa.persona_component_count,0);
   assert.equal(qa.external_chart_requests,0);
-  assert.equal(all(card).filter(n=>n.type==='Image').length,0);
+  assert.equal(all(card).filter(n=>n.type==='Image').length,8);
   assert.equal(JSON.stringify(card).includes('quickchart'),false);
   assert.ok(qa.bytes<27000);
 });

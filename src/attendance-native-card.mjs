@@ -75,7 +75,7 @@ export function recordedMinutes(e) {
   return [...sessionMinutes(e.morning), ...sessionMinutes(e.afternoon)].reduce((a,b)=>a+b,0);
 }
 export function chartName(name) {
-  const parts = String(name).trim().split(/\\s+/);
+  const parts = String(name).trim().split(/\s+/);
   return parts.length <= 2 ? name : parts.slice(-2).join(' ');
 }
 export function statusChartColor(e) {

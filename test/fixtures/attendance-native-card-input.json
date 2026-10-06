@@ -1,0 +1,80 @@
+{
+  "target_date": "2026-10-05",
+  "date_label": "Thứ Hai, 05/10/2026",
+  "updated": "10:19",
+  "kpis": {
+    "total": 8,
+    "with_record": 8,
+    "closed": 6,
+    "attention": 2
+  },
+  "total_hours": "50h40",
+  "rate": "100%",
+  "attention_summary": "Điêu Văn Mạnh — Cần đối soát · Lê Thị Phương Linh — Chưa chốt",
+  "employees": [
+    {
+      "name": "Điêu Văn Mạnh",
+      "morning": "08:37–13:27 (4h50)",
+      "afternoon": "13:27–19:34 (6h07)",
+      "total": "Chưa chốt",
+      "status": "Cần đối soát",
+      "attention": true
+    },
+    {
+      "name": "Nguyễn Thị Thục Anh",
+      "morning": "07:57–12:14 (4h17)",
+      "afternoon": "13:28–18:55 (5h27)",
+      "total": "9h44",
+      "status": "Đã ghi nhận",
+      "attention": false
+    },
+    {
+      "name": "Vũ Đình Tuệ",
+      "morning": "—",
+      "afternoon": "13:35–18:34 (4h59)",
+      "total": "4h59",
+      "status": "Đã ghi nhận",
+      "attention": false
+    },
+    {
+      "name": "Bùi Duy Hoàng",
+      "morning": "06:57–11:28 (4h31)",
+      "afternoon": "13:50–18:21 (4h31)",
+      "total": "9h02",
+      "status": "Đã ghi nhận",
+      "attention": false
+    },
+    {
+      "name": "Nguyễn Thành Long",
+      "morning": "—",
+      "afternoon": "13:35–21:34 (7h59)",
+      "total": "7h59",
+      "status": "Đã ghi nhận",
+      "attention": false
+    },
+    {
+      "name": "Trần Thanh Bình",
+      "morning": "06:36–11:04 (4h28)",
+      "afternoon": "13:19–17:38 (4h19); 17:39–18:06 (0h27)",
+      "total": "9h14",
+      "status": "Đã ghi nhận",
+      "attention": false
+    },
+    {
+      "name": "Lê Thị Phương Linh",
+      "morning": "07:56–12:04 (4h08)",
+      "afternoon": "13:28–—",
+      "total": "Chưa chốt",
+      "status": "Chưa chốt",
+      "attention": true
+    },
+    {
+      "name": "Lê Đăng Hiếu",
+      "morning": "06:48–11:16 (4h28)",
+      "afternoon": "13:37–18:51 (5h14)",
+      "total": "9h42",
+      "status": "Đã ghi nhận",
+      "attention": false
+    }
+  ]
+}

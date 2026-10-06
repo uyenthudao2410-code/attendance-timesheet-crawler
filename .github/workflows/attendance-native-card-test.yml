@@ -1,0 +1,36 @@
+name: Attendance Native Card Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/attendance-native-card-test-trigger.json"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: attendance-native-card-test
+  cancel-in-progress: false
+
+jobs:
+  post-native-card:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Validate native card and literal attendance data
+        run: node --test test/attendance-native-card.test.mjs
+      - name: Publish native Adaptive Card to TEST only
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MS_TENANT_ID: ${{ secrets.MS_TENANT_ID }}
+          MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
+          MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
+          MS_REFRESH_TOKEN: ${{ secrets.MS_REFRESH_TOKEN }}
+        run: node scripts/post-native-attendance-test.mjs

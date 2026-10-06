@@ -151,16 +151,16 @@ export function shiftChartCreatePayload(source) {
   const morningLabels=morningMinutes.map(v=>v ? 'S ' + formatRecordedMinutes(v) : '');
   const afternoonLabels=afternoonMinutes.map(v=>v ? 'C ' + formatRecordedMinutes(v) : '');
 
-  const chart = String.raw\`{
+  const chart = String.raw`{
     type:'bar',
     data:{
-      labels:\${JSON.stringify(names)},
+      labels:${JSON.stringify(names)},
       datasets:[
         {
           label:'Ca sáng',
-          data:\${JSON.stringify(morning)},
-          _labels:\${JSON.stringify(morningLabels)},
-          _names:\${JSON.stringify(names)},
+          data:${JSON.stringify(morning)},
+          _labels:${JSON.stringify(morningLabels)},
+          _names:${JSON.stringify(names)},
           backgroundColor:'#4F46E5',
           borderColor:'#4338CA',
           borderWidth:1,
@@ -170,9 +170,9 @@ export function shiftChartCreatePayload(source) {
         },
         {
           label:'Ca chiều',
-          data:\${JSON.stringify(afternoon)},
-          _labels:\${JSON.stringify(afternoonLabels)},
-          _names:\${JSON.stringify(names)},
+          data:${JSON.stringify(afternoon)},
+          _labels:${JSON.stringify(afternoonLabels)},
+          _names:${JSON.stringify(names)},
           backgroundColor:'#14B8A6',
           borderColor:'#0F766E',
           borderWidth:1,
@@ -263,7 +263,7 @@ export function shiftChartCreatePayload(source) {
         tooltip:{enabled:false}
       }
     }
-  }\`;
+  }`;
 
   return {
     version:'4',

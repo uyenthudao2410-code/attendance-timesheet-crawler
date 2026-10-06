@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   LAYOUT, buildNativeCard, auditCard, validateSource, sourceDigest,
-  durationMinutes, hoursFromMinutes, sessionMinutes, recordedMinutes,
+  durationMinutes, hoursFromMinutes, chartHours, sessionMinutes, recordedMinutes,
   chartName, workforceRecordedHoursChart, aggregateShiftMixChart,
   employeeCompactRow, statusStrip
 } from '../src/attendance-native-card.mjs';
@@ -31,7 +31,8 @@ test('fixture binding stays unchanged and source validates without mutation',()=
 test('chart unit is hours while literal display remains h:mm',()=>{
   assert.equal(durationMinutes('9h44'),584);
   assert.equal(hoursFromMinutes(584),9.73);
-  assert.equal(hoursFromMinutes(27),0.45);
+  assert.equal(chartHours(584),9.7);
+  assert.equal(chartHours(27),0.5);
   assert.equal(durationMinutes('Chưa chốt'),null);
 });
 
@@ -45,13 +46,13 @@ test('recorded minutes sum only sessions with known duration',()=>{
 test('main dashboard chart is one horizontal bar chart for all eight employees',()=>{
   const c=workforceRecordedHoursChart(input);
   assert.equal(c.type,'Chart.HorizontalBar');
-  assert.equal(c.xAxisTitle,'Giờ');
-  assert.equal(c.showBarValues,false);
+  assert.equal(c.displayMode,'AbsoluteNoAxis');
+  assert.equal(c.showBarValues,true);
   assert.equal(c.data.length,8);
   assert.equal(c.data[0].x,'01 · Văn Mạnh');
   assert.equal(c.data[7].x,'08 · Đăng Hiếu');
-  assert.equal(c.data[0].y,10.95);
-  assert.equal(c.data[6].y,4.13);
+  assert.equal(c.data[0].y,11);
+  assert.equal(c.data[6].y,4.1);
   assert.equal(c.data[0].color,'attention');
   assert.equal(c.data[6].color,'warning');
   assert.equal(c.data[1].color,'good');
@@ -61,7 +62,7 @@ test('shift mix chart aggregates morning and afternoon in hours',()=>{
   const c=aggregateShiftMixChart(input);
   assert.equal(c.type,'Chart.HorizontalBar.Stacked');
   assert.equal(c.showLegend,true);
-  assert.equal(c.showBarValues,false);
+  assert.equal(c.showBarValues,true);
   assert.equal(c.data.length,1);
   assert.equal(c.data[0].data.length,2);
   assert.equal(c.data[0].data[0].legend,'Ca sáng');
@@ -85,10 +86,16 @@ test('detail section is compact and preserves all literal employee fields',()=>{
   });
 });
 
-test('KPI values remain one compact row',()=>{
-  const strip=buildNativeCard(input).body.find(n=>n.id==='kpi-strip');
-  assert.equal(strip.items[0].columns.length,4);
-  assert.deepEqual(strip.items[0].columns.map(c=>c.items[0].text),['8','8','6','2']);
+test('KPI layout is mobile-first 2x2 and wide 4-across',()=>{
+  const card=buildNativeCard(input);
+  const mobile=card.body.find(n=>n.id==='kpi-mobile');
+  const wide=card.body.find(n=>n.id==='kpi-wide');
+  assert.equal(mobile.targetWidth,'atMost:Narrow');
+  assert.equal(wide.targetWidth,'atLeast:Standard');
+  assert.equal(mobile.items.length,2);
+  assert.ok(mobile.items.every(r=>r.columns.length===2));
+  assert.equal(wide.items[0].columns.length,4);
+  assert.deepEqual(wide.items[0].columns.map(c=>c.items[0].text),['8','8','6','2']);
 });
 
 test('card contains three separate dashboard charts and no per-person chart list',()=>{
@@ -114,7 +121,7 @@ test('all eight employee details are visible by default',()=>{
 test('payload is native-only and minute labels are forbidden',()=>{
   const card=buildNativeCard(input);
   const qa=auditCard(card,input);
-  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V6_DASHBOARD');
+  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V7_MOBILE_FIRST');
   assert.equal(qa.data_gate,'passed');
   assert.equal(qa.employee_count,8);
   assert.equal(qa.table_count,0);
@@ -125,6 +132,9 @@ test('payload is native-only and minute labels are forbidden',()=>{
   const json=JSON.stringify(card);
   assert.ok(!json.includes('Phút'));
   assert.ok(!json.includes('phút'));
+  const main=card.body.find(n=>n.id==='workforce-recorded-hours');
+  assert.equal(main.displayMode,'AbsoluteNoAxis');
+  assert.equal(main.showBarValues,true);
 });
 
 test('mutating chart values or deleting literal shift line fails audit',()=>{

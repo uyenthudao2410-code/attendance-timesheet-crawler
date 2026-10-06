@@ -1,6 +1,7 @@
 name: Attendance Crawl
 
 on:
+  workflow_dispatch:
   schedule:
     # Producer runs 10 minutes before each ChatGPT publication task.
     # 23:40 UTC = 06:40 Asia/Ho_Chi_Minh (next local day), for the 06:50 previous-day report.

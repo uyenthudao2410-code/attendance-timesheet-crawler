@@ -567,59 +567,27 @@ export function compactDetailRows(s) {
     type:'Container',
     id:'detail-row-' + (i+1),
     style:rowStyle(e),
-    roundedCorners:true,
     separator:i>0,
     spacing:'Small',
     items:[
-      {
-        type:'ColumnSet',
-        spacing:'None',
-        columns:[
-          {
-            type:'Column',
-            width:'stretch',
-            items:[text(String(i+1).padStart(2,'0') + ' · ' + e.name,{
-              size:'Small',weight:'Bolder'
-            })]
-          },
-          {
-            type:'Column',
-            width:'auto',
-            items:[text(
-              formatRecordedMinutes(recordedMinutes(e)) + ' · ' +
-              formatWorkdays(recordedMinutes(e)) + ' · ' + displayStatus(e),
-              {
-                size:'Small',
-                weight:'Bolder',
-                color:statusColor(e),
-                horizontalAlignment:'Right'
-              }
-            )]
-          }
-        ]
-      },
-      {
-        type:'ColumnSet',
-        spacing:'Small',
-        columns:[
-          {
-            type:'Column',
-            width:1,
-            items:[rich([
-              inline('SÁNG  ',{weight:'Bolder',color:'Accent',size:'Small'}),
-              inline(compactShift(e.morning),{size:'Small'})
-            ])]
-          },
-          {
-            type:'Column',
-            width:1,
-            items:[rich([
-              inline('CHIỀU  ',{weight:'Bolder',color:'Good',size:'Small'}),
-              inline(compactShift(e.afternoon),{size:'Small'})
-            ])]
-          }
-        ]
-      }
+      rich([
+        inline(String(i+1).padStart(2,'0') + ' · ' + e.name,{
+          size:'Small',weight:'Bolder'
+        }),
+        inline('    '),
+        inline(
+          formatRecordedMinutes(recordedMinutes(e)) + ' · ' +
+          formatWorkdays(recordedMinutes(e)) + ' · ' + displayStatus(e),
+          {size:'Small',weight:'Bolder',color:statusColor(e)}
+        )
+      ]),
+      rich([
+        inline('S  ',{weight:'Bolder',color:'Accent',size:'Small'}),
+        inline(compactShift(e.morning),{size:'Small'}),
+        inline('    |    ',{size:'Small',isSubtle:true}),
+        inline('C  ',{weight:'Bolder',color:'Good',size:'Small'}),
+        inline(compactShift(e.afternoon),{size:'Small'})
+      ],{spacing:'Small'})
     ]
   }));
 }

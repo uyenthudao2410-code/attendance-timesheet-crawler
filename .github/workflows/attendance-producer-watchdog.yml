@@ -1,0 +1,139 @@
+name: Attendance Producer Watchdog
+
+on:
+  schedule:
+    # Two fail-closed checks before each ChatGPT publication task.
+    - cron: "43 23 * * *"
+    - cron: "48 23 * * *"
+    - cron: "43 6 * * *"
+    - cron: "48 6 * * *"
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: attendance-producer-watchdog
+  cancel-in-progress: false
+
+jobs:
+  self-heal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TZ: Asia/Ho_Chi_Minh
+      GH_TOKEN: ${{ github.token }}
+      WATCHDOG_CRON: ${{ github.event.schedule }}
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify producer state and self-heal once if needed
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "$WATCHDOG_CRON" in
+            "43 23 * * *"|"48 23 * * *")
+              slot="daily_2105"
+              target_date="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"
+              ;;
+            "43 6 * * *"|"48 6 * * *")
+              slot="morning_1230"
+              target_date="$(TZ=Asia/Ho_Chi_Minh date +%F)"
+              ;;
+            *)
+              echo "Unsupported watchdog schedule: $WATCHDOG_CRON" >&2
+              exit 1
+              ;;
+          esac
+
+          state_path=".github/attendance-state/${slot}.json"
+          valid_state="$(SLOT="$slot" TARGET_DATE="$target_date" STATE_PATH="$state_path" node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const required = {
+            schema_version: 12,
+            publication_contract_version: 'ATTENDANCE_PUBLICATION_V1',
+            input_contract_version: 'ATTENDANCE_CHATGPT_IMAGE_INPUT_V1',
+            image_context_contract_version: 'ATTENDANCE_IMAGEGEN_ISOLATED_CONTEXT_V1',
+            ai_visual_spec_version: 'ATTENDANCE_AI_VISUAL_V10_FLEX_VISUAL_STRICT_DATA_2026_10_05',
+            input_gate: 'passed',
+            slot: process.env.SLOT,
+            target_date: process.env.TARGET_DATE,
+            crawl_complete: true,
+            crawl_employee_count: 8,
+          };
+          let ok = false;
+          try {
+            const state = JSON.parse(fs.readFileSync(process.env.STATE_PATH, 'utf8'));
+            ok = Object.entries(required).every(([key, value]) => state?.[key] === value)
+              && /^\d+$/.test(String(state?.run_id || ''))
+              && /^\d+$/.test(String(state?.teams_self_handoff_message_id || ''));
+          } catch {}
+          process.stdout.write(ok ? 'yes' : 'no');
+          NODE
+          )"
+
+          if [ "$valid_state" = "yes" ]; then
+            echo "WATCHDOG_STATE=valid slot=$slot target_date=$target_date"
+            exit 0
+          fi
+
+          same_request="$(SLOT="$slot" TARGET_DATE="$target_date" node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          let same = false;
+          try {
+            const trigger = JSON.parse(fs.readFileSync('.github/attendance-rerun-trigger.json', 'utf8'));
+            same = trigger?.schema_version === 1
+              && trigger?.slot === process.env.SLOT
+              && trigger?.target_date === process.env.TARGET_DATE
+              && trigger?.delivery?.enabled === false;
+          } catch {}
+          process.stdout.write(same ? 'yes' : 'no');
+          NODE
+          )"
+
+          if [ "$same_request" = "yes" ]; then
+            echo "WATCHDOG_STATE=self_heal_already_requested slot=$slot target_date=$target_date"
+            exit 0
+          fi
+
+          pending="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/workflows/attendance-crawl.yml/runs?per_page=20"             --jq '[.workflow_runs[] | select(.status == "queued" or .status == "in_progress")] | length')"
+          if [ "${pending:-0}" -gt 0 ]; then
+            echo "WATCHDOG_STATE=producer_pending count=$pending slot=$slot target_date=$target_date"
+            exit 0
+          fi
+
+          request_id="watchdog-${slot}-${target_date}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          requested_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+          REQUEST_ID="$request_id" SLOT="$slot" TARGET_DATE="$target_date" REQUESTED_AT="$requested_at"           node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const trigger = {
+            schema_version: 1,
+            request_id: process.env.REQUEST_ID,
+            slot: process.env.SLOT,
+            target_date: process.env.TARGET_DATE,
+            requested_at: process.env.REQUESTED_AT,
+            reason: 'automatic watchdog self-heal for stale or missing producer state',
+            delivery: { enabled: false },
+          };
+          fs.writeFileSync('.github/attendance-rerun-trigger.json', JSON.stringify(trigger, null, 2) + '\n');
+          NODE
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/attendance-rerun-trigger.json
+          git commit -m "self-heal: attendance ${slot} ${target_date}"
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+          # GITHUB_TOKEN-authored pushes do not recursively start push workflows,
+          # so dispatch Attendance Crawl explicitly after the audited trigger commit.
+          gh api --method POST             "/repos/${GITHUB_REPOSITORY}/actions/workflows/attendance-crawl.yml/dispatches"             -f ref=main
+
+          echo "WATCHDOG_STATE=self_heal_dispatched slot=$slot target_date=$target_date request_id=$request_id"

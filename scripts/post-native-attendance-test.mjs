@@ -4,6 +4,7 @@ import {createRepoStore, request} from '../src/attendance-delivery-io.mjs';
 
 const TRIGGER = '.github/attendance-native-card-test-trigger.json';
 const FIXTURE = 'test/fixtures/attendance-native-card-input.json';
+const DIRECTORY = 'test/fixtures/attendance-user-directory.json';
 const GRAPH = 'https://graph.microsoft.com/v1.0';
 const required = name => {
   const value = String(process.env[name] || '').trim();
@@ -19,10 +20,11 @@ async function main() {
     throw new Error('INVALID_NATIVE_TEST_TRIGGER');
   }
   const source = JSON.parse(fs.readFileSync(FIXTURE,'utf8'));
+  const directory = JSON.parse(fs.readFileSync(DIRECTORY,'utf8'));
   if (trigger.source_data_sha256 !== sourceDigest(source) || trigger.target_date !== source.target_date
       || trigger.source_kind !== 'design_test_fixture') throw new Error('SOURCE_BINDING_MISMATCH');
-  const card = buildNativeCard(source);
-  const qa = auditCard(card,source);
+  const card = buildNativeCard(source,directory);
+  const qa = auditCard(card,source,directory);
   fs.mkdirSync('output-native',{recursive:true});
   fs.writeFileSync('output-native/card.json',JSON.stringify(card,null,2)+'\n');
   fs.writeFileSync('output-native/qa.json',JSON.stringify(qa,null,2)+'\n');

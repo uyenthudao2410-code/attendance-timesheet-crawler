@@ -51,8 +51,8 @@ test('overview uses future teal and purple status palette',()=>{
   const c=overviewStatusChart(input);
   assert.equal(c.type,'Chart.HorizontalBar.Stacked');
   assert.deepEqual(c.data[0].data,[
-    {legend:'Đã chốt',value:6,color:'categoricalTeal'},
-    {legend:'Chưa chốt',value:2,color:'categoricalPurple'}
+    {legend:'Đã chốt',value:6,color:'categoricalLightBlue'},
+    {legend:'Chưa chốt',value:2,color:'divergingCyan'}
   ]);
 });
 
@@ -65,8 +65,8 @@ test('mini chart has no visible category title or repeated text legends',()=>{
   assert.equal(c.title,'\u200B');
   assert.equal(c.data[0].title,'\u200B');
   assert.deepEqual(c.data[0].data,[
-    {legend:'\u200B',value:4.8,color:'categoricalPurple'},
-    {legend:'\u200C',value:6.1,color:'categoricalTeal'}
+    {value:4.8,color:'categoricalLightBlue'},
+    {value:6.1,color:'divergingCyan'}
   ]);
   assert.equal(JSON.stringify(c).includes('Unknown'),false);
   assert.equal(JSON.stringify(c).includes('Sáng'),false);
@@ -81,7 +81,7 @@ test('each person row is avatar plus chart, followed by a detail button and hidd
   const visual=row.items[0];
   assert.equal(visual.type,'ColumnSet');
   assert.equal(visual.columns.length,2);
-  assert.deepEqual(visual.columns.map(c=>c.width),[10,90]);
+  assert.deepEqual(visual.columns.map(c=>c.width),['32px','stretch']);
 
   const avatar=visual.columns[0].items[0];
   assert.equal(avatar.type,'Component');
@@ -146,22 +146,20 @@ test('workday mode stays compact as one Microsoft native chart',()=>{
   assert.equal(chart.data.length,8);
 });
 
-test('footer contains the only shared shift explanation',()=>{
+test('footer notes and repeated shift legends are completely removed',()=>{
   const card=buildNativeCard(input,directory);
-  const legend=card.body.find(n=>n.id==='report-legend');
-  assert.ok(legend);
-  const json=JSON.stringify(legend);
-  assert.ok(json.includes('Màu tím = ca sáng'));
-  assert.ok(json.includes('Màu xanh ngọc = ca chiều'));
-  assert.ok(json.includes('Giá trị trên chart = tổng giờ ghi nhận'));
-  assert.ok(json.includes('ca sáng | ca chiều'));
+  assert.equal(card.body.some(n=>n.id==='report-legend'),false);
+  const json=JSON.stringify(card);
+  assert.equal(json.includes('GHI CHÚ'),false);
+  assert.equal(json.includes('Màu tím = ca sáng'),false);
+  assert.equal(json.includes('Màu xanh ngọc = ca chiều'),false);
 });
 
-test('V19 contract is native, future-colored and external-resource-free',()=>{
+test('V20 contract is native, future-colored and external-resource-free',()=>{
   const card=buildNativeCard(input,directory);
   const qa=auditCard(card,input,directory);
 
-  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V19_FUTURE_AVATAR_DETAILS');
+  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V20_FUTURE_AVATAR_DETAILS');
   assert.equal(qa.data_gate,'passed');
   assert.deepEqual(qa.row_modules,['avatar','microsoft_native_chart']);
   assert.equal(qa.employee_row_module_count,2);
@@ -172,7 +170,10 @@ test('V19 contract is native, future-colored and external-resource-free',()=>{
   assert.equal(qa.details_hidden_by_default,true);
   assert.equal(qa.repeated_shift_legends,false);
   assert.equal(qa.chart_category_label,'zero_width');
-  assert.equal(qa.future_palette,'purple_teal');
+  assert.equal(qa.future_palette,'lightblue_cyan');
+  assert.equal(qa.avatar_column_width,'32px');
+  assert.equal(qa.footer_notes,false);
+  assert.equal(qa.segment_legends_omitted,true);
   assert.equal(qa.native_microsoft_charts_only,true);
   assert.equal(qa.native_microsoft_personas,true);
   assert.equal(qa.external_chart_requests,0);

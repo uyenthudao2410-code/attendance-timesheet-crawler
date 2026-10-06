@@ -25,13 +25,10 @@ function barColor(e){
   if(s.includes('Chưa chốt')) return '#f59e0b';
   return '#16a34a';
 }
-function barLabel(e){
-  return String(e.total||'').trim() || '—';
-}
 function employeeChartUrl(){
   const labels=trigger.employees.map(e=>e.name);
   const values=trigger.employees.map(e=>Math.round(recordedMinutes(e)/6)/10);
-  const totals=trigger.employees.map(e=>barLabel(e));
+  const totals=trigger.employees.map(e=>String(e.total||'—'));
   const colors=trigger.employees.map(barColor);
   const c={
     type:'bar',
@@ -42,14 +39,14 @@ function employeeChartUrl(){
         backgroundColor:colors,
         borderRadius:10,
         borderSkipped:false,
-        barThickness:22
+        barThickness:20
       }]
     },
     options:{
       indexAxis:'y',
       responsive:true,
       maintainAspectRatio:false,
-      layout:{padding:{top:10,right:70,bottom:8,left:8}},
+      layout:{padding:{top:8,right:76,bottom:6,left:6}},
       scales:{
         x:{
           beginAtZero:true,
@@ -59,7 +56,7 @@ function employeeChartUrl(){
           border:{display:false}
         },
         y:{
-          ticks:{color:'#0f172a',font:{size:15,weight:'bold'},padding:8},
+          ticks:{color:'#0f172a',font:{size:14,weight:'bold'},padding:8},
           grid:{display:false},
           border:{display:false}
         }
@@ -69,15 +66,15 @@ function employeeChartUrl(){
           display:true,
           text:'THỜI LƯỢNG GHI NHẬN THEO NHÂN SỰ',
           color:'#0f172a',
-          font:{size:23,weight:'bold'},
+          font:{size:22,weight:'bold'},
           padding:{top:2,bottom:4}
         },
         subtitle:{
           display:true,
-          text:'Xanh: đã ghi nhận  ·  Vàng: chưa chốt  ·  Đỏ: cần đối soát',
+          text:'Xanh: đã ghi nhận · Vàng: chưa chốt · Đỏ: cần đối soát',
           color:'#64748b',
-          font:{size:13},
-          padding:{bottom:12}
+          font:{size:12},
+          padding:{bottom:10}
         },
         legend:{display:false},
         datalabels:{
@@ -86,50 +83,13 @@ function employeeChartUrl(){
           offset:4,
           clamp:true,
           color:'#0f172a',
-          font:{size:13,weight:'bold'},
+          font:{size:12,weight:'bold'},
           formatter:(v,ctx)=>totals[ctx.dataIndex]
         }
       }
     }
   };
-  return 'https://quickchart.io/chart?version=4&width=900&height=560&devicePixelRatio=2&backgroundColor=white&format=png&c='+encodeURIComponent(JSON.stringify(c));
-}
-function statusBarUrl(){
-  const c={
-    type:'bar',
-    data:{
-      labels:[''],
-      datasets:[
-        {label:'Đã ghi nhận',data:[6],backgroundColor:'#16a34a',borderRadius:8,borderSkipped:false},
-        {label:'Chưa chốt',data:[1],backgroundColor:'#f59e0b',borderRadius:8,borderSkipped:false},
-        {label:'Cần đối soát',data:[1],backgroundColor:'#ef4444',borderRadius:8,borderSkipped:false}
-      ]
-    },
-    options:{
-      indexAxis:'y',
-      responsive:true,
-      maintainAspectRatio:false,
-      scales:{
-        x:{stacked:true,max:8,display:false},
-        y:{stacked:true,display:false}
-      },
-      layout:{padding:{top:4,right:10,bottom:2,left:10}},
-      plugins:{
-        title:{display:false},
-        legend:{
-          display:true,
-          position:'bottom',
-          labels:{usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:16,color:'#334155',font:{size:12,weight:'bold'}}
-        },
-        datalabels:{
-          color:'#ffffff',
-          font:{size:13,weight:'bold'},
-          formatter:(v)=>String(v)
-        }
-      }
-    }
-  };
-  return 'https://quickchart.io/chart?version=4&width=900&height=150&devicePixelRatio=2&backgroundColor=white&format=png&c='+encodeURIComponent(JSON.stringify(c));
+  return 'https://quickchart.io/chart?version=4&width=900&height=520&devicePixelRatio=2&backgroundColor=white&format=png&c='+encodeURIComponent(JSON.stringify(c));
 }
 
 function kpi(label,value,color){
@@ -139,6 +99,52 @@ function kpi(label,value,color){
     items:[
       {type:'TextBlock',text:String(value),size:'ExtraLarge',weight:'Bolder',horizontalAlignment:'Center',color,spacing:'None'},
       {type:'TextBlock',text:label,size:'Small',weight:'Bolder',horizontalAlignment:'Center',color,wrap:true,spacing:'None'}
+    ]
+  };
+}
+
+function detailColor(e){
+  const s=String(e.status||'');
+  if(s.includes('Cần đối soát')) return 'Attention';
+  if(s.includes('Chưa chốt')) return 'Warning';
+  return 'Good';
+}
+
+function employeeRow(e,i){
+  const c=detailColor(e);
+  return {
+    type:'Container',
+    separator:i>0,
+    spacing:'Small',
+    items:[
+      {
+        type:'ColumnSet',
+        spacing:'None',
+        columns:[
+          {
+            type:'Column',
+            width:'stretch',
+            items:[
+              {type:'TextBlock',text:`${String(i+1).padStart(2,'0')}  **${e.name}**`,size:'Small',wrap:true,spacing:'None'}
+            ]
+          },
+          {
+            type:'Column',
+            width:'auto',
+            items:[
+              {type:'TextBlock',text:`**${e.total}** · ${e.status}`,size:'Small',weight:'Bolder',color:c,horizontalAlignment:'Right',wrap:true,spacing:'None'}
+            ]
+          }
+        ]
+      },
+      {
+        type:'TextBlock',
+        text:`Sáng  ${e.morning}    |    Chiều  ${e.afternoon}`,
+        size:'Small',
+        wrap:true,
+        isSubtle:true,
+        spacing:'None'
+      }
     ]
   };
 }
@@ -224,12 +230,16 @@ function buildCard(){
       },
 
       {
-        type:'Image',
-        url:statusBarUrl(),
-        size:'Stretch',
-        altText:'Phân bổ trạng thái chấm công',
-        spacing:'Small'
+        type:'TextBlock',
+        text:'CHI TIẾT GIỜ VÀO / RA',
+        size:'Small',
+        weight:'Bolder',
+        color:'Accent',
+        separator:true,
+        spacing:'Medium'
       },
+
+      ...trigger.employees.map(employeeRow),
 
       {
         type:'Container',
@@ -273,7 +283,7 @@ async function main(){
   const token=(await auth.json()).access_token;
   if(!token)throw new Error('Missing access token');
 
-  const attachmentId='attendance-card-mobile-v5';
+  const attachmentId='attendance-card-mobile-v6';
   const payload={
     body:{contentType:'html',content:`<attachment id="${attachmentId}"></attachment>`},
     attachments:[{
@@ -296,7 +306,7 @@ async function main(){
   const body=JSON.parse(text);
 
   console.log('ATTENDANCE_ADAPTIVE_CARD_TEST=SUCCESS');
-  console.log('ATTENDANCE_ADAPTIVE_CARD_LAYOUT=MOBILE_V5_COMPACT');
+  console.log('ATTENDANCE_ADAPTIVE_CARD_LAYOUT=MOBILE_V6');
   console.log('ATTENDANCE_ADAPTIVE_CARD_MESSAGE_ID='+body.id);
   console.log('QUICKCHART_MODE=REMOTE_IMAGE_URL');
 }

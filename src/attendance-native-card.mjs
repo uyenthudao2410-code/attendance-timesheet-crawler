@@ -83,6 +83,7 @@ export function workforceHoursChart(s) {
     title:'Giờ công theo ca',
     showTitle:false,
     showLegend:true,
+    showBarValues:false,
     xAxisTitle:'Giờ',
     spacing:'Small',
     data:s.employees.map((e,i) => ({
@@ -103,6 +104,7 @@ export function confirmedChart(s) {
     title:'Tổng công đã chốt',
     showTitle:false,
     showLegend:false,
+    showBarValues:false,
     xAxisTitle:'Giờ đã chốt',
     spacing:'Small',
     data,

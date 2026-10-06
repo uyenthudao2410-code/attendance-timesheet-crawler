@@ -260,7 +260,6 @@ export function shiftDonut(s) {
   const afternoonWorkdays=workdaysFromMinutes(afternoon);
   return {
     type:'Chart.Donut',
-    id:'shift-donut',
     colorSet:'categorical',
     showLegend:true,
     spacing:'Small',
@@ -277,7 +276,6 @@ export function statusDonut(s) {
   const open=s.employees.length-closed;
   return {
     type:'Chart.Donut',
-    id:'status-donut',
     colorSet:'categorical',
     showLegend:true,
     spacing:'Small',

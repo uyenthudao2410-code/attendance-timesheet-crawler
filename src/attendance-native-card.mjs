@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 export const LAYOUT = 'ATTENDANCE_MS_NATIVE_V2';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
 const DATA_KEYS = ['target_date', 'date_label', 'updated', 'kpis', 'total_hours', 'rate', 'attention_summary', 'employees'];
-const fail = (message) => { throw new Error(\`NATIVE_CARD_GATE: \${message}\`); };
+const fail = (message) => { throw new Error(`NATIVE_CARD_GATE: ${message}`); };
 export const digest = (v) => createHash('sha256').update(v).digest('hex');
 export const sourceDigest = (s) => digest(JSON.stringify(Object.fromEntries(DATA_KEYS.map(k => [k, s[k]]))));
 
@@ -24,12 +24,12 @@ export function validateSource(s) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s?.target_date || '')) fail('Missing report date');
   if (!/^\d{2}:\d{2}$/.test(s.updated || '')) fail('Missing source update time');
   const [yyyy, mm, dd] = s.target_date.split('-');
-  if (!String(s.date_label).includes(\`\${dd}/\${mm}/\${yyyy}\`)) fail('Date label mismatch');
+  if (!String(s.date_label).includes(`${dd}/${mm}/${yyyy}`)) fail('Date label mismatch');
   if (!Array.isArray(s.employees) || s.employees.length !== 8 || s.kpis?.total !== 8) fail('Exactly eight employees required');
   const names = new Set();
   for (const e of s.employees) {
     for (const key of ['name', 'morning', 'afternoon', 'total', 'status']) {
-      if (typeof e[key] !== 'string' || !e[key].trim()) fail(\`Missing employee \${key}\`);
+      if (typeof e[key] !== 'string' || !e[key].trim()) fail(`Missing employee ${key}`);
     }
     if (names.has(e.name)) fail('Duplicate employee');
     names.add(e.name);
@@ -43,9 +43,9 @@ export function validateSource(s) {
   const closed = s.employees.filter(e => e.status === 'Đã ghi nhận');
   const records = s.employees.filter(e => e.morning !== '—' || e.afternoon !== '—');
   if (closed.length !== s.kpis.closed || 8 - closed.length !== s.kpis.attention) fail('KPI/status mismatch');
-  if (records.length !== s.kpis.with_record || s.rate !== \`\${records.length / 8 * 100}%\`) fail('Record KPI mismatch');
+  if (records.length !== s.kpis.with_record || s.rate !== `${records.length / 8 * 100}%`) fail('Record KPI mismatch');
   if (durationMinutes(s.total_hours) !== closed.reduce((n, e) => n + durationMinutes(e.total), 0)) fail('Confirmed hours mismatch');
-  const attention = s.employees.filter(e => e.attention).map(e => \`\${e.name} — \${e.status}\`).join(' · ');
+  const attention = s.employees.filter(e => e.attention).map(e => `${e.name} — ${e.status}`).join(' · ');
   if (attention !== s.attention_summary) fail('Attention summary mismatch');
   return s;
 }
@@ -87,7 +87,7 @@ export function groupedShiftChart(s, indexes, showLegend=true) {
       series.push({
         legend:slot === 'morning'
           ? 'Ca sáng'
-          : sessionIndex === 0 ? 'Ca chiều' : \`Chiều · phiên \${sessionIndex+1}\`,
+          : sessionIndex === 0 ? 'Ca chiều' : `Chiều · phiên ${sessionIndex+1}`,
         color:slot === 'morning'
           ? 'categoricalBlue'
           : sessionIndex === 0 ? 'categoricalGreen' : 'categoricalTeal',
@@ -115,7 +115,7 @@ export function groupedShiftChart(s, indexes, showLegend=true) {
 function statusText(e, size='Small') {
   return rich([
     run(e.total,{weight:'Bolder',color:statusColor(e),size}),
-    run(\` · \${e.status}\`,{color:statusColor(e),size})
+    run(` · ${e.status}`,{color:statusColor(e),size})
   ]);
 }
 
@@ -134,7 +134,7 @@ export function employeeDetailTable(s, indexes) {
         type:'TableRow',
         cells:[
           cell([
-            t(\`\${String(globalIndex+1).padStart(2,'0')}  \${e.name}\`,{size:'Small',weight:'Bolder'}),
+            t(`${String(globalIndex+1).padStart(2,'0')}  ${e.name}`,{size:'Small',weight:'Bolder'}),
             statusText(e)
           ],style),
           cell([
@@ -231,7 +231,7 @@ export function buildNativeCard(source) {
         spacing:'Small',
         columns:[
           {type:'Column',width:'stretch',items:[t(s.date_label,{size:'Small',isSubtle:true})]},
-          {type:'Column',width:'auto',items:[t(\`Cập nhật \${s.updated}\`,{size:'Small',isSubtle:true,horizontalAlignment:'Right'})]}
+          {type:'Column',width:'auto',items:[t(`Cập nhật ${s.updated}`,{size:'Small',isSubtle:true,horizontalAlignment:'Right'})]}
         ]
       },
       ...responsiveKpis(kpis),
@@ -251,7 +251,7 @@ export function buildNativeCard(source) {
         style:'attention',
         roundedCorners:true,
         spacing:'Medium',
-        items:[t(\`Cần chú ý: \${s.attention_summary}\`,{size:'Small',weight:'Bolder',color:'Attention'})]
+        items:[t(`Cần chú ý: ${s.attention_summary}`,{size:'Small',weight:'Bolder',color:'Attention'})]
       },
       t('Lưu ý: Cột biểu đồ chỉ biểu diễn các phiên đã có thời lượng. Tổng công/trạng thái được giữ nguyên theo dữ liệu nguồn ở từng hàng nhân sự.',
         {size:'Small',isSubtle:true,spacing:'Small'})
@@ -275,7 +275,7 @@ export function auditCard(card, source) {
   walk(card);
   for (const e of source.employees) {
     for (const field of ['name','morning','afternoon','total','status']) {
-      if (!json.includes(e[field])) fail(\`Missing literal \${field}\`);
+      if (!json.includes(e[field])) fail(`Missing literal ${field}`);
     }
   }
   if (types.filter(v => v==='Chart.VerticalBar.Grouped').length !== 2) fail('Exactly two grouped employee charts required');

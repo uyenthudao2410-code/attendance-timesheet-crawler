@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import {buildNativeCard, auditCard, sourceDigest, digest, LAYOUT, TEST_CHAT} from '../src/attendance-native-card.mjs';
+import {buildNativeCard, auditCard, sourceDigest, digest, LAYOUT, TEST_CHAT, shiftChartCreatePayload} from '../src/attendance-native-card.mjs';
 import {createRepoStore, request} from '../src/attendance-delivery-io.mjs';
 
 const TRIGGER = '.github/attendance-native-card-test-trigger.json';
@@ -21,8 +21,21 @@ async function main() {
   const source = JSON.parse(fs.readFileSync(FIXTURE,'utf8'));
   if (trigger.source_data_sha256 !== sourceDigest(source) || trigger.target_date !== source.target_date
       || trigger.source_kind !== 'design_test_fixture') throw new Error('SOURCE_BINDING_MISMATCH');
-  const card = buildNativeCard(source);
-  const qa = auditCard(card,source);
+  stage='quickchart';
+  const quickchartResponse=await request('https://quickchart.io/chart/create',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(shiftChartCreatePayload(source))
+  },{retrySafe:true});
+  if(!quickchartResponse.ok) throw new Error(`QUICKCHART_HTTP_${quickchartResponse.status}`);
+  const quickchartResult=await quickchartResponse.json();
+  const shiftChartUrl=String(quickchartResult.url || '').trim();
+  if(!/^https:\/\/quickchart\.io\/chart\/render\/[A-Za-z0-9_-]+/.test(shiftChartUrl)) {
+    throw new Error('QUICKCHART_RENDER_URL_INVALID');
+  }
+  console.log(`ATTENDANCE_NATIVE_SHIFT_CHART_URL=${shiftChartUrl}`);
+  const card = buildNativeCard(source,shiftChartUrl);
+  const qa = auditCard(card,source,shiftChartUrl);
   fs.mkdirSync('output-native',{recursive:true});
   fs.writeFileSync('output-native/card.json',JSON.stringify(card,null,2)+'\n');
   fs.writeFileSync('output-native/qa.json',JSON.stringify(qa,null,2)+'\n');

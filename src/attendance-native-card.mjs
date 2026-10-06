@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V16_PERSONA_BAR_ROWS';
+export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V17_VIVID_BARS_DETAILS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
@@ -380,36 +380,31 @@ function personaCompact(e,directory) {
   };
 }
 
-function weightedBar(morning,afternoon,totalScale=720) {
-  const used=Math.max(0,morning)+Math.max(0,afternoon);
-  const rest=Math.max(1,totalScale-used);
-  const columns=[];
+function barGlyphs(minutes,totalScale=720,cells=16) {
+  if (minutes<=0) return 0;
+  return Math.max(1,Math.round(minutes / totalScale * cells));
+}
 
-  if (morning>0) columns.push({
-    type:'Column',
-    width:morning,
-    style:'accent',
-    minHeight:'20px',
-    items:[]
-  });
-
-  if (afternoon>0) columns.push({
-    type:'Column',
-    width:afternoon,
-    style:'good',
-    minHeight:'20px',
-    items:[]
-  });
-
-  columns.push({
-    type:'Column',
-    width:rest,
-    style:'emphasis',
-    minHeight:'20px',
-    items:[]
-  });
-
-  return {type:'ColumnSet',spacing:'None',columns};
+export function vividShiftBar(morning,afternoon,totalScale=720,cells=16) {
+  let morningCells=barGlyphs(morning,totalScale,cells);
+  let afternoonCells=barGlyphs(afternoon,totalScale,cells);
+  while (morningCells + afternoonCells > cells) {
+    if (afternoonCells >= morningCells && afternoonCells > 1) afternoonCells--;
+    else if (morningCells > 1) morningCells--;
+    else break;
+  }
+  const restCells=Math.max(0,cells-morningCells-afternoonCells);
+  return rich([
+    ...(morningCells ? [inline('█'.repeat(morningCells),{
+      color:'Accent',size:'Large',weight:'Bolder'
+    })] : []),
+    ...(afternoonCells ? [inline('█'.repeat(afternoonCells),{
+      color:'Good',size:'Large',weight:'Bolder'
+    })] : []),
+    ...(restCells ? [inline('░'.repeat(restCells),{
+      size:'Large',isSubtle:true
+    })] : [])
+  ],{spacing:'None'});
 }
 
 function workdayBar(minutes,totalScale=720,status='Đã ghi nhận') {
@@ -465,7 +460,7 @@ export function personaShiftRow(e,i,directory) {
         type:'Column',
         width:50,
         verticalContentAlignment:'Center',
-        items:[weightedBar(morning,afternoon)]
+        items:[vividShiftBar(morning,afternoon)]
       },
       {
         type:'Column',
@@ -562,18 +557,71 @@ export function compactDetailsTable(s,directory) {
 }
 
 
-export function compactDetailLines(s) {
-  return s.employees.map((e,i)=>text(
-    '**' + String(i+1).padStart(2,'0') + ' · ' + e.name + '**  ·  S ' + e.morning +
-    '  ·  C ' + e.afternoon + '  ·  ' + totalSummary(e),
-    {
-      id:'detail-line-' + (i+1),
-      size:'Small',
-      separator:i>0,
-      spacing:'Small',
-      color:statusColor(e)
-    }
-  ));
+function compactShift(value) {
+  if (value==='—') return '—';
+  return String(value).replace(/ \((\d+h\d{2})\)/g,' · $1');
+}
+
+export function compactDetailRows(s) {
+  return s.employees.map((e,i)=>({
+    type:'Container',
+    id:'detail-row-' + (i+1),
+    style:rowStyle(e),
+    roundedCorners:true,
+    separator:i>0,
+    spacing:'Small',
+    items:[
+      {
+        type:'ColumnSet',
+        spacing:'None',
+        columns:[
+          {
+            type:'Column',
+            width:'stretch',
+            items:[text(String(i+1).padStart(2,'0') + ' · ' + e.name,{
+              size:'Small',weight:'Bolder'
+            })]
+          },
+          {
+            type:'Column',
+            width:'auto',
+            items:[text(
+              formatRecordedMinutes(recordedMinutes(e)) + ' · ' +
+              formatWorkdays(recordedMinutes(e)) + ' · ' + displayStatus(e),
+              {
+                size:'Small',
+                weight:'Bolder',
+                color:statusColor(e),
+                horizontalAlignment:'Right'
+              }
+            )]
+          }
+        ]
+      },
+      {
+        type:'ColumnSet',
+        spacing:'Small',
+        columns:[
+          {
+            type:'Column',
+            width:1,
+            items:[rich([
+              inline('SÁNG  ',{weight:'Bolder',color:'Accent',size:'Small'}),
+              inline(compactShift(e.morning),{size:'Small'})
+            ])]
+          },
+          {
+            type:'Column',
+            width:1,
+            items:[rich([
+              inline('CHIỀU  ',{weight:'Bolder',color:'Good',size:'Small'}),
+              inline(compactShift(e.afternoon),{size:'Small'})
+            ])]
+          }
+        ]
+      }
+    ]
+  }));
 }
 
 export function buildNativeCard(source,directory) {
@@ -617,7 +665,7 @@ export function buildNativeCard(source,directory) {
     lang:'vi',
     msteams:{width:'Full'},
     body:[
-      text('TEST · NATIVE V16 · PERSONA BAR ROWS',{size:'Small',color:'Accent',weight:'Bolder'}),
+      text('TEST · NATIVE V17 · VIVID PERSONA BARS',{size:'Small',color:'Accent',weight:'Bolder'}),
       text('BÁO CÁO CHẤM CÔNG — CẢ NGÀY',{size:'Large',weight:'Bolder',spacing:'Small'}),
       text(s.date_label + ' · Cập nhật ' + s.updated,{size:'Small',isSubtle:true,spacing:'Small'}),
 
@@ -674,8 +722,8 @@ export function buildNativeCard(source,directory) {
         spacing:'Small',
         items:[
           rich([
-            inline('■ ',{color:'Accent',weight:'Bolder'}), inline('Sáng',{size:'Small',weight:'Bolder'}),
-            inline('   ■ ',{color:'Good',weight:'Bolder'}), inline('Chiều',{size:'Small',weight:'Bolder'}),
+            inline('█ ',{color:'Accent',weight:'Bolder'}), inline('Sáng',{size:'Small',weight:'Bolder'}),
+            inline('   █ ',{color:'Good',weight:'Bolder'}), inline('Chiều',{size:'Small',weight:'Bolder'}),
             inline('   · Tổng giờ',{size:'Small',isSubtle:true})
           ]),
           ...s.employees.map((e,i)=>personaShiftRow(e,i,directory))
@@ -709,7 +757,7 @@ export function buildNativeCard(source,directory) {
         id:'attendance-details-panel',
         isVisible:false,
         spacing:'Small',
-        items:compactDetailLines(s)
+        items:compactDetailRows(s)
       },
 
       text('1 công = 8 giờ · Tăng ca được ghi nhận đầy đủ theo dữ liệu thực tế · Sai lệch vui lòng phản hồi P.HC-NS.',
@@ -769,6 +817,8 @@ export function auditCard(card,source,directory) {
     native_microsoft_charts_only:true,
     native_microsoft_personas:true,
     quick_summary_mode:'merged_overview',
+    vivid_bar_mode:'richtext_glyphs',
+    detail_layout:'two_row_microcards',
     personas_in_chart_section:true,
     row_based_persona_bars:true,
     collapsible_detail_panel:true,

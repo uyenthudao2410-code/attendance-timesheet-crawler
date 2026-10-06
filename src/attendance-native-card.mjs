@@ -355,10 +355,7 @@ export function buildNativeCard(source,directory) {
         id:'panel-shifts',
         isVisible:true,
         spacing:'Small',
-        items:s.employees.flatMap((e,i)=>[
-          avatarChartRow(e,i,directory,'shift'),
-          employeeDetailPanel(e,i)
-        ])
+        items:s.employees.map((e,i)=>avatarChartRow(e,i,directory,'shift'))
       },
 
       {
@@ -366,10 +363,14 @@ export function buildNativeCard(source,directory) {
         id:'panel-workdays',
         isVisible:false,
         spacing:'Small',
-        items:s.employees.flatMap((e,i)=>[
-          avatarChartRow(e,i,directory,'workday'),
-          employeeDetailPanel(e,i)
-        ])
+        items:s.employees.map((e,i)=>avatarChartRow(e,i,directory,'workday'))
+      },
+
+      {
+        type:'Container',
+        id:'details-area',
+        spacing:'Small',
+        items:s.employees.map(employeeDetailPanel)
       },
 
       text('1 công = 8 giờ · Tăng ca được ghi nhận đầy đủ theo dữ liệu thực tế · Sai lệch vui lòng phản hồi P.HC-NS.',{

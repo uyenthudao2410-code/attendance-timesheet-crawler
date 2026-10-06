@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import {buildNativeCard, auditCard, sourceDigest, digest, LAYOUT, TEST_CHAT} from '../src/attendance-native-card.mjs';
 import {createRepoStore, request} from '../src/attendance-delivery-io.mjs';
+import sharp from 'sharp';
 
 const TRIGGER = '.github/attendance-native-card-test-trigger.json';
 const FIXTURE = 'test/fixtures/attendance-native-card-input.json';
@@ -77,9 +78,21 @@ async function fetchProfilePhotos(source,directory,delegatedHeaders) {
     }
     const bytes=Buffer.from(await response.arrayBuffer());
     if (!bytes.length || bytes.length>12000) throw new Error(`PROFILE_PHOTO_SIZE_INVALID_${bytes.length}`);
-    avatarUrls[e.name]=`data:${contentType};base64,${bytes.toString('base64')}`;
+
+    const optimized=await sharp(bytes)
+      .resize(32,32,{fit:'cover',position:'centre'})
+      .jpeg({quality:58,mozjpeg:true,chromaSubsampling:'4:2:0'})
+      .toBuffer();
+
+    if (!optimized.length || optimized.length>2200) {
+      throw new Error(`PROFILE_PHOTO_OPTIMIZED_SIZE_INVALID_${optimized.length}`);
+    }
+
+    avatarUrls[e.name]=`data:image/jpeg;base64,${optimized.toString('base64')}`;
     realPhotoCount++;
-    console.log(`ATTENDANCE_AVATAR_PHOTO=${user.userPrincipalName}:OK:${authMode}:${bytes.length}`);
+    console.log(
+      `ATTENDANCE_AVATAR_PHOTO=${user.userPrincipalName}:OK:${authMode}:${bytes.length}->${optimized.length}`
+    );
   }
 
   console.log(`ATTENDANCE_AVATAR_REAL_COUNT=${realPhotoCount}`);

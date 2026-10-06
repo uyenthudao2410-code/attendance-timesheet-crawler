@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 import {
   LAYOUT, buildNativeCard, auditCard, validateSource, validateDirectory, sourceDigest,
   durationMinutes, sessionMinutes, recordedMinutes, shiftTotalMinutes,
-  chartHours, workdaysFromMinutes, formatRecordedMinutes, formatWorkdays,
-  nativeShiftChart, workdayChart, shiftDonut, statusDonut,
+  workdaysFromMinutes, formatRecordedMinutes, formatWorkdays,
+  nativeShiftChart, workdayChart, quickSummary,
   compactDetailsTable, personaSet
 } from '../src/attendance-native-card.mjs';
 
@@ -86,17 +86,12 @@ test('alternate workday chart remains colorful and compact',()=>{
   assert.equal(new Set(c.data.map(d=>d.color)).size,8);
 });
 
-test('quick insights use two native donut concepts',()=>{
-  const shift=shiftDonut(input);
-  const status=statusDonut(input);
-  assert.equal(shift.type,'Chart.Donut');
-  assert.equal(status.type,'Chart.Donut');
-  assert.equal(shift.colorSet,'categorical');
-  assert.equal(status.colorSet,'categorical');
-  assert.deepEqual(shift.data.map(d=>d.value),[3.34,4.88]);
-  assert.deepEqual(status.data.map(d=>d.value),[6,2]);
-  assert.match(shift.data[0].legend,/Ca sáng · 3,34 công/);
-  assert.match(status.data[1].legend,/Chưa chốt · 2/);
+test('quick summary is compact metrics, not redundant charts',()=>{
+  assert.deepEqual(quickSummary(input),[
+    {label:'Ca sáng',value:'3,34',unit:'công',color:'Accent'},
+    {label:'Ca chiều',value:'4,88',unit:'công',color:'Good'},
+    {label:'Đã chốt',value:'6/8',unit:'2 chưa chốt',color:'Good'}
+  ]);
 });
 
 test('PersonaSet contains all eight exact Entra users',()=>{
@@ -127,15 +122,40 @@ test('compact details use one Persona plus attendance data per employee row',()=
   });
 });
 
-test('mobile quick insights stack donuts while desktop places them side by side',()=>{
+test('KPI cards are 2x2 on mobile and four tiles wide on desktop',()=>{
   const card=buildNativeCard(input,directory);
-  const mobile=card.body.find(n=>n.id==='quick-mobile');
-  const wide=card.body.find(n=>n.id==='quick-wide');
+  const mobile=card.body.find(n=>n.id==='kpi-mobile');
+  const wide=card.body.find(n=>n.id==='kpi-wide');
   assert.equal(mobile.targetWidth,'atMost:Narrow');
   assert.equal(wide.targetWidth,'atLeast:Standard');
-  assert.equal(all(mobile).filter(n=>n.type==='Chart.Donut').length,2);
-  assert.equal(all(wide).filter(n=>n.type==='Chart.Donut').length,2);
-  assert.equal(wide.columns.length,2);
+  assert.equal(mobile.items.length,2);
+  assert.ok(mobile.items.every(row=>row.columns.length===2));
+  assert.equal(wide.items[0].columns.length,4);
+  const mobileTiles=all(mobile).filter(n=>n.type==='Container' && n.style==='emphasis');
+  assert.equal(mobileTiles.length,4);
+  assert.ok(all(mobile).filter(n=>n.type==='Icon').length>=4);
+});
+
+test('personas are visually integrated into chart section',()=>{
+  const card=buildNativeCard(input,directory);
+  const personas=card.body.find(n=>n.id==='chart-personas');
+  assert.ok(personas);
+  assert.equal(personas.style,'emphasis');
+  assert.equal(all(personas).filter(n=>n.type==='Component').length,1);
+  assert.equal(all(personas).find(n=>n.type==='Component').name,'graph.microsoft.com/users');
+  assert.ok(card.body.indexOf(personas) < card.body.indexOf(card.body.find(n=>n.id==='panel-shifts')));
+});
+
+test('quick summary is one compact ribbon with three values and no donut charts',()=>{
+  const card=buildNativeCard(input,directory);
+  const summary=card.body.find(n=>n.id==='quick-summary');
+  assert.ok(summary);
+  assert.equal(summary.style,'emphasis');
+  const values=all(summary).filter(n=>n.type==='TextBlock').map(n=>n.text);
+  assert.ok(values.includes('3,34'));
+  assert.ok(values.includes('4,88'));
+  assert.ok(values.includes('6/8'));
+  assert.equal(all(card).filter(n=>n.type==='Chart.Donut').length,0);
 });
 
 test('default view remains stacked shifts and details remain collapsed',()=>{
@@ -149,17 +169,19 @@ test('default view remains stacked shifts and details remain collapsed',()=>{
   assert.ok(actions.some(a=>a.title==='Xem / Ẩn chi tiết (8)'));
 });
 
-test('V14 card is Microsoft-native with donuts and personas, no external images',()=>{
+test('V15 card is compact, Microsoft-native and persona-enabled',()=>{
   const card=buildNativeCard(input,directory);
   const qa=auditCard(card,input,directory);
-  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V14_DONUT_PERSONA');
+  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V15_COMPACT_DASHBOARD');
   assert.equal(qa.data_gate,'passed');
   assert.equal(qa.table_count,1);
-  assert.equal(qa.chart_count,6);
-  assert.equal(qa.donut_count,4);
+  assert.equal(qa.chart_count,2);
+  assert.equal(qa.donut_count,0);
   assert.equal(qa.persona_component_count,9);
   assert.equal(qa.native_microsoft_charts_only,true);
   assert.equal(qa.native_microsoft_personas,true);
+  assert.equal(qa.quick_summary_mode,'compact_metrics');
+  assert.equal(qa.personas_in_chart_section,true);
   assert.equal(qa.external_chart_requests,0);
   assert.ok(qa.bytes<27000);
   assert.equal(all(card).filter(n=>n.type==='Image').length,0);

@@ -105,15 +105,10 @@ test('avatar rail contains exactly eight image-only avatar slots and no names',(
   assert.equal(all(rail).filter(n=>n.type==='ActionSet').length,0);
 });
 
-test('avatar tap opens its own detail and closes all other details',()=>{
+test('avatar tap toggles only its own detail panel',()=>{
   const rail=avatarRail(input,directory);
   const targets=rail.items[2].selectAction.targetElements;
-  assert.equal(targets.length,8);
-  assert.equal(targets[2],'employee-detail-3');
-  targets.forEach((t,i)=>{
-    if(i===2) return;
-    assert.deepEqual(t,{elementId:'employee-detail-'+(i+1),isVisible:false});
-  });
+  assert.deepEqual(targets,['employee-detail-3']);
 });
 
 test('detail panels are hidden and preserve complete attendance data',()=>{
@@ -195,7 +190,7 @@ test('V23 contract supports real Graph photos with image-only avatars',()=>{
   assert.equal(qa.shift_chart_count,1);
   assert.equal(qa.workday_chart_count,1);
   assert.equal(qa.avatar_rail_count,8);
-  assert.equal(qa.detail_interaction,'avatar_tap_toggle');
+  assert.equal(qa.detail_interaction,'avatar_tap_toggle_own_detail');
   assert.equal(qa.detail_buttons,0);
   assert.equal(qa.details_hidden_by_default,true);
   assert.equal(qa.footer_notes,false);

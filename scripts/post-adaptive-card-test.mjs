@@ -103,9 +103,18 @@ async function renderLiveGapChart(){
       }
     }
 
-    if(!target) throw new Error('LIVEGAP_CHART_ELEMENT_NOT_FOUND');
-
-    const png=await target.screenshot({type:'png'});
+    let png;
+    if(target){
+      png=await target.screenshot({type:'png'});
+    } else {
+      // LiveGap renders some chart builds in an internal layer that is not
+      // exposed as canvas/svg/iframe. Capture the chart viewport directly.
+      png=await page.screenshot({
+        type:'png',
+        clip:{x:0,y:72,width:860,height:560}
+      });
+      console.log('LIVEGAP_CAPTURE_MODE=VIEWPORT_CLIP');
+    }
     if(!png || png.length<5000) throw new Error('LIVEGAP_CHART_SCREENSHOT_TOO_SMALL');
     console.log('LIVEGAP_CHART_URL='+url);
     console.log('LIVEGAP_CHART_BYTES='+png.length);

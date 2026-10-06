@@ -563,7 +563,7 @@ export function compactDetailsTable(s,directory) {
         type:'TableRow',
         cells:[
           tableCell([
-            personaForEmployee(e,directory)
+            text(String(i+1).padStart(2,'0') + ' · ' + e.name,{size:'Small',weight:'Bolder'})
           ],rowStyle(e)),
           tableCell([
             rich([
@@ -771,8 +771,9 @@ export function buildNativeCard(source,directory) {
         isVisible:false,
         spacing:'Small',
         items:[
-          text('Thanh thể hiện công quy đổi · giá trị công ở cuối dòng.',{size:'Small',isSubtle:true}),
-          ...s.employees.map((e,i)=>personaWorkdayRow(e,i,directory))
+          text('CÔNG QUY ĐỔI',{size:'Small',weight:'Bolder',color:'Accent'}),
+          text('1 công = 8 giờ · giá trị công hiển thị trực tiếp trên chart.',{size:'Small',isSubtle:true}),
+          workdayChart(s)
         ]
       },
 

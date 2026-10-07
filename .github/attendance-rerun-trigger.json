@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "self-heal-daily-20261005-20261006-0830",
+  "request_id": "self-heal-daily-20261006-20261007-0702",
   "slot": "daily_2105",
-  "target_date": "2026-10-05",
-  "requested_at": "2026-10-06T08:30:00+07:00",
-  "reason": "self-heal stale daily_2105 producer state before ChatGPT publication",
+  "target_date": "2026-10-06",
+  "requested_at": "2026-10-07T07:02:00+07:00",
+  "reason": "self-heal missing scheduled daily_2105 producer before V24 production publication",
   "delivery": {
     "enabled": false
   }

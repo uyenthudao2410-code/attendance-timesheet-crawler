@@ -305,10 +305,24 @@ jobs:
           node scripts/post-native-attendance-production.mjs
 
       - name: Build approved AI visual request bundle
-        run: node scripts/build-ai-visual-request.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${ATTENDANCE_NATIVE_AUTO_PUBLISH:-false}" = "true" ]; then
+            echo "Legacy AI visual pipeline disabled for native V24 production"
+            exit 0
+          fi
+          node scripts/build-ai-visual-request.mjs
 
       - name: Validate AI visual request against canonical report
-        run: node scripts/validate-ai-visual-request.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${ATTENDANCE_NATIVE_AUTO_PUBLISH:-false}" = "true" ]; then
+            echo "Legacy AI visual validation disabled for native V24 production"
+            exit 0
+          fi
+          node scripts/validate-ai-visual-request.mjs
 
       - name: Send validated AI prompt to isolated technical handoff chat
         env:
@@ -316,7 +330,14 @@ jobs:
           MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
           MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
           MS_REFRESH_TOKEN: ${{ secrets.MS_REFRESH_TOKEN }}
-        run: node scripts/post-ai-handoff-to-self-chat.mjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${ATTENDANCE_NATIVE_AUTO_PUBLISH:-false}" = "true" ]; then
+            echo "Legacy AI handoff disabled for native V24 production"
+            exit 0
+          fi
+          node scripts/post-ai-handoff-to-self-chat.mjs
 
       - name: Encrypt result before artifact upload
         if: ${{ hashFiles('output/*.json') != '' }}
@@ -364,6 +385,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [ "${ATTENDANCE_NATIVE_AUTO_PUBLISH:-false}" = "true" ]; then
+            echo "Native V24 production uses attendance publication receipt as delivery authority; legacy AI producer state update skipped"
+            exit 0
+          fi
           state_path="$(node scripts/write-producer-state.mjs)"
           git checkout -- .github/attendance-rerun-trigger.json
           git config user.name "github-actions[bot]"

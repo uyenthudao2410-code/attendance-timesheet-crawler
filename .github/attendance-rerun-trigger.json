@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "self-heal-daily-20261006-20261007-0702",
-  "slot": "daily_2105",
-  "target_date": "2026-10-06",
-  "requested_at": "2026-10-07T07:02:00+07:00",
-  "reason": "self-heal missing scheduled daily_2105 producer before V24 production publication",
+  "request_id": "self-heal-morning_1230-2026-10-07-20261007T071118Z",
+  "slot": "morning_1230",
+  "target_date": "2026-10-07",
+  "requested_at": "2026-10-07T14:11:18+07:00",
+  "reason": "self-heal missing scheduled morning_1230 producer before V24 production publication",
   "delivery": {
     "enabled": false
   }

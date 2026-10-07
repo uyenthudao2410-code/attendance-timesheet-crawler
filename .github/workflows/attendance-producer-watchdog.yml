@@ -52,6 +52,23 @@ jobs:
               ;;
           esac
 
+          receipt_path=".github/attendance-publications/${slot}-${target_date}.json"
+          receipt_sent="$(RECEIPT_PATH="$receipt_path" node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          let sent = false;
+          try {
+            const receipt = JSON.parse(fs.readFileSync(process.env.RECEIPT_PATH, 'utf8'));
+            sent = receipt?.status === 'sent' && /^\d+$/.test(String(receipt?.message_id || ''));
+          } catch {}
+          process.stdout.write(sent ? 'yes' : 'no');
+          NODE
+          )"
+
+          if [ "$receipt_sent" = "yes" ]; then
+            echo "WATCHDOG_STATE=publication_receipt_sent slot=$slot target_date=$target_date"
+            exit 0
+          fi
+
           state_path=".github/attendance-state/${slot}.json"
           valid_state="$(SLOT="$slot" TARGET_DATE="$target_date" STATE_PATH="$state_path" node --input-type=module <<'NODE'
           import fs from 'node:fs';

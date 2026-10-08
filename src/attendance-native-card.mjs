@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
-export const ROW_VISUAL_REVISION = 'V24_NATIVE_PROGRESS_MOBILE_2026_10_08';
+export const ROW_VISUAL_REVISION = 'V24_COLOR_KPI_THICK_WORKDAY_2026_10_08';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
 const fail = message => { throw new Error('NATIVE_CARD_GATE: ' + message); };
@@ -249,15 +249,19 @@ export function workforceScales(s) {
 }
 
 
-export function employeeNativeBar(e,index,view,scale) {
-  if(view!=='workday')fail('Expected workday progress');
-  const days=workdaysFromMinutes(recordedMinutes(e));
-  if(days>scale)fail('Workday exceeds common scale');
-  const value=Math.max(0,Math.min(100,Math.round(days/scale*100)));
-  return {type:'ProgressBar',id:'workday-employee-bar-'+(index+1),
-    value,max:100,color:'Accent',spacing:'None'};
-}
 
+export function employeeNativeBar(e,index,view,scale) {
+  if(view!=='workday')fail('Expected workday bar');
+  const days=workdaysFromMinutes(recordedMinutes(e));
+  if(days>scale)fail('Workday exceeds shared scale');
+  const p=Math.max(0,Math.min(100,Math.round(days/scale*100)));
+  const columns=[];
+  if(p>0)columns.push({type:'Column',width:p,style:'accent',
+    minHeight:'12px',roundedCorners:true,items:[]});
+  if(p<100)columns.push({type:'Column',width:100-p,style:'emphasis',
+    minHeight:'12px',roundedCorners:true,items:[]});
+  return {type:'ColumnSet',spacing:'None',columns};
+}
 
 export function employeeShiftBar(e,index,scale,scope) {
   const morning=shiftTotalMinutes(e,'morning');
@@ -328,22 +332,30 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
   const s=validateSource(source),k=s.kpis;
   validateDirectory(s,directory);
 
+
   const kpis=[
-    {label:'Tổng nhân sự',value:k.total,color:'Accent',icon:'People'},
-    {label:'Có dữ liệu',value:k.with_record,color:'Good',icon:'DataBarHorizontal'},
-    {label:'Đã chốt',value:k.closed,color:'Good',icon:'CheckmarkCircle'},
-    {label:'Chưa chốt',value:s.employees.filter(e=>displayStatus(e)!=='Đã ghi nhận').length,color:'Warning',icon:'Clock'}
+    {label:'Giờ xác nhận',value:s.total_hours,style:'good',color:'Good',icon:'Clock'},
+    {label:'Tổng công',value:formatWorkdays(durationMinutes(s.total_hours)),
+      style:'accent',color:'Light',icon:'People'},
+    {label:'Công ca sáng',value:formatWorkdays(
+      s.employees.flatMap(e=>sessionMinutes(e.morning)).reduce((n,v)=>n+v,0)
+    ),style:'warning',color:'Warning',icon:'Calendar'},
+    {label:'Tỷ lệ ghi nhận',value:s.rate,style:'good',color:'Good',icon:'CheckmarkCircle'}
   ];
-  const kpiTile=({label,value,color,icon})=>({
+  const kpiTile=({label,value,style,color,icon})=>({
     type:'Column',width:1,items:[{
-      type:'Container',style:'default',roundedCorners:true,items:[
-        {type:'ColumnSet',spacing:'None',columns:[
-          {type:'Column',width:'auto',items:[{type:'Icon',name:icon,size:'Small',color,fallback:'drop'}]},
-          {type:'Column',width:'stretch',items:[text(String(value),{
-            size:'ExtraLarge',weight:'Bolder',color,horizontalAlignment:'Right'
-          })]}
-        ]},
-        text(label,{size:'Small',weight:'Bolder'})
+      type:'Container',style,roundedCorners:true,items:[
+        {
+          type:'ColumnSet',spacing:'None',columns:[
+            {type:'Column',width:'auto',items:[
+              {type:'Icon',name:icon,size:'Small',color,fallback:'drop'}
+            ]},
+            {type:'Column',width:'stretch',items:[
+              text(label,{size:'Small',weight:'Bolder'})
+            ]}
+          ]
+        },
+        text(String(value),{size:'Medium',weight:'Bolder',color,spacing:'None'})
       ]
     }]
   });
@@ -357,31 +369,19 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
     version:'1.5',
     lang:'vi',
     msteams:{width:'Full'},
-    body:[
-      text('TEST · NATIVE V24 · BALANCED INFO BARS',{size:'Small',color:'Accent',weight:'Bolder'}),
-      text(source.report_title || 'BÁO CÁO CHẤM CÔNG — CẢ NGÀY',{size:'Large',weight:'Bolder',spacing:'Small'}),
-      text(s.date_label+' · Cập nhật '+s.updated,{size:'Small',isSubtle:true,spacing:'Small'}),
 
+    body:[
+      text(s.report_title || 'BÁO CÁO CHẤM CÔNG — CẢ NGÀY',
+        {size:'Large',weight:'Bolder',color:'Accent'}),
+      text(s.date_label+' · Cập nhật '+s.updated,
+        {size:'Small',isSubtle:true,spacing:'Small'}),
       {
-        type:'Container',
-        id:'overview',
-        style:'emphasis',
-        roundedCorners:true,
-        spacing:'Small',
-        items:[
-          sectionTitle('Gauge','TỔNG QUAN'),
-          overviewStatusChart(s),
+        type:'Container',id:'overview',spacing:'Small',items:[
           {type:'ColumnSet',spacing:'Small',columns:kpis.slice(0,2).map(kpiTile)},
           {type:'ColumnSet',spacing:'Small',columns:kpis.slice(2).map(kpiTile)},
-          rich([
-            inline(s.total_hours,{weight:'Bolder',color:'Good'}),
-            inline(' giờ xác nhận  ·  '),
-            inline(formatWorkdays(durationMinutes(s.total_hours)),{weight:'Bolder',color:'Accent'}),
-            inline('  ·  Sáng '+workdaysFromMinutes(morning).toFixed(2).replace('.',',')+
-              ' công'+(scopeOf(s)===SCOPE_MORNING?'':'  ·  Chiều '+
-                workdaysFromMinutes(afternoon).toFixed(2).replace('.',',')+' công')+
-              '  ·  '+s.rate,{size:'Small'})
-          ],{spacing:'Small'})
+          text(k.total+' nhân sự · '+k.with_record+' có dữ liệu · '+
+            k.closed+' đã chốt · '+(k.total-k.closed)+' chưa chốt',
+            {size:'Small',isSubtle:true,spacing:'Small'})
         ]
       },
 
@@ -467,24 +467,26 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     persona_component_count:types.filter(t=>t==='Component').length,
     image_avatar_count:types.filter(t=>t==='Image').length,
     data_gate:'passed',
-    chart_architecture:'one_native_progress_per_employee_row',
+    chart_architecture:'thick_native_columnset_shared_scale',
     shift_chart_count:0,
     workday_chart_count:0,
-    progress_bar_count:types.filter(t=>t==='ProgressBar').length,
+    progress_bar_count:0,
+    thick_bar_count:source.employees.length,
     avatar_rail_count:source.employees.length,
     avatar_alignment:'same_columnset_per_employee_row',
     shift_row_values:'exact_source_morning_and_afternoon_durations',
     workday_chart_layout:'same_row_as_avatar_common_scale',
-    bar_component:'ProgressBar',
+    bar_component:'ColumnSet:12px',
     legend_scope:'single_shared',
     detail_interaction:'avatar_tap_toggle_own_detail',
     detail_buttons:0,
     details_hidden_by_default:true,
     footer_notes:false,
     repeated_legends:false,
-    palette:'categoricalBlue_categoricalGreen_categoricalTeal_neutral',
+    palette:'accent_good_warning_emphasis',
     shift_legend:'blue_morning_green_afternoon_segments',
     native_microsoft_charts_only:true,
+    compact_kpi_tile_count:4,
     row_lock:true,
     chart_scales:workforceScales(source),
     chart_mode_toggle_targets:16,

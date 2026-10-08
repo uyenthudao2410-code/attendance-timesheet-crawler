@@ -65,17 +65,17 @@ test('workday native Chart.HorizontalBar labels use full names, not index shortc
   });
 });
 
-test('full-day report has two native vertical charts for morning and afternoon',()=>{
+test('full-day report uses two compact horizontal native shift charts',()=>{
   const morning=consolidatedShiftChart(input),afternoon=consolidatedAfternoonChart(input);
-  assert.equal(morning.type,'Chart.VerticalBar');
-  assert.equal(afternoon.type,'Chart.VerticalBar');
+  assert.equal(morning.type,'Chart.HorizontalBar');
+  assert.equal(afternoon.type,'Chart.HorizontalBar');
   assert.equal(morning.color,'categoricalTeal');
   assert.equal(afternoon.color,'categoricalGreen');
   assert.equal(afternoon.isVisible,false);
   const names=verticalEmployeeNames(input);
   for(let i=0;i<8;i++){
-    assert.equal(morning.data[i].x,names[i]);
-    assert.equal(afternoon.data[i].x,names[i]);
+    assert.equal(morning.data[i].x,String(i+1).padStart(2,'0')+' · '+names[i]);
+    assert.equal(afternoon.data[i].x,String(i+1).padStart(2,'0')+' · '+names[i]);
     assert.equal(morning.data[i].y,Math.round(shiftTotalMinutes(input.employees[i],'morning')/6)/10);
     assert.equal(afternoon.data[i].y,Math.round(shiftTotalMinutes(input.employees[i],'afternoon')/6)/10);
   }
@@ -160,7 +160,7 @@ test('morning-only report hides afternoon source and shows morning-only workdays
       .reduce((n,e)=>n+durationMinutes(e.total),0)
   );
   const card=buildNativeCard(morning,directory);
-  assert.equal(section(card,'chart-shift').items[1].type,'Chart.VerticalBar');
+  assert.equal(section(card,'chart-shift').items[1].type,'Chart.HorizontalBar');
   assert.equal(section(card,'chart-shift').items[1].showLegend,false);
   assert.ok(!JSON.stringify(section(card,'chart-shift')).includes('Ca chiều'));
   assert.equal(section(card,'microsoft-account-list'),undefined);
@@ -176,7 +176,7 @@ test('morning-only report hides afternoon source and shows morning-only workdays
     const e=morning.employees[i],expected=attendanceChartLabel(e,'morning');
     assert.equal(section(card,'chart-workday').items[1].data[i].x,expected);
     const p=section(card,'chart-shift').items[1].data[i];
-    assert.equal(p.x,verticalEmployeeNames(morning)[i]);
+    assert.equal(p.x,String(i+1).padStart(2,'0')+' · '+verticalEmployeeNames(morning)[i]);
     assert.equal(p.y,Math.round(shiftTotalMinutes(e,'morning')/6)/10);
     assert.equal(p.color,'categoricalTeal');
     assert.ok(expected.includes(e.name)&&expected.includes(e.status));
@@ -188,7 +188,7 @@ test('QA enforces Microsoft Entra account bindings, chart data and payload budge
   const card=buildNativeCard(input,directory);
   const qa=auditCard(card,input,directory);
   assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS');
-  assert.equal(ROW_VISUAL_REVISION,'V24_DAILY_VERTICAL_FOCUSED_COMPACT_2026_10_08');
+  assert.equal(ROW_VISUAL_REVISION,'V24_MOBILE_HORIZONTAL_SHIFT_BARS_2026_10_08');
   assert.equal(qa.chart_count,3);
   assert.equal(qa.graph_persona_count,0);
   assert.equal(qa.native_microsoft_personas,false);
@@ -198,14 +198,14 @@ test('QA enforces Microsoft Entra account bindings, chart data and payload budge
   assert.equal(qa.native_account_row_count,0);
   assert.equal(qa.profile_panel_count,0);
   assert.equal(qa.daily_compact_row_count,8);
-  assert.equal(qa.daily_vertical_chart_default,true);
+  assert.equal(qa.daily_horizontal_shift_default,true);
   assert.equal(qa.selector_count,0);
   assert.equal(qa.detail_interaction,'one_collapsible_full_day_details');
   assert.deepEqual(all(card).filter(x=>x.type.startsWith('Chart.')).map(x=>x.type),
-    ['Chart.HorizontalBar','Chart.VerticalBar','Chart.VerticalBar']);
+    ['Chart.HorizontalBar','Chart.HorizontalBar','Chart.HorizontalBar']);
   assert.equal(qa.shift_chart_count,2);
-  assert.equal(qa.shift_chart_type,'Chart.VerticalBar');
-  assert.equal(qa.afternoon_chart_type,'Chart.VerticalBar');
+  assert.equal(qa.shift_chart_type,'Chart.HorizontalBar');
+  assert.equal(qa.afternoon_chart_type,'Chart.HorizontalBar');
   assert.equal(qa.workday_chart_type,'Chart.HorizontalBar');
   assert.equal(qa.kpi_tile_min_height,'84px');
   assert.equal(qa.kpi_icon_strategy,'semantic_color_dot_no_native_icon');
@@ -265,19 +265,19 @@ test('morning chart renders every session and source status inline without extra
   assert.equal(section(card,'microsoft-account-list'),undefined);
   const bars=section(card,'chart-workday').items[1].data;
   const shift=section(card,'chart-shift').items[1];
-  assert.equal(shift.type,'Chart.VerticalBar');
+  assert.equal(shift.type,'Chart.HorizontalBar');
   assert.equal(shift.color,'categoricalTeal');
   assert.equal(bars.length,8);
   bars.forEach((bar,i)=>{
     const e=morning.employees[i];
     assert.equal(bar.x,e.name+' · '+e.morning.replace(/ \((\d+h\d{2})\)/g,' · $1')+' · '+e.status);
-    assert.equal(shift.data[i].x,verticalEmployeeNames(morning)[i]);
+    assert.equal(shift.data[i].x,String(i+1).padStart(2,'0')+' · '+verticalEmployeeNames(morning)[i]);
     assert.equal(shift.data[i].y,Math.round(shiftTotalMinutes(e,'morning')/6)/10);
     assert.equal(bar.y,workdaysFromMinutes(shiftTotalMinutes(e,'morning')));
   });
   const qa=auditCard(card,morning,directory);
-  assert.equal(qa.chart_architecture,'horizontal_workdays_vertical_morning');
-  assert.equal(qa.shift_chart_type,'Chart.VerticalBar');
+  assert.equal(qa.chart_architecture,'horizontal_workdays_horizontal_morning');
+  assert.equal(qa.shift_chart_type,'Chart.HorizontalBar');
   assert.equal(qa.kpi_tile_min_height,'84px');
   assert.equal(qa.kpi_icon_strategy,'semantic_color_dot_no_native_icon');
 });

@@ -213,6 +213,19 @@ const SCOPE_MORNING='morning';
 const scopeOf=s=>s.report_scope===SCOPE_MORNING || (s.report_title||'').includes('CA SÁNG')
   ? SCOPE_MORNING : 'daily';
 
+export function workforceScales(s) {
+  const maxHours=Math.max(8,...s.employees.map(e=>
+    chartHours(shiftTotalMinutes(e,'morning'))+chartHours(shiftTotalMinutes(e,'afternoon'))
+  ));
+  const maxWorkdays=Math.max(1,...s.employees.map(e=>
+    workdaysFromMinutes(recordedMinutes(e))
+  ));
+  return {
+    shift:Math.ceil(maxHours/2)*2,
+    workday:Math.ceil(maxWorkdays*2)/2
+  };
+}
+
 // Native charts cannot attach a different selectAction to each data point.
 // This compact index selector uses only local Adaptive Card visibility actions.
 export function employeeSelectionTargets(s,index) {

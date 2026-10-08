@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "design-preview-daily_2105-2026-10-07-20261008-190136-vertical",
+  "request_id": "design-preview-daily_2105-2026-10-07-20261008-204357-compact",
   "slot": "daily_2105",
   "target_date": "2026-10-07",
-  "requested_at": "2026-10-08T19:01:36+07:00",
-  "reason": "Final bounded user-requested TEST preview for full day 07/10/2026: after confirmed Teams HTTP 400 rejections of grouped chart and Persona, use verified Entra names/UPNs, two separately selectable simple native vertical shift charts, horizontally plotted converted work, legible compact KPI grid, original source, independent preview ledger; preserve production sent receipt.",
+  "requested_at": "2026-10-08T20:43:57+07:00",
+  "reason": "single user-requested full-day 07 Oct Teams TEST design preview: default vertical morning bar chart, afternoon via native toggle, eight short distinct x labels, compact single expandable accurate daily source details, 2x2 legible KPI, payload gate <18KB, fresh crawl, isolated preview receipt and no duplicate production send",
   "delivery": {
     "enabled": false
   }

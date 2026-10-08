@@ -153,8 +153,28 @@ try{
 }
 
 if(!response.ok){
+  // An explicit HTTP 4xx is a confirmed rejection: no Teams message exists.
+  // Emit only the sanitized Graph validation hint, never raw report data.
+  let graphCode='unknown',graphHint='unavailable';
+  try{
+    const error=await response.json();
+    graphCode=String(error?.error?.code||error?.code||'unknown');
+    graphHint=String(error?.error?.message||error?.message||'unavailable');
+    for(const person of source.employees)graphHint=graphHint.split(person.name).join('[employee]');
+    for(const user of Object.values(directory)){
+      graphHint=graphHint.split(user.userPrincipalName).join('[account]');
+    }
+    graphHint=graphHint
+      .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,'[account]')
+      .replace(/\b[0-9a-fA-F]{8}-[0-9a-fA-F-]{27,}\b/g,'[identifier]')
+      .replace(/\b\d{2}:\d{2}\b/g,'[clock]')
+      .replace(/\b\d{4}-\d{2}-\d{2}\b/g,'[date]')
+      .replace(/[\r\n]+/g,' ').slice(0,320);
+  }catch{}
+  console.error('ATTENDANCE_NATIVE_TEAMS_REJECT_CODE='+graphCode.replace(/[^A-Za-z0-9_.-]/g,'').slice(0,80));
+  console.error('ATTENDANCE_NATIVE_TEAMS_REJECT_HINT='+graphHint);
   const status=response.status>=400&&response.status<500&&response.status!==408?'rejected':'uncertain';
-  await mark(status,{http_status:response.status});
+  await mark(status,{http_status:response.status,graph_error_code:graphCode.slice(0,80)});
   throw new Error('TEAMS_HTTP_'+response.status);
 }
 

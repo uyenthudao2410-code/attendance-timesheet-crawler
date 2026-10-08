@@ -243,7 +243,7 @@ test('QA enforces Microsoft-native persona identity, chart data and payload budg
   const card=buildNativeCard(input,directory);
   const qa=auditCard(card,input,directory);
   assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS');
-  assert.equal(ROW_VISUAL_REVISION,'V24_GRAPH_NATIVE_PERSONA_ACCOUNTS_2026_10_08');
+  assert.equal(ROW_VISUAL_REVISION,'V24_INLINE_MORNING_CHART_DETAILS_2026_10_08');
   assert.equal(qa.chart_count,2);
   assert.equal(qa.graph_persona_count,8);
   assert.equal(qa.native_microsoft_personas,true);

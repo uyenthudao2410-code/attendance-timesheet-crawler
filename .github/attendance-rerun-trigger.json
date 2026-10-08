@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "design-preview-morning_1230-2026-10-08-20261008-162442",
+  "request_id": "design-preview-morning_1230-2026-10-08-20261008-164704",
   "slot": "morning_1230",
   "target_date": "2026-10-08",
-  "requested_at": "2026-10-08T16:24:42+07:00",
-  "reason": "explicit user-approved V24 compact native ProgressBar design re-post to TEST with fresh source; separate preview receipt only",
+  "requested_at": "2026-10-08T16:47:04+07:00",
+  "reason": "user-requested latest colorful compact KPI and thick-bar V24 Adaptive Card preview; crawl fresh and post once to TEST; preserve production sent ledger",
   "delivery": {
     "enabled": false
   }

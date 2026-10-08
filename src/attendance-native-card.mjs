@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
-export const ROW_VISUAL_REVISION = 'V24_CONSOLIDATED_NATIVE_CHART_2026_10_08';
+export const ROW_VISUAL_REVISION = 'V24_INDEXED_HIDDEN_PROFILES_2026_10_08';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
 const fail = message => { throw new Error('NATIVE_CARD_GATE: ' + message); };
@@ -208,87 +208,77 @@ function compactShift(value) {
   return String(value).replace(/ \((\d+h\d{2})\)/g,' · $1');
 }
 
-export function employeeDetailPanel(e,i,scope='daily') {
-  const minutes=scope==='morning'
-    ?shiftTotalMinutes(e,'morning'):recordedMinutes(e);
-  const summary=[
-    e.name+' · '+(minutes?formatRecordedMinutes(minutes):'—')+
-      ' · '+formatWorkdays(minutes)+' · '+displayStatus(e),
-    compactShift(e.morning),
-    ...(scope==='morning'?[]:[compactShift(e.afternoon)])
-  ].join('\n');
-  return {
-    type:'Container',id:'employee-detail-'+(i+1),
-    isVisible:false,style:rowStyle(e),roundedCorners:true,
-    spacing:'Small',items:[text(summary,{size:'Small',weight:'Bolder',color:statusColor(e)})]
-  };
-}
 
-function detailTargets(source,index) {
-  return ['employee-detail-'+(index+1)];
-}
-
-
-// Every employee owns a single row containing the real Graph avatar and BOTH
-// native chart views. Independent avatar rails drift on narrow Teams screens.
 const SCOPE_MORNING='morning';
 const scopeOf=s=>s.report_scope===SCOPE_MORNING || (s.report_title||'').includes('CA SÁNG')
   ? SCOPE_MORNING : 'daily';
-const two=v=>Number(v).toFixed(2).replace('.',',');
 
-export function workforceScales(s) {
-  const maxHours=Math.max(8,...s.employees.map(e=>
-    chartHours(shiftTotalMinutes(e,'morning'))+chartHours(shiftTotalMinutes(e,'afternoon'))
-  ));
-  const maxWorkdays=Math.max(1,...s.employees.map(e=>workdaysFromMinutes(recordedMinutes(e))));
-  return {
-    shift:Math.ceil(maxHours/2)*2,
-    workday:Math.ceil(maxWorkdays*2)/2
-  };
+// Native charts cannot attach a different selectAction to each data point.
+// This compact index selector uses only local Adaptive Card visibility actions.
+export function employeeSelectionTargets(s,index) {
+  if(!Number.isInteger(index)||index<0||index>=s.employees.length)
+    fail('Invalid employee index');
+  return [
+    {elementId:'h',isVisible:false},
+    {elementId:'z',isVisible:true},
+    ...s.employees.map((e,j)=>({elementId:'p'+(j+1),isVisible:j===index}))
+  ];
 }
 
-
-
-// Charts render their own categories, values and bars in the Teams client.
-// The profile directory has explicit 01..08 keys; never try to align an
-// independent avatar rail to a chart's variable host-computed row height.
-export function employeeDirectoryCell(s,e,index,avatarUrls={}) {
-  const scope=scopeOf(s);
-  const n=scope==='morning'?shiftTotalMinutes(e,'morning'):recordedMinutes(e);
+export function employeeDetailPanel(s,e,i,directory,avatarUrls={}) {
+  const morningOnly=scopeOf(s)==='morning';
+  const minutes=morningOnly?shiftTotalMinutes(e,'morning'):recordedMinutes(e);
   const avatar=avatarImage(e,avatarUrls);
-  avatar.height='32px';
-  avatar.selectAction={
-    type:'Action.ToggleVisibility',
-    targetElements:['employee-detail-'+(index+1)]
-  };
+  avatar.height='54px';
+  const sessions=v=>compactShift(v).replace(/; /g,'\n');
   return {
-    type:'Column',width:1,id:'employee-chip-'+(index+1),items:[
-      {
-        type:'Container',style:'emphasis',roundedCorners:true,items:[
-          {type:'ColumnSet',spacing:'None',columns:[
-            {type:'Column',width:'34px',items:[avatar]},
-            {type:'Column',width:'stretch',items:[
-              text(String(index+1).padStart(2,'0')+' · '+e.name,
-                {size:'Small',weight:'Bolder'}),
-              text((n?formatRecordedMinutes(n):'—')+' · '+formatWorkdays(n),
-                {size:'Small',isSubtle:true})
-            ]}
-          ]}
-        ]
-      },
-      employeeDetailPanel(e,index,scope)
+    type:'Container',id:'p'+(i+1),isVisible:false,style:'emphasis',
+    items:[
+      {type:'ColumnSet',columns:[
+        {type:'Column',width:'58px',items:[avatar]},
+        {type:'Column',width:'stretch',items:[
+          text(e.name,{size:'Medium',weight:'Bolder'}),
+          text(directory[e.name].userPrincipalName,{size:'Small',isSubtle:true}),
+          text(e.status,{size:'Small',color:statusColor(e)})
+        ]}
+      ]},
+      text('CA SÁNG · Giờ vào – ra · Thời lượng: '+sessions(e.morning)+
+        (morningOnly?'':'\nCA CHIỀU · Giờ vào – ra · Thời lượng: '+sessions(e.afternoon))+
+        '\nTỔNG NGUỒN: '+e.total+
+        ' · Từ bản ghi: '+(minutes?formatRecordedMinutes(minutes):'—')+
+        ' · '+formatWorkdays(minutes),{size:'Small'})
     ]
   };
 }
 
-export function employeeDirectoryGrid(s,avatarUrls={}) {
+export function employeeSelector(s) {
   return {
-    type:'Container',id:'employee-directory',spacing:'Small',
-    items:Array.from({length:4},(_,row)=>({
-      type:'ColumnSet',spacing:'Small',
-      columns:s.employees.slice(row*2,row*2+2)
-        .map((e,j)=>employeeDirectoryCell(s,e,row*2+j,avatarUrls))
-    }))
+    type:'Container',id:'sel',items:[
+      text('Chọn số 01–08 dưới biểu đồ để xem hồ sơ.',{size:'Small',isSubtle:true}),
+      ...[0,1].map(row=>({
+        type:'ActionSet',actions:s.employees.slice(row*4,row*4+4).map((e,j)=>({
+          type:'Action.ToggleVisibility',
+          title:String(row*4+j+1).padStart(2,'0'),
+          targetElements:employeeSelectionTargets(s,row*4+j)
+        }))
+      }))
+    ]
+  };
+}
+
+export function employeeDetails(s,directory,avatarUrls={}) {
+  return {
+    type:'Container',id:'details',items:[
+      text('Chưa chọn nhân sự.',{id:'h',size:'Small'}),
+      ...s.employees.map((e,i)=>employeeDetailPanel(s,e,i,directory,avatarUrls)),
+      {type:'ActionSet',id:'z',isVisible:false,actions:[{
+        type:'Action.ToggleVisibility',title:'Thu gọn',
+        targetElements:[
+          {elementId:'h',isVisible:true},{elementId:'z',isVisible:false},
+          ...s.employees.map((e,i)=>({elementId:'p'+(i+1),isVisible:false}))
+        ]
+      }]}
+    ]
   };
 }
 
@@ -400,9 +390,8 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
           consolidatedShiftChart(s)
         ]
       },
-      text('01–08 là thứ tự nhân sự trên biểu đồ. Chạm ảnh để xem giờ vào/ra.',
-        {size:'Small',isSubtle:true,spacing:'Small'}),
-      employeeDirectoryGrid(s,avatarUrls)
+      employeeSelector(s),
+      employeeDetails(s,directory,avatarUrls)
     ]
   };
 }
@@ -437,6 +426,14 @@ export function auditCard(card,source,directory,avatarUrls={}) {
   walk(card);
   if(types.filter(t=>t.startsWith('Chart.')).length!==2)
     fail('Expected exactly two Microsoft native charts');
+  if(types.filter(t=>t==='Image').length!==8)
+    fail('Expected eight hidden profile photos');
+  const sel=card.body.find(x=>x.id==='sel');
+  const panels=card.body.find(x=>x.id==='details');
+  if(!sel||!panels||sel.items.filter(x=>x.type==='ActionSet').length!==2)
+    fail('Missing numbered selector');
+  if(panels.items.filter(x=>/^p[1-8]$/.test(x.id||'')).length!==8)
+    fail('Missing employee profiles');
 
   if (json!==JSON.stringify(buildNativeCard(source,directory,avatarUrls))) fail('Layout/data mismatch');
 
@@ -454,16 +451,19 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     persona_component_count:types.filter(t=>t==='Component').length,
     image_avatar_count:types.filter(t=>t==='Image').length,
     data_gate:'passed',
-    chart_architecture:'two_consolidated_native_charts',
+    chart_architecture:'native_charts_with_exclusive_index_profile',
     shift_chart_count:1,
     workday_chart_count:1,
-    avatar_directory_count:source.employees.length,
-    avatar_alignment:'indexed_directory_01_to_08_below_chart',
+    avatar_directory_count:0,
+    profile_panel_count:source.employees.length,
+    selector_count:source.employees.length,
+    exclusive_profile_selection:true,
+    avatar_alignment:'only_in_expanded_profile',
     shift_row_values:'exact_source_morning_and_afternoon_durations',
     workday_chart_layout:'single_chart_with_full_name_categories',
     bar_component:'Chart.HorizontalBar',
     legend_scope:'once_per_chart',
-    detail_interaction:'avatar_tap_toggle_own_detail',
+    detail_interaction:'number_selection_shows_exclusive_profile',
     detail_buttons:0,
     details_hidden_by_default:true,
     footer_notes:false,
@@ -477,6 +477,7 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     row_lock:true,
     chart_scales:workforceScales(source),
     chart_mode_toggle_targets:4,
+    chart_point_select_action_supported:false,
     native_microsoft_personas:false,
     avatar_render:Object.keys(avatarUrls).length ? 'graph_profile_photo' : 'embedded_png_fallback',
     graph_avatar_count:source.employees.filter(e=>Boolean(avatarUrls[e.name])).length,

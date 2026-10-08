@@ -205,7 +205,7 @@ test('QA enforces Microsoft Entra account bindings, chart data and payload budge
   assert.equal(qa.native_account_row_count,0);
   assert.equal(qa.profile_panel_count,0);
   assert.equal(qa.daily_compact_row_count,8);
-  assert.equal(qa.daily_horizontal_shift_default,true);
+  assert.equal(qa.daily_single_stacked_shift_chart,true);
   assert.equal(qa.selector_count,0);
   assert.equal(qa.detail_interaction,'one_collapsible_full_day_details');
   assert.deepEqual(all(card).filter(x=>x.type.startsWith('Chart.')).map(x=>x.type),

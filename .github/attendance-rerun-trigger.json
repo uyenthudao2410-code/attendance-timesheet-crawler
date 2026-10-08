@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "self-heal-morning_1230-2026-10-08-20261008T084825Z",
+  "request_id": "design-preview-morning_1230-2026-10-08-20261008-162442",
   "slot": "morning_1230",
   "target_date": "2026-10-08",
-  "requested_at": "2026-10-08T15:48:25+07:00",
-  "reason": "one-time recovery: rerun missing 2026-10-08 morning producer and auto-publish refreshed V24 Adaptive Card to TEST chat",
+  "requested_at": "2026-10-08T16:24:42+07:00",
+  "reason": "explicit user-approved V24 compact native ProgressBar design re-post to TEST with fresh source; separate preview receipt only",
   "delivery": {
     "enabled": false
   }

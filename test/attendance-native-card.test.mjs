@@ -5,7 +5,7 @@ import {
   LAYOUT,ROW_VISUAL_REVISION,buildNativeCard,auditCard,validateSource,
   validateDirectory,sourceDigest,durationMinutes,recordedMinutes,
   sessionMinutes,shiftTotalMinutes,formatRecordedMinutes,formatWorkdays,
-  workdaysFromMinutes,consolidatedShiftChart,consolidatedAfternoonChart,shiftDaypartTabs,consolidatedWorkdayChart,
+  workdaysFromMinutes,consolidatedShiftChart,consolidatedDailyShiftChart,consolidatedWorkdayChart,
   employeeSelectionTargets,attendanceChartLabel,verticalEmployeeNames,microsoftNativeAccount,
   employeeDetailPanel,dailyCompactDetails
 } from '../src/attendance-native-card.mjs';
@@ -65,32 +65,39 @@ test('workday native Chart.HorizontalBar labels use full names, not index shortc
   });
 });
 
-test('full-day report uses two compact horizontal native shift charts',()=>{
-  const morning=consolidatedShiftChart(input),afternoon=consolidatedAfternoonChart(input);
-  assert.equal(morning.type,'Chart.HorizontalBar');
-  assert.equal(afternoon.type,'Chart.HorizontalBar');
-  assert.equal(morning.color,'categoricalTeal');
-  assert.equal(afternoon.color,'categoricalGreen');
-  assert.equal(afternoon.isVisible,false);
-  const names=verticalEmployeeNames(input);
-  for(let i=0;i<8;i++){
-    assert.equal(morning.data[i].x,String(i+1).padStart(2,'0')+' · '+names[i]);
-    assert.equal(afternoon.data[i].x,String(i+1).padStart(2,'0')+' · '+names[i]);
-    assert.equal(morning.data[i].y,Math.round(shiftTotalMinutes(input.employees[i],'morning')/6)/10);
-    assert.equal(afternoon.data[i].y,Math.round(shiftTotalMinutes(input.employees[i],'afternoon')/6)/10);
-  }
-  const tabs=shiftDaypartTabs();
-  assert.equal(tabs.actions.length,2);
-  assert.equal(tabs.actions[0].targetElements[0].isVisible,true);
-  assert.equal(tabs.actions[1].targetElements[1].isVisible,true);
+test('full-day Theo ca uses one native stacked horizontal chart for eight people',()=>{
+  const chart=consolidatedDailyShiftChart(input);
+  assert.equal(chart.type,'Chart.HorizontalBar.Stacked');
+  assert.equal(chart.data.length,8);
+  assert.equal(chart.showLegend,true);
+  assert.equal(chart.showBarValues,true);
+  const labels=verticalEmployeeNames(input);
+  chart.data.forEach((row,i)=>{
+    const e=input.employees[i];
+    const minutes=recordedMinutes(e);
+    assert.equal(row.title,
+      String(i+1).padStart(2,'0')+' · '+labels[i]+' · '+
+      (minutes?formatRecordedMinutes(minutes):'—'));
+    assert.deepEqual(row.data,[
+      {legend:'Ca sáng',value:Math.round(shiftTotalMinutes(e,'morning')/6)/10,
+        color:'categoricalTeal'},
+      {legend:'Ca chiều',value:Math.round(shiftTotalMinutes(e,'afternoon')/6)/10,
+        color:'categoricalGreen'}
+    ]);
+  });
+  assert.equal(input.employees[0].total,'Chưa chốt');
+  assert.ok(chart.data[0].title.includes('10h57'));
+  assert.ok(!chart.data[0].title.includes('Chưa chốt'));
 });
 
-test('zero-hour employees remain zero in morning and afternoon native charts',()=>{
+test('zero-hour employees remain with two zero-valued stacked segments',()=>{
   const source=structuredClone(input);
   source.employees[2].morning='—';
   source.employees[2].afternoon='—';
-  assert.equal(consolidatedShiftChart(source).data[2].y,0);
-  assert.equal(consolidatedAfternoonChart(source).data[2].y,0);
+  const chart=consolidatedDailyShiftChart(source);
+  assert.equal(chart.data[2].data[0].value,0);
+  assert.equal(chart.data[2].data[1].value,0);
+  assert.equal(chart.data[2].title.endsWith(' · —'),true);
   assert.equal(consolidatedWorkdayChart(source).data[2].y,0);
 });
 
@@ -135,7 +142,7 @@ test('four small colored KPI cards remain legible and source-bound',()=>{
   });
 });
 
-test('daily tab selection starts in vertical mode and exposes secondary workdays',()=>{
+test('daily tab selection starts with one stacked chart and exposes converted workdays',()=>{
   const card=buildNativeCard(input,directory);
   assert.equal(section(card,'chart-shift').isVisible,true);
   assert.equal(section(card,'chart-workday').isVisible,false);
@@ -188,8 +195,8 @@ test('QA enforces Microsoft Entra account bindings, chart data and payload budge
   const card=buildNativeCard(input,directory);
   const qa=auditCard(card,input,directory);
   assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS');
-  assert.equal(ROW_VISUAL_REVISION,'V24_MOBILE_HORIZONTAL_SHIFT_BARS_2026_10_08');
-  assert.equal(qa.chart_count,3);
+  assert.equal(ROW_VISUAL_REVISION,'V24_MOBILE_SINGLE_STACKED_SHIFTS_2026_10_08');
+  assert.equal(qa.chart_count,2);
   assert.equal(qa.graph_persona_count,0);
   assert.equal(qa.native_microsoft_personas,false);
   assert.equal(qa.verified_Entra_account_count,8);
@@ -202,10 +209,15 @@ test('QA enforces Microsoft Entra account bindings, chart data and payload budge
   assert.equal(qa.selector_count,0);
   assert.equal(qa.detail_interaction,'one_collapsible_full_day_details');
   assert.deepEqual(all(card).filter(x=>x.type.startsWith('Chart.')).map(x=>x.type),
-    ['Chart.HorizontalBar','Chart.HorizontalBar','Chart.HorizontalBar']);
-  assert.equal(qa.shift_chart_count,2);
-  assert.equal(qa.shift_chart_type,'Chart.HorizontalBar');
-  assert.equal(qa.afternoon_chart_type,'Chart.HorizontalBar');
+    ['Chart.HorizontalBar','Chart.HorizontalBar.Stacked']);
+  assert.equal(qa.chart_architecture,
+    'single_native_stacked_morning_afternoon_bar_per_employee');
+  assert.equal(qa.daily_single_stacked_shift_chart,true);
+  assert.equal(JSON.stringify(card).includes('shift-daypart-tabs'),false);
+  assert.equal(JSON.stringify(card).includes('workforce-afternoon-chart'),false);
+  assert.equal(qa.shift_chart_count,1);
+  assert.equal(qa.shift_chart_type,'Chart.HorizontalBar.Stacked');
+  assert.equal(qa.afternoon_chart_type,null);
   assert.equal(qa.workday_chart_type,'Chart.HorizontalBar');
   assert.equal(qa.kpi_tile_min_height,'84px');
   assert.equal(qa.kpi_icon_strategy,'semantic_color_dot_no_native_icon');
@@ -229,6 +241,9 @@ test('tampered compact attendance or chart data is rejected before sending',()=>
   const corrupt=buildNativeCard(input,directory);
   section(corrupt,'chart-workday').items[1].data[0].y=99;
   assert.throws(()=>auditCard(corrupt,input,directory),/Layout\/data mismatch/);
+  const stacked=buildNativeCard(input,directory);
+  section(stacked,'chart-shift').items[1].data[0].data[1].value=99;
+  assert.throws(()=>auditCard(stacked,input,directory),/Stacked shift source mismatch/);
   const bad=buildNativeCard(input,directory);
   rows(bad)[0].items[1].text='forged hours';
   assert.throws(()=>auditCard(bad,input,directory),/Daily compact row missing source attendance field|Layout\/data mismatch/);

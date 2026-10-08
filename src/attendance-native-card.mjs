@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
-export const ROW_VISUAL_REVISION = 'V24_MOBILE_HORIZONTAL_SHIFT_BARS_2026_10_08';
+export const ROW_VISUAL_REVISION = 'V24_MOBILE_SINGLE_STACKED_SHIFTS_2026_10_08';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
 const fail = message => { throw new Error('NATIVE_CARD_GATE: ' + message); };
@@ -182,37 +182,27 @@ export function consolidatedShiftChart(s) {
   };
 }
 
-export function consolidatedAfternoonChart(s) {
-  if(scopeOf(s)==='morning')fail('Afternoon chart forbidden in morning report');
-  const labels=verticalEmployeeNames(s);
+// One employee per stacked bar: morning teal + afternoon green.
+// Retain exact source total in the category label to avoid ambiguity from
+// native chart values rounded to a tenth of an hour.
+export function consolidatedDailyShiftChart(s) {
+  if(scopeOf(s)==='morning')fail('Daily stacked chart forbidden in morning scope');
+  const names=verticalEmployeeNames(s);
   return {
-    type:'Chart.HorizontalBar',id:'workforce-afternoon-chart',
-    isVisible:false,color:'categoricalGreen',showTitle:false,showLegend:false,
-    showBarValues:true,displayMode:'AbsoluteNoAxis',spacing:'None',
+    type:'Chart.HorizontalBar.Stacked',id:'workforce-shift-chart',
+    showTitle:false,showLegend:true,showBarValues:true,
+    spacing:'None',
     data:s.employees.map((e,i)=>({
-      x:String(i+1).padStart(2,'0')+' · '+labels[i],
-      y:chartHours(shiftTotalMinutes(e,'afternoon')),
-      color:'categoricalGreen'
+      title:String(i+1).padStart(2,'0')+' · '+names[i]+' · '+
+        (recordedMinutes(e)>0?formatRecordedMinutes(recordedMinutes(e)):'—'),
+      data:[
+        {legend:'Ca sáng',value:chartHours(shiftTotalMinutes(e,'morning')),
+          color:'categoricalTeal'},
+        {legend:'Ca chiều',value:chartHours(shiftTotalMinutes(e,'afternoon')),
+          color:'categoricalGreen'}
+      ]
     })),
     fallback:chartFallback()
-  };
-}
-
-export function shiftDaypartTabs() {
-  return {
-    type:'ActionSet',id:'shift-daypart-tabs',spacing:'Small',
-    actions:[
-      {type:'Action.ToggleVisibility',title:'Sáng',
-        targetElements:[
-          {elementId:'workforce-shift-chart',isVisible:true},
-          {elementId:'workforce-afternoon-chart',isVisible:false}
-        ]},
-      {type:'Action.ToggleVisibility',title:'Chiều',
-        targetElements:[
-          {elementId:'workforce-shift-chart',isVisible:false},
-          {elementId:'workforce-afternoon-chart',isVisible:true}
-        ]}
-    ]
   };
 }
 
@@ -486,11 +476,11 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
         items:[
           text(scopeOf(s)==='morning'
             ?'CA SÁNG · Giờ xác nhận'
-            :'THỜI LƯỢNG THEO CA · Giờ',
+            :'CẢ NGÀY · Xanh ngọc: Sáng · Xanh lá: Chiều',
             {size:'Small',weight:'Bolder',color:'Accent'}),
-          ...(scopeOf(s)==='morning'?[]:[shiftDaypartTabs()]),
-          consolidatedShiftChart(s),
-          ...(scopeOf(s)==='morning'?[]:[consolidatedAfternoonChart(s)])
+          ...(scopeOf(s)==='morning'
+            ?[consolidatedShiftChart(s)]
+            :[consolidatedDailyShiftChart(s)])
         ]
       },
       ...(scopeOf(s)==='morning'?[]:[dailyCompactDetails(s,directory)])
@@ -528,30 +518,31 @@ export function auditCard(card,source,directory,avatarUrls={}) {
   walk(card);
   const isMorning=scopeOf(source)==='morning';
   const count=types.filter(t=>t.startsWith('Chart.')).length;
-  if(count!==(isMorning?2:3))fail('Wrong number of native charts');
+  if(count!==2)fail('Expected one shift chart and one converted workday chart');
   const panel=card.body.find(x=>x.id==='chart-shift');
   const shift=panel?.items?.find(x=>x.id==='workforce-shift-chart');
-  const afternoon=panel?.items?.find(x=>x.id==='workforce-afternoon-chart');
   const workday=card.body.find(x=>x.id==='chart-workday')?.items?.[1];
-  if(shift?.type!=='Chart.HorizontalBar'||workday?.type!=='Chart.HorizontalBar')
-    fail('Native chart orientation mismatch');
-  if(isMorning){
-    if(afternoon)fail('Morning report must have no afternoon chart');
-  }else{
-    if(afternoon?.type!=='Chart.HorizontalBar'||afternoon.isVisible!==false)
-      fail('Afternoon chart must be hidden initially');
-    const expected=verticalEmployeeNames(source);
+  if(workday?.type!=='Chart.HorizontalBar' ||
+     shift?.type!==(isMorning?'Chart.HorizontalBar':'Chart.HorizontalBar.Stacked'))
+    fail('Native chart type mismatch');
+  if(panel?.items.some(x=>x.id==='workforce-afternoon-chart'||x.id==='shift-daypart-tabs'))
+    fail('Duplicate chart or daypart selector forbidden');
+  if(!isMorning){
+    if(shift.showLegend!==true || shift.data.length!==8)
+      fail('Stacked shift chart must contain eight rows and one legend');
+    const labels=verticalEmployeeNames(source);
     for(let i=0;i<source.employees.length;i++){
-      const p=afternoon.data[i],lead=shift.data[i];
-      const label=String(i+1).padStart(2,'0')+' · '+expected[i];
-      if(!p||p.x!==label||lead.x!==label||
-        p.y!==chartHours(shiftTotalMinutes(source.employees[i],'afternoon'))||
-        lead.y!==chartHours(shiftTotalMinutes(source.employees[i],'morning'))||
-        p.color!=='categoricalGreen'||lead.color!=='categoricalTeal')
-        fail('Shift source chart mismatch');
+      const e=source.employees[i],r=shift.data[i];
+      const title=String(i+1).padStart(2,'0')+' · '+labels[i]+' · '+e.total;
+      const expected=[
+        {legend:'Ca sáng',value:chartHours(shiftTotalMinutes(e,'morning')),
+          color:'categoricalTeal'},
+        {legend:'Ca chiều',value:chartHours(shiftTotalMinutes(e,'afternoon')),
+          color:'categoricalGreen'}
+      ];
+      if(r?.title!==title || JSON.stringify(r.data)!==JSON.stringify(expected))
+        fail('Stacked shift source mismatch');
     }
-    const tabs=panel.items.find(x=>x.id==='shift-daypart-tabs');
-    if(tabs?.actions?.length!==2)fail('Daily chart missing shift selection');
   }
   if(types.filter(t=>t==='Image').length!==0)
     fail('Manually composed account images not allowed');
@@ -615,15 +606,15 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     image_avatar_count:types.filter(t=>t==='Image').length,
     data_gate:'passed',
     chart_architecture:morning?'horizontal_workdays_horizontal_morning':
-      'compact_horizontal_shift_bars_toggle_with_full_day_details',
-    shift_chart_type:'Chart.HorizontalBar',
-    afternoon_chart_type:morning?null:'Chart.HorizontalBar',
+      'single_native_stacked_morning_afternoon_bar_per_employee',
+    shift_chart_type:morning?'Chart.HorizontalBar':'Chart.HorizontalBar.Stacked',
+    afternoon_chart_type:null,
     workday_chart_type:'Chart.HorizontalBar',
     horizontal_label_mode:'indexed_shortest_unique_source_name_suffix',
     full_names_in_workday:true,
     inline_chart_details:morning,
     custom_chart_tooltips:false,
-    shift_chart_count:morning?1:2,
+    shift_chart_count:1,
     workday_chart_count:1,
     avatar_directory_count:0,
     native_account_row_count:0,
@@ -639,11 +630,11 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     detail_interaction:morning?'source_attendance_in_chart_labels':'one_collapsible_full_day_details',
     detail_buttons:0,
     details_hidden_by_default:true,
-    daily_horizontal_shift_default:!morning,
+    daily_single_stacked_shift_chart:!morning,
     footer_notes:false,
     repeated_legends:false,
     palette:'categoricalBlue_categoricalGreen_good_warning_emphasis',
-    shift_legend:morning?'hidden_morning_only':'short_buttons_sang_chieu',
+    shift_legend:morning?'hidden_morning_only':'one_native_legend_for_both_shifts',
     native_microsoft_charts_only:true,
     chart_full_names:'workdays_full_shift_compact_with_index',
     native_charts_visible_per_tab:1,

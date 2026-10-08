@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "design-preview-daily_2105-2026-10-07-20261008-185223-entra",
+  "request_id": "design-preview-daily_2105-2026-10-07-20261008-190136-vertical",
   "slot": "daily_2105",
   "target_date": "2026-10-07",
-  "requested_at": "2026-10-08T18:52:23+07:00",
-  "reason": "user requested full-day yesterday TEST preview; after Teams explicit 400 rejected unsupported interactive Graph Persona, use source-verified Entra text accounts, complete morning/afternoon sessions, balanced KPI and native grouped vertical chart. Distinct receipt, one bounded retry, do not alter production.",
+  "requested_at": "2026-10-08T19:01:36+07:00",
+  "reason": "Final bounded user-requested TEST preview for full day 07/10/2026: after confirmed Teams HTTP 400 rejections of grouped chart and Persona, use verified Entra names/UPNs, two separately selectable simple native vertical shift charts, horizontally plotted converted work, legible compact KPI grid, original source, independent preview ledger; preserve production sent receipt.",
   "delivery": {
     "enabled": false
   }

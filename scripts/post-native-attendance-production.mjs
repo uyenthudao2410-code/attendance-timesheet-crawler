@@ -1,7 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import sharp from 'sharp';
-
 import {
   LAYOUT, TEST_CHAT, buildNativeCard, auditCard, digest
 } from '../src/attendance-native-card.mjs';
@@ -25,8 +23,7 @@ async function delegatedToken(){
     scope:[
       'offline_access',
       'https://graph.microsoft.com/ChatMessage.Send',
-      'https://graph.microsoft.com/User.Read',
-      'https://graph.microsoft.com/ProfilePhoto.Read.All'
+      'https://graph.microsoft.com/User.Read'
     ].join(' ')
   });
   const secret=String(process.env.MS_CLIENT_SECRET||'').trim();
@@ -42,67 +39,9 @@ async function delegatedToken(){
   return token;
 }
 
-async function appToken(){
-  const secret=String(process.env.MS_CLIENT_SECRET||'').trim();
-  if(!secret)return '';
-  const form=new URLSearchParams({
-    client_id:required('MS_CLIENT_ID'),
-    client_secret:secret,
-    grant_type:'client_credentials',
-    scope:'https://graph.microsoft.com/.default'
-  });
-  const res=await request(
-    'https://login.microsoftonline.com/'+encodeURIComponent(required('MS_TENANT_ID'))+'/oauth2/v2.0/token',
-    {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form},
-    {retrySafe:true}
-  );
-  if(!res.ok)return '';
-  return String((await res.json()).access_token||'');
-}
-
-async function profilePhotos(source,directory,delegatedHeaders){
-  const result={};
-  let appHeaders=null;
-  let appAttempted=false;
-
-  for(const e of source.employees){
-    const user=directory[e.name];
-    if(!user)throw new Error('PROFILE_DIRECTORY_MISSING_'+e.name);
-    const url=GRAPH+'/users/'+encodeURIComponent(user.id)+'/photos/48x48/$value';
-    let res=await request(url,{headers:delegatedHeaders},{retrySafe:true});
-    let mode='delegated';
-
-    if([401,403].includes(res.status)){
-      if(!appAttempted){
-        appAttempted=true;
-        const token=await appToken();
-        if(token)appHeaders={Authorization:'Bearer '+token};
-      }
-      if(appHeaders){
-        res=await request(url,{headers:appHeaders},{retrySafe:true});
-        mode='application';
-      }
-    }
-
-    if(res.status===404)throw new Error('PROFILE_PHOTO_MISSING_'+user.userPrincipalName);
-    if(!res.ok)throw new Error('PROFILE_PHOTO_HTTP_'+res.status+'_'+user.userPrincipalName);
-
-    const type=String(res.headers.get('content-type')||'').toLowerCase().split(';')[0].trim();
-    if(!['image/jpeg','image/png'].includes(type))throw new Error('PROFILE_PHOTO_CONTENT_TYPE_'+type);
-
-    const raw=Buffer.from(await res.arrayBuffer());
-    const optimized=await sharp(raw)
-      .resize(36,36,{fit:'cover',position:'centre'})
-      .jpeg({quality:60,mozjpeg:true,chromaSubsampling:'4:2:0'})
-      .toBuffer();
-    if(!optimized.length||optimized.length>2600)throw new Error('PROFILE_PHOTO_SIZE_'+optimized.length);
-    result[e.name]='data:image/jpeg;base64,'+optimized.toString('base64');
-    console.log('ATTENDANCE_NATIVE_PROFILE_PHOTO='+user.userPrincipalName+':OK:'+mode+':'+raw.length+'->'+optimized.length);
-  }
-
-  if(Object.keys(result).length!==source.employees.length)throw new Error('PROFILE_PHOTO_COUNT_MISMATCH');
-  return result;
-}
+// User images and account labels are now rendered directly by the Teams
+// Microsoft Graph Persona component. No photo downloads or recomposition.
+// Publisher only authenticates the sending account and posts the card.
 
 const slot=required('ATTENDANCE_RUN_SLOT');
 const date=required('TARGET_DATE');
@@ -150,15 +89,17 @@ if(String(me.userPrincipalName||me.mail||'').toLowerCase()!==EXPECTED_USER){
   throw new Error('UNEXPECTED_DELEGATED_USER');
 }
 
-const avatarUrls=await profilePhotos(source,directory,headers);
-const card=buildNativeCard(source,directory,avatarUrls);
-const qa=auditCard(card,source,directory,avatarUrls);
-if(qa.graph_avatar_count!==8)throw new Error('GRAPH_AVATAR_GATE_FAILED');
+const card=buildNativeCard(source,directory);
+const qa=auditCard(card,source,directory);
+if(qa.graph_persona_count!==8 || qa.image_avatar_count!==0 ||
+   qa.native_microsoft_personas!==true)
+  throw new Error('MICROSOFT_NATIVE_PERSONA_GATE_FAILED');
 
 console.log('ATTENDANCE_NATIVE_PROD_LAYOUT='+LAYOUT);
 if(preview)console.log('ATTENDANCE_NATIVE_PREVIEW_MODE=LIVE_DATA_SEPARATE_LEDGER');
 console.log('ATTENDANCE_NATIVE_PROD_PAYLOAD_BYTES='+qa.bytes);
-console.log('ATTENDANCE_NATIVE_PROD_GRAPH_AVATARS='+qa.graph_avatar_count);
+console.log('ATTENDANCE_NATIVE_PROD_GRAPH_PERSONAS='+qa.graph_persona_count);
+console.log('ATTENDANCE_NATIVE_PROD_MANUAL_AVATARS='+qa.image_avatar_count);
 
 let receipt=await store.write(ledgerPath,{
   schema_version:1,
@@ -170,7 +111,9 @@ let receipt=await store.write(ledgerPath,{
   status:'sending',
   source_report_sha256:digest(JSON.stringify(report)),
   card_sha256:qa.card_sha256,
-  graph_avatar_count:qa.graph_avatar_count,
+  graph_persona_count:qa.graph_persona_count,
+  native_microsoft_personas:true,
+  graph_avatar_count:0,
   publisher_run_id:process.env.GITHUB_RUN_ID,
   target_chat_id:TEST_CHAT,
   claimed_at:new Date().toISOString()

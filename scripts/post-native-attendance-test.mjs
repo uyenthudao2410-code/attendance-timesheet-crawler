@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import {buildNativeCard, auditCard, sourceDigest, digest, LAYOUT, TEST_CHAT} from '../src/attendance-native-card.mjs';
 import {createRepoStore, request} from '../src/attendance-delivery-io.mjs';
-import sharp from 'sharp';
 
 const TRIGGER = '.github/attendance-native-card-test-trigger.json';
 const FIXTURE = 'test/fixtures/attendance-native-card-input.json';
@@ -14,91 +13,8 @@ const required = name => {
   return value;
 };
 
-async function getAppToken() {
-  const secret=String(process.env.MS_CLIENT_SECRET || '').trim();
-  if (!secret) return '';
-  const form=new URLSearchParams({
-    client_id:required('MS_CLIENT_ID'),
-    client_secret:secret,
-    grant_type:'client_credentials',
-    scope:'https://graph.microsoft.com/.default'
-  });
-  const response=await request(
-    `https://login.microsoftonline.com/${encodeURIComponent(required('MS_TENANT_ID'))}/oauth2/v2.0/token`,
-    {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form},
-    {retrySafe:true}
-  );
-  if (!response.ok) return '';
-  return String((await response.json()).access_token || '');
-}
-
-async function fetchProfilePhotos(source,directory,delegatedHeaders) {
-  const avatarUrls={};
-  let appHeaders=null;
-  let appTokenAttempted=false;
-  let realPhotoCount=0;
-  let fallbackCount=0;
-
-  for (const e of source.employees) {
-    const user=directory[e.name];
-    const url=`${GRAPH}/users/${encodeURIComponent(user.id)}/photos/48x48/\$value`;
-
-    let response=await request(url,{headers:delegatedHeaders},{retrySafe:true});
-    let authMode='delegated';
-
-    if ([401,403].includes(response.status)) {
-      if (!appTokenAttempted) {
-        appTokenAttempted=true;
-        const appToken=await getAppToken();
-        if (appToken) appHeaders={Authorization:`Bearer ${appToken}`};
-      }
-      if (appHeaders) {
-        response=await request(url,{headers:appHeaders},{retrySafe:true});
-        authMode='application';
-      }
-    }
-
-    if (response.status===404) {
-      fallbackCount++;
-      console.log(`ATTENDANCE_AVATAR_PHOTO=${user.userPrincipalName}:NO_PHOTO`);
-      continue;
-    }
-
-    if (!response.ok) {
-      console.log(`ATTENDANCE_AVATAR_PHOTO=${user.userPrincipalName}:HTTP_${response.status}`);
-      if ([401,403].includes(response.status)) {
-        throw new Error('PROFILE_PHOTO_PERMISSION_REQUIRED');
-      }
-      throw new Error(`PROFILE_PHOTO_HTTP_${response.status}`);
-    }
-
-    const contentType=String(response.headers.get('content-type') || '').toLowerCase().split(';')[0].trim();
-    if (!['image/jpeg','image/png'].includes(contentType)) {
-      throw new Error(`PROFILE_PHOTO_CONTENT_TYPE_${contentType || 'missing'}`);
-    }
-    const bytes=Buffer.from(await response.arrayBuffer());
-    if (!bytes.length || bytes.length>12000) throw new Error(`PROFILE_PHOTO_SIZE_INVALID_${bytes.length}`);
-
-    const optimized=await sharp(bytes)
-      .resize(36,36,{fit:'cover',position:'centre'})
-      .jpeg({quality:60,mozjpeg:true,chromaSubsampling:'4:2:0'})
-      .toBuffer();
-
-    if (!optimized.length || optimized.length>2600) {
-      throw new Error(`PROFILE_PHOTO_OPTIMIZED_SIZE_INVALID_${optimized.length}`);
-    }
-
-    avatarUrls[e.name]=`data:image/jpeg;base64,${optimized.toString('base64')}`;
-    realPhotoCount++;
-    console.log(
-      `ATTENDANCE_AVATAR_PHOTO=${user.userPrincipalName}:OK:${authMode}:${bytes.length}->${optimized.length}`
-    );
-  }
-
-  console.log(`ATTENDANCE_AVATAR_REAL_COUNT=${realPhotoCount}`);
-  console.log(`ATTENDANCE_AVATAR_FALLBACK_COUNT=${fallbackCount}`);
-  return avatarUrls;
-}
+// Microsoft Graph Persona components render identity and photo natively in Teams.
+// The test publisher must not fetch, crop or embed profile pictures.
 
 let stage='input';
 
@@ -190,13 +106,12 @@ async function main() {
     throw new Error('UNEXPECTED_DELEGATED_USER');
   }
 
-  stage='profile_photos';
-  const avatarUrls=await fetchProfilePhotos(source,directory,headers);
-
   stage='card_build';
-  const card=buildNativeCard(source,directory,avatarUrls);
+  const card=buildNativeCard(source,directory);
   console.log(`ATTENDANCE_NATIVE_RAW_PAYLOAD_BYTES=${Buffer.byteLength(JSON.stringify(card))}`);
-  const qa=auditCard(card,source,directory,avatarUrls);
+  const qa=auditCard(card,source,directory);
+  if(qa.graph_persona_count!==8 || qa.native_microsoft_personas!==true ||
+     qa.image_avatar_count!==0)throw new Error('MICROSOFT_NATIVE_PERSONA_GATE_FAILED');
   fs.mkdirSync('output-native',{recursive:true});
   fs.writeFileSync('output-native/card.json',JSON.stringify(card,null,2)+'\n');
   fs.writeFileSync('output-native/qa.json',JSON.stringify(qa,null,2)+'\n');
@@ -204,7 +119,7 @@ async function main() {
   console.log(`ATTENDANCE_NATIVE_DATA_GATE=${qa.data_gate}`);
   console.log(`ATTENDANCE_NATIVE_CARD_SHA256=${qa.card_sha256}`);
   console.log(`ATTENDANCE_NATIVE_PAYLOAD_BYTES=${qa.bytes}`);
-  console.log(`ATTENDANCE_NATIVE_GRAPH_AVATARS=${qa.graph_avatar_count}`);
+  console.log(`ATTENDANCE_NATIVE_GRAPH_PERSONAS=${qa.graph_persona_count}`);
 
   stage='claim';
   let receipt=await store.write(ledgerPath,{
@@ -218,7 +133,8 @@ async function main() {
     card_sha256:qa.card_sha256,
     layout_version:LAYOUT,
     source_kind:'design_test_fixture',
-    graph_avatar_count:qa.graph_avatar_count,
+    graph_persona_count:qa.graph_persona_count,
+    graph_avatar_count:0,
     publisher_run_id:process.env.GITHUB_RUN_ID,
     render_qa:'pending_designer_and_real_teams_clients',
     claimed_at:new Date().toISOString()

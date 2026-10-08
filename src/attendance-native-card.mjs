@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
-export const ROW_VISUAL_REVISION = 'V24_INDEXED_HIDDEN_PROFILES_2026_10_08';
+export const ROW_VISUAL_REVISION = 'V24_GRAPH_NATIVE_PERSONA_ACCOUNTS_2026_10_08';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
 const fail = message => { throw new Error('NATIVE_CARD_GATE: ' + message); };
@@ -108,27 +108,7 @@ const sectionTitle=(iconName,label)=>({
   ]
 });
 
-const AVATAR_PNG = {
-  "Điêu Văn Mạnh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAACgklEQVR42tWYv0vjYBjHv3kT7tqS0gvocbQHV2/Ru9lNBX/uHQQHHQQHhU6Ogjg46SIu/Q/USRwdDMVBnMRJuKOC1549h6NHa0iatkeS3hB8uWpsmzZJ03fKQ5L3+fB93p9fwOeN6baDxcVv9VbfHB5+ZTwFbAfKKVjGK7BOQUkv4Oz0x3gNZldN0mu4VnlIr+Fa5SN+gGuWl8DnjfhFvdfyEz/BWXH0T4n9ot5znv6bJL48bjUrbyIxgPn5QRprWh2qaqBQ+IubmzJEsQRJ0uj71dUoJiYiNN7Y+IF8vkbjkZEQNjc/0fj0tIijo9/OKJhKPWBlJYOdnZ+QZR2JxAB2dz9jeDj06j+zs0JDPDcnuFtiXa/j/r6Gvb08stkqeJ7F+vpHhMOs5fdjYxEEg2YaQeAwOhr2ZgwaBiCKRQAAz7OYnn6pTDZbRSBAMD5ulnxmRgDLMri7q3gzSXK5Kn22KvPZWZGWleMYTE29AwCIYskZwK2teMMESSZjODj4glDILGelYtB3PP+yq+trBaWShmj0LZaXPyAS4ZDP15DJqM4Abm/ncHxcaJgkS0vfoao6ANCxBQCKYlgMgzrSaVOtyUn76nVd4qGhIH2+vbVW5fz8EZpmrmKqauDyUvIGkGUZumQoik6Vet4kScPVlQwAuLh4RK1m2MrDPd0J2t2LWZZBLPYGCwvvEY8HIMs69vd/QZb1putnKvXQ0V2Fs/NDMhnD2lod5bK5k5yc/EE63biTuOYs+O0086QgccKecPMq2l/HLb+o+D8HcdKJcsNl6M8Tda9UtMpLOjF0vDSQSKeuk1fuVtsAbizk7QhAnOzMaThbCjqlpqsedaew3aj/DxHeEPav2x1MAAAAAElFTkSuQmCC",
-  "Nguyễn Thị Thục Anh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAACfklEQVR42t2Y30tTYRjHP+d1c2vHraxZxjR3Zs4y7aJMISiI7oISicqyJt2E/Qkh/aKg2+66CrorFbqrLryLhFKicIURW9IEs3KaZtEP2bqYDdc2z3a2s511rg48z3mfD9+H5z3P84DBHynnE27djar6nD8pFRYwE6g8wUoFA9MIKooCl8V5UsHBslRTFB1OJY4oOpxKPGEIuFXiCgz+CMOolya+MBRcCo4SSrFR1PuHpwSLxJDtlkp67xxop6dRAWDkU5j2+0Nx25XWZi63NgPQMvCIV7PzcZvTamHK14FZxHQYDE5yfGhYXwXbNm6gU6nJyPdUQ10cDuCI28U6S7n+Kb7ethMhqfcZPq8bgIVfvwGwlAlO1G/RFzD84ydNlQ5ON9St6re90sHuqvUA3PS/JbT4PQFaN8AbL8YBuLqnhXKR/vMerxJ/vxd4z2AwBMDeaidb11boB3j7zTsC84u47TLnmupTHypJdHtjCvtnvzA+t8BAcDJuP7MCPu+AS5EIF0fHAOjbtQObyZTkc9C1iRrZBkB/IBSv/omv35YB3RnPGpqKpD8Q4uXMHNU2K2e3KWmL429BRXu7iPZ2odhlABS7zL7NVRnFMmkBjAJ9I34eHNqP02pJsFWYTXR6YtfQpVE/156/TrBPdB/GbZfxNSo8/vA5QwU1zK0PQ1M8mU4OcNRTi7yc9lT24ekZAI55alljKlOdVXL61V14OpY2vUuRKM8+hlMAxqAd5WY63K4spjqjdTNJCuawntBzFC2xdssoKq7gEPncROmxZSjRjrpYKqaIK7QsdAq5QBJat06FgEu8qHPYQOkBln2R5FvNDM/7z3bUWmFzUP8PMXXCE5pzmC0AAAAASUVORK5CYII=",
-  "Vũ Đình Tuệ": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAACFUlEQVR42tWYTUsbQRjHfzu1bVSCL6n4SostVoq9hFqpCtJbb/XmwW9QoT1VEHvzQ/gRxGvxUOihl/SFxFoFpaCghYJKKlmjWN0kza4HNWbVutkkuzN5TgM7zPOb/zPP7DMPKG5aqQuMjS5YTnOmZ55ovgIWAlUuWM0vsGJBhQw4N+tpfoO5VVPIhnPyI2TDOfkTKsBd51eguAlV1Puff6ES3FUclRNiVdS7yFN5SaJkueUU3jeTXXT3BDFNi3evV9hPZmzfXwy38HKkDYCUYXI74LzvqfGfxLcMx3lVhewiFtHp7gkihEZvfwOfPvyxfX862AiAcZRlYmyZTNoE4HG4jldvHwDwcS7O+9lNb0K8OL9LOmXaYM6s4141re0BAH5Ekzk4X89gyjBZmk8CcLezhua2wCX1AKKRhLwkiX7Wc+O+UyhNg97+k3FiJ8366oE8wNWVfZJ6xqZa16Mg9Y03c+pZlsRrxrIg9uVExVDTLe4/rLWFN5ansLR7MJZ3xgae3yHcVw/AxtpfduIp+YDbmwa/fx0C8GwoRHXNjdPzmcArE26fgtGInksQgH8Zi4Vvu569VVz/6r5/1clmz7NheXGPo8Os950F1aqZSwqW0p7w8ilaWeWWKirmc4hSmztedxkqs6KWpeJVfkUxDR2/4BxD7BfkdX4KBvDiIi9EAFHOxcoN50rBcqnpaY+6WNhS1D8GUhzY1x+VTfQAAAAASUVORK5CYII=",
-  "Bùi Duy Hoàng": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAABxklEQVR42tWYv0/CQBTHv3dAo0RNiNHFyUGZjPEH+gf4NxgTf4R/QBMX3Y2JS0f9AxyKiZubi3HQkeLkhEw6aGBQaQy1wNWBEEGB0qPXXi/p0Pb1vU+/7+7y7gGSDzKog/dd2E42iTP+OEQUlFewxC8wXlAaBJwbf8RvMLdq0qDhnOLQoOGc4lEZ4HrFpZB8UFnU6xafygTXiSM8KZZFvb884VskUpZbTumNb59DWU23PbOtL7BSAdWHS5g3KsBq/2wNNYX6s/7rJ61BWd5qvDuZQ/310REw6vaPDDWF+ksOytIm4mkNkal5kHgClatDiVJs27D0DGyzDACILaxLPgdJRBhglA+IQFncABkaAwBU9Qt5AEcPsm33rPSE77vTvmx9SbGhpvCxR1A+ToKVCqATMxjZvweJDXe1bV6WnvFvDrJiHlZWazgZn0Y0uSbhIiEtn0di4gB5zq10chbKyk5j1zGKqOVvhZxV+BcJq4GV32BlNZjXR7Arn2I7C7JVM00FqRftCZFH0XCVW7Ko2MpBB23uiO4yhLOiDkrFTnEpT0PHLzjHFPsF2StO3wAiNvJ+BKBeOvMazpWCXqkptEfNCzuI+j+lQaYQg4kcZgAAAABJRU5ErkJggg==",
-  "Nguyễn Thành Long": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAABnklEQVR42tWYzytEURTHv/eOUYaSSJSFzWxeJqQhjaSXlZ3sJLKg/AXSSyiSlYWFKZFY+QcsyOaZhZiFUEqTUqNBXrNjI89G8mO83+++8+7yvdP5fvqe7u2cAxA/zHWGFUU3jZleYmIBrUB5BMuEgTkE5YHA2cjHhIPZdJMHDmeiwwOHM9HjJOAMdDmIH07GvX/0OSm4EhwhKjEV937xhPCSkGy3LJR3e2AIYy3tAIDTQh5du+mvf/MpGXMpGQCQ2FrD1fPjj/jkzjqyD/fiHOxsbMJgXKJd4sXefnDGaAJqry+QausxIrXRBFw+UQEACz0yyiMReoCbF1nkihqaq2sw2ZqkB/imv2M2cwQAULr7EItG6V2SvetLnD8V0FBZhfFEBz1AHToU9RAAUFcR8xnQ4dy6f3uDTP7O11mlzG2OGfUAx8MThjFno1N/vsU3VpErajamOmrdzKeD3Iv1hJ+jaMjaLSoufuPgTncmorYMIe2og3KxhC63EywazrzEoiANdKwD+PGQWzCAe5nMazh7Dnrlpq87aqewLtz/AE3lhV3ptPwbAAAAAElFTkSuQmCC",
-  "Trần Thanh Bình": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAB3UlEQVR42tWYu0vDcBDHv/m1tUWqUnRQUPpwEPGBnRWhdBBUKii66eagf4K6qrjVqSA4qJsO1goFXQQFcarWUnDqY9FB42CqVltaJx+Vtkma1y+/KQnJ3Yfv3YW7Ayg/jFQDy/bdIt87q+k5RlVAIVBywTJqgdUKSrSAE2OPURtMrJpEazg+P0RrOD5/hAa4an4JKD+EFvUq+Sc0wZXj0E+IaVHvP4/+ioTKdosvvEvXM6i3mXmNbXpDGF7sgXuqs+T551sez2kOseMULrbiKOSFZ5NRyEtr7v2f6y5vO2a3PQCA80AcpxuRit8FfGHcx1j0Tzgx7R9Ca7cNlqY6nKxH6AlxsQhEg0l8ZHIAgN4xO905SAziemSj4knOAH3jDpitJgBANJiiB3AhNFpyzyY5XO3c0RPigC+MFcce/J4jsCkOzc4GzB+MwGQx0JWDT8kXRIMJAICtwwrXYBt9RcIwv8VhMBJxgFLmViGnxdmIgUkXAOCVzSJx+SB4VlGlSAr5IjKP77g5TOBs8xZZLid+Lqatm/lWkMixnlByFNVXu0WLin85iNTljtJbBn121FqpWM4vqWWhoxYcb4jVgqzmRzCAEj9yIQIQOY3JDSdKQbnUVHRHXSusFPW/AOYztM1gM5c9AAAAAElFTkSuQmCC",
-  "Lê Thị Phương Linh": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAA/klEQVR42mNgGOSAkVIDLD1X/yek5vj2UEa6OpAYR1HLsYz0chi5DmUaCMeRYh4jvR1GamgyDbTjCNnDNNCOI2Qf02BwHD57mRgGOWAaLKGHy36mweQ4bO4YOlE8WEIP3T1DL5MMyuYWsdFbU2TK4OUiz8DAwMCQlL+X4cbt9xSpGxYhOOrAUQeOOnDUgfRwICX9Vlr3VVjI1TxvojOGWFjKDoYnz76QpY5gr26wtWZgIchEjeEJWnZFh1YuHiyhiOwOJlJ6+fR23NAtqAcqFLHZy0SKYno7jmAU08uR+Owh2gG0KMiJCQAmahpGbceRFILUCk2ajlGT61hKQh8AsVd1YBxT2bcAAAAASUVORK5CYII=",
-  "Lê Đăng Hiếu": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAABE0lEQVR42u2YMQoCMRBFf4a9iiCidl5BrMRWLCw8gQew8gB2goWwoOBhtLS0FxHFG2hjIbJukt1kMpFNPcx//MmEzADCjyqdYb54amNmU8ULaALlCFaxgRUEpSBwFvkUO5ilmxQcTqNDweE0eiQCLkeXIPyQGPd+6JMouAyOiEosxb0vngibROR3y6C8ab+LcbsBAOisdzicL9Zx20EPo2YdANBabXC83uJ3sAL8e8DEZ/L9ZCgbMK+LqzvIC1hibvU9qySuLn9tmeJ0f3jcLEj7zbwdJBfrCZ+jaGRdLMXFDw6ymfK54SJ+qEO5mKFLNsHccPoSc0Hm6JgD+HjIDQwgl8lcw9k56MpNrzvqorAl3H8By5ZlXkEF6G0AAAAASUVORK5CYII="
-};
-
-function avatarImage(e,avatarUrls={}) {
-  return {
-    type:'Image',
-    url:avatarUrls[e.name] || AVATAR_PNG[e.name],
-    altText:'',
-    style:'Person',
-    height:'36px',
-    horizontalAlignment:'Center'
-  };
-}
+// Microsoft Teams resolves official Microsoft 365 user accounts from Entra ID.
 
 export function overviewStatusChart(s) {
   const closed=s.employees.filter(e=>displayStatus(e)==='Đã ghi nhận').length;
@@ -169,7 +149,7 @@ export function consolidatedShiftChart(s) {
       const morning=shiftTotalMinutes(e,'morning');
       const afternoon=morningOnly?0:shiftTotalMinutes(e,'afternoon');
       return {
-        title:String(i+1).padStart(2,'0')+' · '+e.name,
+        title:e.name,
         data:(morning===0 && afternoon===0
           ?[{legend:'Ca sáng',value:0,color:'categoricalBlue'}]
           :[
@@ -194,7 +174,7 @@ export function consolidatedWorkdayChart(s) {
     color:'categoricalBlue',
     spacing:'None',
     data:s.employees.map((e,i)=>({
-      x:String(i+1).padStart(2,'0')+' · '+e.name,
+      x:e.name,
       y:workdaysFromMinutes(morningOnly
         ? shiftTotalMinutes(e,'morning'):recordedMinutes(e)),
       color:'categoricalBlue'
@@ -228,69 +208,93 @@ export function workforceScales(s) {
 
 // Native charts cannot attach a different selectAction to each data point.
 // This compact index selector uses only local Adaptive Card visibility actions.
+
 export function employeeSelectionTargets(s,index) {
   if(!Number.isInteger(index)||index<0||index>=s.employees.length)
     fail('Invalid employee index');
-  return [
-    {elementId:'h',isVisible:false},
-    {elementId:'z',isVisible:true},
-    ...s.employees.map((e,j)=>({elementId:'p'+(j+1),isVisible:j===index}))
-  ];
+  return s.employees.map((e,j)=>({elementId:'p'+(j+1),isVisible:j===index}));
 }
 
-export function employeeDetailPanel(s,e,i,directory,avatarUrls={}) {
+// Native account: Teams controls picture, display name, profile behavior,
+// and Microsoft account styling. Never fabricate an image or reconstruct an
+// email label. The Entra GUID and UPN come from the validated directory.
+export function microsoftNativeAccount(e,directory) {
+  const user=directory[e.name];
+  if(!user)fail('Microsoft directory user missing: '+e.name);
+  return {
+    type:'Component',name:'graph.microsoft.com/user',view:'compact',
+    properties:{
+      id:user.id,
+      displayName:user.displayName,
+      userPrincipalName:user.userPrincipalName
+    }
+  };
+}
+
+export function employeeDetailPanel(s,e,index) {
   const morningOnly=scopeOf(s)==='morning';
   const minutes=morningOnly?shiftTotalMinutes(e,'morning'):recordedMinutes(e);
-  const avatar=avatarImage(e,avatarUrls);
-  avatar.height='54px';
-  const sessions=v=>compactShift(v).replace(/; /g,'\n');
+  const session=v=>compactShift(v).replace(/; /g,'\n');
   return {
-    type:'Container',id:'p'+(i+1),isVisible:false,style:'emphasis',
-    items:[
-      {type:'ColumnSet',columns:[
-        {type:'Column',width:'58px',items:[avatar]},
-        {type:'Column',width:'stretch',items:[
-          text(e.name,{size:'Medium',weight:'Bolder'}),
-          text(directory[e.name].userPrincipalName,{size:'Small',isSubtle:true}),
-          text(e.status,{size:'Small',color:statusColor(e)})
-        ]}
-      ]},
-      text('CA SÁNG · Giờ vào – ra · Thời lượng: '+sessions(e.morning)+
-        (morningOnly?'':'\nCA CHIỀU · Giờ vào – ra · Thời lượng: '+sessions(e.afternoon))+
-        '\nTỔNG NGUỒN: '+e.total+
-        ' · Từ bản ghi: '+(minutes?formatRecordedMinutes(minutes):'—')+
-        ' · '+formatWorkdays(minutes),{size:'Small'})
+    type:'Container',id:'p'+(index+1),isVisible:false,
+    style:'emphasis',roundedCorners:true,spacing:'Small',items:[
+      rich([
+        inline('Trạng thái: ',{isSubtle:true}),
+        inline(e.status,{color:statusColor(e),weight:'Bolder'}),
+        inline(' · '+formatWorkdays(minutes),{color:'Accent',weight:'Bolder'})
+      ]),
+      text('CA SÁNG · Giờ vào–ra · Thời lượng\n'+session(e.morning),
+        {size:'Small'}),
+      ...(morningOnly?[]:[
+        text('CA CHIỀU · Giờ vào–ra · Thời lượng\n'+session(e.afternoon),
+          {size:'Small'})
+      ]),
+      text('Tổng nguồn: '+e.total+
+        ' · Ghi nhận: '+(minutes?formatRecordedMinutes(minutes):'—'),
+        {size:'Small',isSubtle:true}),
+      {
+        type:'ActionSet',spacing:'None',actions:[{
+          type:'Action.ToggleVisibility',title:'Thu gọn',
+          targetElements:[{elementId:'p'+(index+1),isVisible:false}]
+        }]
+      }
     ]
   };
 }
 
-export function employeeSelector(s) {
+export function employeeAccountRow(s,e,index,directory) {
+  const targetElements=employeeSelectionTargets(s,index);
+  const action={type:'Action.ToggleVisibility',targetElements};
   return {
-    type:'Container',id:'sel',items:[
-      text('Chọn số 01–08 dưới biểu đồ để xem hồ sơ.',{size:'Small',isSubtle:true}),
-      ...[0,1].map(row=>({
-        type:'ActionSet',actions:s.employees.slice(row*4,row*4+4).map((e,j)=>({
-          type:'Action.ToggleVisibility',
-          title:String(row*4+j+1).padStart(2,'0'),
-          targetElements:employeeSelectionTargets(s,row*4+j)
-        }))
-      }))
-    ]
+    type:'Container',id:'account-row-'+(index+1),
+    spacing:index?'Small':'None',
+    separator:index>0,
+    selectAction:action,
+    items:[{
+      type:'ColumnSet',spacing:'None',columns:[
+        {type:'Column',width:'stretch',
+          items:[microsoftNativeAccount(e,directory)]},
+        {type:'Column',width:'auto',verticalContentAlignment:'Center',
+          items:[{
+            type:'Icon',name:'ChevronDown',size:'Small',color:'Accent',
+            selectAction:action,
+            fallback:'drop'
+          }]
+        }
+      ]
+    }]
   };
 }
 
-export function employeeDetails(s,directory,avatarUrls={}) {
+export function employeeAccountList(s,directory) {
   return {
-    type:'Container',id:'details',items:[
-      text('Chưa chọn nhân sự.',{id:'h',size:'Small'}),
-      ...s.employees.map((e,i)=>employeeDetailPanel(s,e,i,directory,avatarUrls)),
-      {type:'ActionSet',id:'z',isVisible:false,actions:[{
-        type:'Action.ToggleVisibility',title:'Thu gọn',
-        targetElements:[
-          {elementId:'h',isVisible:true},{elementId:'z',isVisible:false},
-          ...s.employees.map((e,i)=>({elementId:'p'+(i+1),isVisible:false}))
-        ]
-      }]}
+    type:'Container',id:'microsoft-account-list',spacing:'Small',items:[
+      text('TÀI KHOẢN MICROSOFT 365 · Chạm vào tài khoản để xem chấm công',
+        {size:'Small',weight:'Bolder',color:'Accent'}),
+      ...s.employees.flatMap((e,i)=>[
+        employeeAccountRow(s,e,i,directory),
+        employeeDetailPanel(s,e,i)
+      ])
     ]
   };
 }
@@ -403,8 +407,7 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
           consolidatedShiftChart(s)
         ]
       },
-      employeeSelector(s),
-      employeeDetails(s,directory,avatarUrls)
+      employeeAccountList(s,directory)
     ]
   };
 }
@@ -439,21 +442,32 @@ export function auditCard(card,source,directory,avatarUrls={}) {
   walk(card);
   if(types.filter(t=>t.startsWith('Chart.')).length!==2)
     fail('Expected exactly two Microsoft native charts');
-  if(types.filter(t=>t==='Image').length!==8)
-    fail('Expected eight hidden profile photos');
-  const sel=card.body.find(x=>x.id==='sel');
-  const panels=card.body.find(x=>x.id==='details');
-  if(!sel||!panels||sel.items.filter(x=>x.type==='ActionSet').length!==2)
-    fail('Missing numbered selector');
-  if(panels.items.filter(x=>/^p[1-8]$/.test(x.id||'')).length!==8)
-    fail('Missing employee profiles');
+  if(types.filter(t=>t==='Image').length!==0)
+    fail('Manually composed account images not allowed');
+  if(types.filter(t=>t==='Component').length!==8)
+    fail('Exactly eight native Microsoft Graph personas required');
+  const list=card.body.find(x=>x.id==='microsoft-account-list');
+  if(!list || list.items.filter(x=>/^account-row-[1-8]$/.test(x.id||'')).length!==8 ||
+    list.items.filter(x=>/^p[1-8]$/.test(x.id||'')).length!==8)
+    fail('Missing native account row or hidden attendance panel');
+  for(let i=0;i<8;i++){
+    const row=list.items.find(x=>x.id==='account-row-'+(i+1));
+    const expected=directory[source.employees[i].name];
+    const persona=row?.items?.[0]?.columns?.[0]?.items?.[0];
+    if(persona?.type!=='Component'||persona?.name!=='graph.microsoft.com/user'||
+       persona?.view!=='compact'||
+       JSON.stringify(persona.properties)!==JSON.stringify({
+         id:expected.id,displayName:expected.displayName,
+         userPrincipalName:expected.userPrincipalName
+       }))fail('Native Microsoft account mismatch');
+  }
 
   if (json!==JSON.stringify(buildNativeCard(source,directory,avatarUrls))) fail('Layout/data mismatch');
 
   return {
     layout_version:LAYOUT,
     visual_revision:ROW_VISUAL_REVISION,
-    source_kind:'design_test_fixture',
+    source_kind:'native_graph_persona_attendance',
     target_date:source.target_date,
     source_data_sha256:sourceDigest(source),
     card_sha256:digest(json),
@@ -464,19 +478,20 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     persona_component_count:types.filter(t=>t==='Component').length,
     image_avatar_count:types.filter(t=>t==='Image').length,
     data_gate:'passed',
-    chart_architecture:'native_charts_with_exclusive_index_profile',
+    chart_architecture:'native_charts_with_microsoft_graph_persona_rows',
     shift_chart_count:1,
     workday_chart_count:1,
     avatar_directory_count:0,
+    native_account_row_count:source.employees.length,
     profile_panel_count:source.employees.length,
-    selector_count:source.employees.length,
+    selector_count:0,
     exclusive_profile_selection:true,
-    avatar_alignment:'only_in_expanded_profile',
+    avatar_alignment:'native_graph_persona_in_account_row',
     shift_row_values:'exact_source_morning_and_afternoon_durations',
     workday_chart_layout:'single_chart_with_full_name_categories',
     bar_component:'Chart.HorizontalBar',
     legend_scope:'once_per_chart',
-    detail_interaction:'number_selection_shows_exclusive_profile',
+    detail_interaction:'native_account_row_tap_exclusive_attendance_panel',
     detail_buttons:0,
     details_hidden_by_default:true,
     footer_notes:false,
@@ -491,9 +506,10 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     chart_scales:workforceScales(source),
     chart_mode_toggle_targets:4,
     chart_point_select_action_supported:false,
-    native_microsoft_personas:false,
-    avatar_render:Object.keys(avatarUrls).length ? 'graph_profile_photo' : 'embedded_png_fallback',
-    graph_avatar_count:source.employees.filter(e=>Boolean(avatarUrls[e.name])).length,
+    native_microsoft_personas:true,
+    avatar_render:'microsoft_graph_native_persona',
+    graph_avatar_count:0,
+    graph_persona_count:types.filter(t=>t==='Component').length,
     external_chart_requests:0,
     image_generation:false,
     render_qa:'pending_real_teams_client'

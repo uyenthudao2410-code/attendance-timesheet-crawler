@@ -33,29 +33,29 @@ test('workday values use only recorded minutes',()=>{
  assert.equal(shiftTotalMinutes(input.employees[0],'morning'),290);
  assert.equal(sessionMinutes(input.employees[6].afternoon).length,0);
 });
-test('native overview and native workday charts remain Microsoft elements',()=>{
+test('workday bars are Microsoft ProgressBar elements using exact source minutes',()=>{
  assert.equal(overviewStatusChart(input).type,'Chart.HorizontalBar.Stacked');
  const scales=workforceScales(input);
  assert.deepEqual(scales,{shift:12,workday:1.5});
- input.employees.forEach((employee,i)=>{
-  const c=employeeNativeBar(employee,i,'workday',scales.workday);
-  assert.equal(c.type,'Chart.HorizontalBar.Stacked');
-  assert.equal(c.showLegend,false);
-  assert.equal(c.showBarValues,undefined);
-  assert.equal(c.id,'workday-employee-bar-'+(i+1));
-  const total=c.data[0].data.reduce((n,x)=>n+x.value,0);
-  assert.equal(Number(total.toFixed(2)),scales.workday);
+ input.employees.forEach((e,i)=>{
+  const bar=employeeNativeBar(e,i,'workday',scales.workday);
+  assert.equal(bar.type,'ProgressBar');
+  assert.equal(bar.id,'workday-employee-bar-'+(i+1));
+  assert.equal(bar.max,100);
+  assert.equal(bar.value,Math.round(workdaysFromMinutes(recordedMinutes(e))/scales.workday*100));
  });
 });
-test('shift bar is a compact colored native text segment using exact hours',()=>{
- const b=employeeShiftBar(input.employees[0],0,12,'daily');
- assert.equal(b.type,'RichTextBlock');
- assert.equal(b.id,'shift-metric-1');
- assert.ok(b.inlines[0].text.includes('Sáng 4h50'));
- assert.ok(b.inlines[0].text.includes('Chiều 6h07'));
- assert.ok(b.inlines.some(x=>x.color==='Accent'));
- assert.ok(b.inlines.some(x=>x.color==='Good'));
+test('shift bar preserves session hours with compact contrasting tracks',()=>{
+ const bar=employeeShiftBar(input.employees[0],0,12,'daily');
+ assert.equal(bar.type,'RichTextBlock');
+ assert.equal(bar.id,'shift-metric-1');
+ assert.equal(bar.isVisible,false);
+ assert.ok(bar.inlines[0].text.includes('Sáng 4h50'));
+ assert.ok(bar.inlines[0].text.includes('Chiều 6h07'));
+ assert.ok(bar.inlines.some(v=>v.color==='Accent'&&v.text.includes('▰')));
+ assert.ok(bar.inlines.some(v=>v.color==='Good'&&v.text.includes('▰')));
 });
+
 test('avatar, charts and hidden details share the same employee ColumnSet',()=>{
  const card=buildNativeCard(input,directory);
  assert.equal(rows(card).length,8);
@@ -76,14 +76,20 @@ test('avatar, charts and hidden details share the same employee ColumnSet',()=>{
  });
  assert.equal(walk(card).filter(x=>x.type==='Image').length,8);
 });
-test('tabs toggle only sixteen metric views, never the avatars',()=>{
- const actions=buildNativeCard(input,directory).body.find(x=>x.id==='chart-view-toggle').actions;
+test('Công quy đổi is shown by default, tabs toggle only metric content',()=>{
+ const card=buildNativeCard(input,directory);
+ const actions=card.body.find(x=>x.id==='chart-view-toggle').actions;
  assert.equal(actions.length,2);
+ assert.equal(actions[1].style,'positive');
  assert.equal(actions[0].targetElements.length,16);
  assert.equal(actions[1].targetElements.length,16);
  assert.equal(actions[0].targetElements.find(x=>x.elementId==='shift-metric-3').isVisible,true);
  assert.equal(actions[1].targetElements.find(x=>x.elementId==='workday-metric-3').isVisible,true);
+ const views=rows(card)[0].items[0].columns[1].items;
+ assert.equal(views[0].isVisible,false);
+ assert.equal(views[1].isVisible,undefined);
 });
+
 test('real Microsoft Graph photos are not duplicated in the card',()=>{
  const avatars=Object.fromEntries(input.employees.map(e=>[e.name,'data:image/jpeg;base64,/9j/2Q==']));
  const card=buildNativeCard(input,directory,avatars);
@@ -107,14 +113,17 @@ test('V24 audit stays below Teams card 27KB and locks the row layout',()=>{
  const card=buildNativeCard(input,directory);
  const qa=auditCard(card,input,directory);
  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS');
- assert.equal(ROW_VISUAL_REVISION,'V24_ROW_LOCKED_COMPACT_2026_10_08');
+ assert.equal(ROW_VISUAL_REVISION,'V24_NATIVE_PROGRESS_MOBILE_2026_10_08');
  assert.equal(qa.visual_revision,ROW_VISUAL_REVISION);
- assert.equal(qa.workday_chart_count,8);
+ assert.equal(qa.workday_chart_count,0);
+ assert.equal(qa.progress_bar_count,8);
  assert.equal(qa.shift_chart_count,0);
- assert.equal(qa.chart_architecture,'row_locked_native_workday_chart_compact_shift_bars');
+ assert.equal(qa.chart_architecture,'one_native_progress_per_employee_row');
+ assert.equal(qa.bar_component,'ProgressBar');
  assert.equal(qa.avatar_alignment,'same_columnset_per_employee_row');
  assert.equal(qa.native_microsoft_charts_only,true);
- assert.equal(walk(card).filter(x=>x.type==='Chart.HorizontalBar.Stacked').length,9);
+ assert.equal(walk(card).filter(x=>x.type==='Chart.HorizontalBar.Stacked').length,1);
+ assert.equal(walk(card).filter(x=>x.type==='ProgressBar').length,8);
  assert.ok(qa.bytes<27000);
 });
 test('budget passes with eight realistic-sized simulated Graph avatars',()=>{
@@ -125,7 +134,7 @@ test('budget passes with eight realistic-sized simulated Graph avatars',()=>{
 });
 test('tampered native chart values and invalid employee mapping fail closed',()=>{
  const card=buildNativeCard(input,directory);
- rows(card)[0].items[0].columns[1].items[1].items[1].data[0].data[0].value=99;
+ rows(card)[0].items[0].columns[1].items[1].items[1].value=99;
  assert.throws(()=>auditCard(card,input,directory),/Layout\/data mismatch/);
  const invalid=structuredClone(directory);
  invalid[input.employees[0].name].id='wrong';

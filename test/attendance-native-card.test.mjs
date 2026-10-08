@@ -6,7 +6,7 @@ import {
   validateDirectory,sourceDigest,durationMinutes,recordedMinutes,
   sessionMinutes,shiftTotalMinutes,formatRecordedMinutes,formatWorkdays,
   workdaysFromMinutes,consolidatedShiftChart,consolidatedWorkdayChart,
-  employeeSelectionTargets,attendanceChartLabel,microsoftNativeAccount,
+  employeeSelectionTargets,attendanceChartLabel,verticalEmployeeNames,microsoftNativeAccount,
   employeeDetailPanel,employeeAccountList
 } from '../src/attendance-native-card.mjs';
 
@@ -67,28 +67,49 @@ test('workday native Chart.HorizontalBar labels use full names, not index shortc
   });
 });
 
-test('shift native Chart.HorizontalBar.Stacked preserves morning/afternoon original values',()=>{
-  const ch=consolidatedShiftChart(input);
-  assert.equal(ch.type,'Chart.HorizontalBar.Stacked');
-  assert.equal(ch.data.length,8);
-  assert.equal(ch.showLegend,true);
-  ch.data.forEach((row,i)=>{
-    const e=input.employees[i];
-    assert.equal(row.title,e.name);
-    assert.equal(row.data.find(x=>x.legend==='Ca sáng')?.value||0,
-      Math.round(shiftTotalMinutes(e,'morning')/6)/10);
-    assert.equal(row.data.find(x=>x.legend==='Ca chiều')?.value||0,
-      Math.round(shiftTotalMinutes(e,'afternoon')/6)/10);
+test('daily Theo ca is an eight-employee grouped VERTICAL chart with two shifts',()=>{
+  const chart=consolidatedShiftChart(input);
+  assert.equal(chart.type,'Chart.VerticalBar.Grouped');
+  assert.equal(chart.colorSet,'categorical');
+  assert.equal(chart.stacked,false);
+  assert.equal(chart.yAxisTitle,'Giờ');
+  assert.equal(chart.showLegend,true);
+  assert.equal(chart.showBarValues,true);
+  assert.deepEqual(chart.data.map(series=>series.legend),['Ca sáng','Ca chiều']);
+  const labels=verticalEmployeeNames(input);
+  assert.equal(new Set(labels).size,8);
+  chart.data.forEach((series,shiftIndex)=>{
+    assert.equal(series.values.length,8);
+    series.values.forEach((p,i)=>{
+      const e=input.employees[i];
+      assert.equal(p.x,labels[i]);
+      assert.ok(e.name.endsWith(p.x));
+      assert.equal(p.y,Math.round(shiftTotalMinutes(
+        e,shiftIndex===0?'morning':'afternoon')/6)/10);
+    });
   });
 });
 
-test('zero-hour employee retains a zero source-bound chart category',()=>{
+test('zero-hour employee remains zero in both grouped vertical shift series',()=>{
   const source=structuredClone(input);
   source.employees[2].morning='—';
   source.employees[2].afternoon='—';
-  assert.deepEqual(consolidatedShiftChart(source).data[2].data,
-    [{legend:'Ca sáng',value:0,color:'categoricalBlue'}]);
+  const chart=consolidatedShiftChart(source);
+  assert.equal(chart.data[0].values[2].y,0);
+  assert.equal(chart.data[1].values[2].y,0);
   assert.equal(consolidatedWorkdayChart(source).data[2].y,0);
+});
+
+test('short vertical labels preserve source name suffixes and resolve collisions',()=>{
+  assert.deepEqual(verticalEmployeeNames(input),[
+    'Mạnh','Anh','Tuệ','Hoàng','Long','Bình','Linh','Hiếu'
+  ]);
+  const sample=structuredClone(input);
+  sample.employees[1].name='Nguyễn Quốc Mạnh';
+  const labels=verticalEmployeeNames(sample);
+  assert.equal(labels[0],'Văn Mạnh');
+  assert.equal(labels[1],'Quốc Mạnh');
+  assert.equal(new Set(labels).size,8);
 });
 
 test('four small colored KPI cards remain legible and source-bound',()=>{
@@ -97,12 +118,23 @@ test('four small colored KPI cards remain legible and source-bound',()=>{
   const tiles=[...overview.items[0].columns,...overview.items[1].columns]
     .map(x=>x.items[0]);
   assert.deepEqual(tiles.map(x=>x.style),['good','emphasis','warning','good']);
-  assert.deepEqual(tiles.map(x=>x.items[1].text),[
+  assert.deepEqual(tiles.map(x=>x.items[0].columns[1].items[1].text),[
     input.total_hours,
     formatWorkdays(durationMinutes(input.total_hours)),
     formatWorkdays(input.employees.reduce((n,e)=>n+shiftTotalMinutes(e,'morning'),0)),
     input.rate
   ]);
+  tiles.forEach(tile=>{
+    assert.equal(tile.minHeight,'76px');
+    assert.equal(tile.verticalContentAlignment,'Center');
+    const cols=tile.items[0].columns;
+    assert.equal(cols[0].width,'28px');
+    assert.equal(cols[1].width,'stretch');
+    assert.equal(cols[0].verticalContentAlignment,'Center');
+    assert.equal(cols[1].verticalContentAlignment,'Center');
+    assert.equal(cols[1].items[0].spacing,'None');
+    assert.equal(cols[1].items[1].spacing,'Small');
+  });
 });
 
 test('the two native charts switch tabs without modifying account visibility',()=>{
@@ -219,6 +251,7 @@ test('morning-only report hides afternoon source and shows morning-only workdays
       .reduce((n,e)=>n+durationMinutes(e.total),0)
   );
   const card=buildNativeCard(morning,directory);
+  assert.equal(section(card,'chart-shift').items[1].type,'Chart.VerticalBar');
   assert.equal(section(card,'chart-shift').items[1].showLegend,false);
   assert.ok(!JSON.stringify(section(card,'chart-shift')).includes('Ca chiều'));
   assert.equal(section(card,'microsoft-account-list'),undefined);
@@ -233,7 +266,10 @@ test('morning-only report hides afternoon source and shows morning-only workdays
   for(let i=0;i<8;i++){
     const e=morning.employees[i],expected=attendanceChartLabel(e,'morning');
     assert.equal(section(card,'chart-workday').items[1].data[i].x,expected);
-    assert.equal(section(card,'chart-shift').items[1].data[i].title,expected);
+    const p=section(card,'chart-shift').items[1].data[i];
+    assert.equal(p.x,verticalEmployeeNames(morning)[i]);
+    assert.equal(p.y,Math.round(shiftTotalMinutes(e,'morning')/6)/10);
+    assert.equal(p.color,'categoricalTeal');
     assert.ok(expected.includes(e.name)&&expected.includes(e.status));
     assert.ok(expected.includes(e.morning==='—'?'—':e.morning.slice(0,5)));
   }
@@ -243,7 +279,7 @@ test('QA enforces Microsoft-native persona identity, chart data and payload budg
   const card=buildNativeCard(input,directory);
   const qa=auditCard(card,input,directory);
   assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS');
-  assert.equal(ROW_VISUAL_REVISION,'V24_INLINE_MORNING_CHART_DETAILS_2026_10_08');
+  assert.equal(ROW_VISUAL_REVISION,'V24_BALANCED_KPI_VERTICAL_SHIFTS_2026_10_08');
   assert.equal(qa.chart_count,2);
   assert.equal(qa.graph_persona_count,8);
   assert.equal(qa.native_microsoft_personas,true);
@@ -253,7 +289,10 @@ test('QA enforces Microsoft-native persona identity, chart data and payload budg
   assert.equal(qa.selector_count,0);
   assert.equal(qa.detail_interaction,'native_account_row_tap_exclusive_attendance_panel');
   assert.deepEqual(all(card).filter(x=>x.type.startsWith('Chart.')).map(x=>x.type),
-    ['Chart.HorizontalBar','Chart.HorizontalBar.Stacked']);
+    ['Chart.HorizontalBar','Chart.VerticalBar.Grouped']);
+  assert.equal(qa.shift_chart_type,'Chart.VerticalBar.Grouped');
+  assert.equal(qa.workday_chart_type,'Chart.HorizontalBar');
+  assert.equal(qa.kpi_tile_min_height,'76px');
   assert.ok(qa.bytes<27000);
 });
 
@@ -309,14 +348,19 @@ test('morning chart renders every session and source status inline without extra
   const card=buildNativeCard(morning,directory);
   assert.equal(section(card,'microsoft-account-list'),undefined);
   const bars=section(card,'chart-workday').items[1].data;
-  const shifts=section(card,'chart-shift').items[1].data;
+  const shift=section(card,'chart-shift').items[1];
+  assert.equal(shift.type,'Chart.VerticalBar');
+  assert.equal(shift.color,'categoricalTeal');
   assert.equal(bars.length,8);
   bars.forEach((bar,i)=>{
     const e=morning.employees[i];
     assert.equal(bar.x,e.name+' · '+e.morning.replace(/ \((\d+h\d{2})\)/g,' · $1')+' · '+e.status);
-    assert.equal(shifts[i].title,bar.x);
+    assert.equal(shift.data[i].x,verticalEmployeeNames(morning)[i]);
+    assert.equal(shift.data[i].y,Math.round(shiftTotalMinutes(e,'morning')/6)/10);
     assert.equal(bar.y,workdaysFromMinutes(shiftTotalMinutes(e,'morning')));
   });
-  assert.equal(auditCard(card,morning,directory).chart_architecture,
-    'native_chart_inline_full_morning_details');
+  const qa=auditCard(card,morning,directory);
+  assert.equal(qa.chart_architecture,'horizontal_workdays_vertical_morning');
+  assert.equal(qa.shift_chart_type,'Chart.VerticalBar');
+  assert.equal(qa.kpi_tile_min_height,'76px');
 });

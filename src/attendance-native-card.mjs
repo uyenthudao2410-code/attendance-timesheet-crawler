@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
-export const ROW_VISUAL_REVISION = 'V24_INLINE_MORNING_CHART_DETAILS_2026_10_08';
+export const ROW_VISUAL_REVISION = 'V24_BALANCED_KPI_VERTICAL_SHIFTS_2026_10_08';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
 const fail = message => { throw new Error('NATIVE_CARD_GATE: ' + message); };
@@ -142,28 +142,50 @@ export function attendanceChartLabel(e,scope) {
   return scope==='morning'
     ?e.name+' · '+compactShift(e.morning)+' · '+e.status:e.name;
 }
+// Full source names and punch times remain in horizontal Công quy đổi.
+// For eight vertical columns, use the shortest unique suffix of each name.
+export function verticalEmployeeNames(s) {
+  const words=s.employees.map(e=>e.name.trim().split(/\s+/));
+  const depths=words.map(()=>1);
+  for(let pass=0;pass<20;pass++){
+    const labels=words.map((w,i)=>w.slice(-depths[i]).join(' '));
+    const counts=new Map();
+    labels.forEach(x=>counts.set(x,(counts.get(x)||0)+1));
+    if(labels.every(x=>counts.get(x)===1))return labels;
+    let advanced=false;
+    labels.forEach((x,i)=>{
+      if(counts.get(x)>1&&depths[i]<words[i].length){depths[i]++;advanced=true;}
+    });
+    if(!advanced)fail('Vertical employee names are ambiguous');
+  }
+  fail('Too many vertical label resolution steps');
+}
 export function consolidatedShiftChart(s) {
   const morningOnly=scopeOf(s)==='morning';
+  const axis=verticalEmployeeNames(s);
+  if(morningOnly)return {
+    type:'Chart.VerticalBar',id:'workforce-shift-chart',
+    color:'categoricalTeal',showTitle:false,showLegend:false,showBarValues:true,
+    yAxisTitle:'Giờ',spacing:'None',
+    data:s.employees.map((e,i)=>({
+      x:axis[i],y:chartHours(shiftTotalMinutes(e,'morning')),
+      color:'categoricalTeal'
+    })),
+    fallback:chartFallback()
+  };
   return {
-    type:'Chart.HorizontalBar.Stacked',
-    id:'workforce-shift-chart',
-    showTitle:false,
-    showLegend:!morningOnly,
-    showBarValues:true,
-    spacing:'None',
-    data:s.employees.map((e,i)=>{
-      const morning=shiftTotalMinutes(e,'morning');
-      const afternoon=morningOnly?0:shiftTotalMinutes(e,'afternoon');
-      return {
-        title:attendanceChartLabel(e,scopeOf(s)),
-        data:(morning===0 && afternoon===0
-          ?[{legend:'Ca sáng',value:0,color:'categoricalBlue'}]
-          :[
-            ...(morning>0?[{legend:'Ca sáng',value:chartHours(morning),color:'categoricalBlue'}]:[]),
-            ...(afternoon>0?[{legend:'Ca chiều',value:chartHours(afternoon),color:'categoricalGreen'}]:[])
-          ])
-      };
-    }),
+    type:'Chart.VerticalBar.Grouped',id:'workforce-shift-chart',
+    colorSet:'categorical',stacked:false,
+    showTitle:false,showLegend:true,showBarValues:true,
+    yAxisTitle:'Giờ',spacing:'None',
+    data:[
+      {legend:'Ca sáng',values:s.employees.map((e,i)=>({
+        x:axis[i],y:chartHours(shiftTotalMinutes(e,'morning'))
+      }))},
+      {legend:'Ca chiều',values:s.employees.map((e,i)=>({
+        x:axis[i],y:chartHours(shiftTotalMinutes(e,'afternoon'))
+      }))}
+    ],
     fallback:chartFallback()
   };
 }
@@ -320,20 +342,20 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
     {label:'Tỷ lệ ghi nhận',value:s.rate,style:'good',color:'Good',icon:'CheckmarkCircle'}
   ];
   const kpiTile=({label,value,style,color,icon})=>({
-    type:'Column',width:1,items:[{
-      type:'Container',style,roundedCorners:true,items:[
-        {
-          type:'ColumnSet',spacing:'None',columns:[
-            {type:'Column',width:'auto',items:[
-              {type:'Icon',name:icon,size:'Small',color,fallback:'drop'}
-            ]},
-            {type:'Column',width:'stretch',items:[
-              text(label,{size:'Small',weight:'Bolder'})
+    type:'Column',width:1,verticalContentAlignment:'Center',items:[{
+      type:'Container',style,roundedCorners:true,minHeight:'76px',
+      verticalContentAlignment:'Center',items:[{
+        type:'ColumnSet',spacing:'None',verticalContentAlignment:'Center',
+        columns:[
+          {type:'Column',width:'28px',verticalContentAlignment:'Center',
+            items:[{type:'Icon',name:icon,size:'Medium',color,fallback:'drop'}]},
+          {type:'Column',width:'stretch',verticalContentAlignment:'Center',
+            items:[
+              text(label,{size:'Small',weight:'Bolder',spacing:'None'}),
+              text(String(value),{size:'Medium',weight:'Bolder',color,spacing:'Small'})
             ]}
-          ]
-        },
-        text(String(value),{size:'Medium',weight:'Bolder',color,spacing:'None'})
-      ]
+        ]
+      }]
     }]
   });
 
@@ -354,8 +376,8 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
         {size:'Small',isSubtle:true,spacing:'Small'}),
       {
         type:'Container',id:'overview',spacing:'Small',items:[
-          {type:'ColumnSet',spacing:'Small',columns:kpis.slice(0,2).map(kpiTile)},
-          {type:'ColumnSet',spacing:'Small',columns:kpis.slice(2).map(kpiTile)},
+          {type:'ColumnSet',spacing:'ExtraSmall',columns:kpis.slice(0,2).map(kpiTile)},
+          {type:'ColumnSet',spacing:'ExtraSmall',columns:kpis.slice(2).map(kpiTile)},
           text(k.total+' nhân sự · '+k.with_record+' có dữ liệu · '+
             k.closed+' đã chốt · '+(k.total-k.closed)+' chưa chốt',
             {size:'Small',isSubtle:true,spacing:'Small'})
@@ -407,9 +429,10 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
         type:'Container',id:'chart-shift',style:'emphasis',
         isVisible:false,roundedCorners:true,spacing:'Small',
         items:[
-          text(scopeOf(s)==='morning'?'Thời lượng ca sáng':
-            'Thời lượng theo ca · Xanh dương: sáng · Xanh lá: chiều',
-            {size:'Small',weight:'Bolder',color:'Accent'}),
+          text(scopeOf(s)==='morning'
+            ?'CỘT XANH NGỌC · Thời lượng ca sáng (giờ)'
+            :'CỘT NHÓM · So sánh ca sáng và ca chiều (giờ)',
+            {size:'Small',weight:'Bolder',color:'Good'}),
           consolidatedShiftChart(s)
         ]
       },
@@ -433,7 +456,7 @@ export function auditCard(card,source,directory,avatarUrls={}) {
       if (ids.has(v.id)) fail('Duplicate element id');
       ids.add(v.id);
     }
-    if (['TabSet','Accordion','Chart.VerticalBar','Chart.VerticalBar.Grouped'].includes(v.type)) {
+    if (['TabSet','Accordion'].includes(v.type)) {
       fail('External or nonmobile visual forbidden');
     }
     if (v.type==='Image') {
@@ -448,6 +471,12 @@ export function auditCard(card,source,directory,avatarUrls={}) {
   walk(card);
   if(types.filter(t=>t.startsWith('Chart.')).length!==2)
     fail('Expected exactly two Microsoft native charts');
+  const requiredShiftType=scopeOf(source)==='morning'
+    ?'Chart.VerticalBar':'Chart.VerticalBar.Grouped';
+  const shift=card.body.find(x=>x.id==='chart-shift')?.items?.[1];
+  const workday=card.body.find(x=>x.id==='chart-workday')?.items?.[1];
+  if(shift?.type!==requiredShiftType||workday?.type!=='Chart.HorizontalBar')
+    fail('Native chart orientation mismatch');
   if(types.filter(t=>t==='Image').length!==0)
     fail('Manually composed account images not allowed');
   const morning=scopeOf(source)==='morning';
@@ -499,8 +528,12 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     persona_component_count:types.filter(t=>t==='Component').length,
     image_avatar_count:types.filter(t=>t==='Image').length,
     data_gate:'passed',
-    chart_architecture:morning?'native_chart_inline_full_morning_details':
-      'native_charts_with_microsoft_graph_persona_rows',
+    chart_architecture:morning?'horizontal_workdays_vertical_morning':
+      'horizontal_workdays_grouped_vertical_shifts',
+    shift_chart_type:morning?'Chart.VerticalBar':'Chart.VerticalBar.Grouped',
+    workday_chart_type:'Chart.HorizontalBar',
+    vertical_label_mode:'shortest_unique_source_name_suffix',
+    full_names_in_workday:true,
     inline_chart_details:morning,
     custom_chart_tooltips:false,
     shift_chart_count:1,
@@ -523,9 +556,11 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     palette:'categoricalBlue_categoricalGreen_good_warning_emphasis',
     shift_legend:scopeOf(source)==='morning'?'hidden_morning_only':'once_per_stacked_chart',
     native_microsoft_charts_only:true,
-    chart_full_names:true,
+    chart_full_names:'horizontal_full_vertical_compact',
     native_charts_visible_per_tab:1,
     compact_kpi_tile_count:4,
+    kpi_tile_min_height:'76px',
+    kpi_text_alignment:'icon_left_label_and_value_same_column',
     row_lock:true,
     chart_scales:workforceScales(source),
     chart_mode_toggle_targets:4,

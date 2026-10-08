@@ -6,7 +6,7 @@ import {
   validateDirectory,sourceDigest,durationMinutes,recordedMinutes,
   sessionMinutes,shiftTotalMinutes,formatRecordedMinutes,formatWorkdays,
   workdaysFromMinutes,consolidatedShiftChart,consolidatedWorkdayChart,
-  employeeSelectionTargets,microsoftNativeAccount,
+  employeeSelectionTargets,attendanceChartLabel,microsoftNativeAccount,
   employeeDetailPanel,employeeAccountList
 } from '../src/attendance-native-card.mjs';
 
@@ -221,10 +221,22 @@ test('morning-only report hides afternoon source and shows morning-only workdays
   const card=buildNativeCard(morning,directory);
   assert.equal(section(card,'chart-shift').items[1].showLegend,false);
   assert.ok(!JSON.stringify(section(card,'chart-shift')).includes('Ca chiều'));
-  assert.ok(!JSON.stringify(panels(card)).includes('CA CHIỀU'));
+  assert.equal(section(card,'microsoft-account-list'),undefined);
+  assert.equal(all(card).filter(x=>x.type==='Component').length,0);
   assert.equal(section(card,'chart-workday').items[1].data[0].y,
     workdaysFromMinutes(shiftTotalMinutes(morning.employees[0],'morning')));
-  assert.equal(auditCard(card,morning,directory).graph_persona_count,8);
+  const audit=auditCard(card,morning,directory);
+  assert.equal(audit.graph_persona_count,0);
+  assert.equal(audit.profile_panel_count,0);
+  assert.equal(audit.native_account_row_count,0);
+  assert.equal(audit.inline_chart_details,true);
+  for(let i=0;i<8;i++){
+    const e=morning.employees[i],expected=attendanceChartLabel(e,'morning');
+    assert.equal(section(card,'chart-workday').items[1].data[i].x,expected);
+    assert.equal(section(card,'chart-shift').items[1].data[i].title,expected);
+    assert.ok(expected.includes(e.name)&&expected.includes(e.status));
+    assert.ok(expected.includes(e.morning==='—'?'—':e.morning.slice(0,5)));
+  }
 });
 
 test('QA enforces Microsoft-native persona identity, chart data and payload budget',()=>{
@@ -276,4 +288,35 @@ test('invalid KPI, missing employees and wrong Entra identities cannot publish',
   const wrong=structuredClone(directory);
   wrong[input.employees[0].name].id='missing-guid';
   assert.throws(()=>buildNativeCard(input,wrong),/Invalid Entra id/);
+});
+
+
+test('morning chart renders every session and source status inline without extra account rows',()=>{
+  const morning=structuredClone(input);
+  morning.report_title='BÁO CÁO CHẤM CÔNG — CA SÁNG';
+  morning.report_scope='morning';
+  morning.employees.forEach(e=>{
+    e.afternoon='—';
+    if(e.status==='Đã ghi nhận')
+      e.total=formatRecordedMinutes(shiftTotalMinutes(e,'morning'));
+  });
+  morning.kpis.with_record=morning.employees.filter(e=>e.morning!=='—').length;
+  morning.rate=String(Math.round(morning.kpis.with_record/8*100))+'%';
+  morning.total_hours=formatRecordedMinutes(
+    morning.employees.filter(e=>e.status==='Đã ghi nhận')
+      .reduce((sum,e)=>sum+durationMinutes(e.total),0)
+  );
+  const card=buildNativeCard(morning,directory);
+  assert.equal(section(card,'microsoft-account-list'),undefined);
+  const bars=section(card,'chart-workday').items[1].data;
+  const shifts=section(card,'chart-shift').items[1].data;
+  assert.equal(bars.length,8);
+  bars.forEach((bar,i)=>{
+    const e=morning.employees[i];
+    assert.equal(bar.x,e.name+' · '+e.morning.replace(/ \((\d+h\d{2})\)/g,' · $1')+' · '+e.status);
+    assert.equal(shifts[i].title,bar.x);
+    assert.equal(bar.y,workdaysFromMinutes(shiftTotalMinutes(e,'morning')));
+  });
+  assert.equal(auditCard(card,morning,directory).chart_architecture,
+    'native_chart_inline_full_morning_details');
 });

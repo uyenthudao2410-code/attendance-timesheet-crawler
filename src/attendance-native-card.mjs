@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
-export const ROW_VISUAL_REVISION = 'V24_GRAPH_NATIVE_PERSONA_ACCOUNTS_2026_10_08';
+export const ROW_VISUAL_REVISION = 'V24_INLINE_MORNING_CHART_DETAILS_2026_10_08';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
 const fail = message => { throw new Error('NATIVE_CARD_GATE: ' + message); };
@@ -136,6 +136,12 @@ export function shiftChartLabel(e) {
   return fmt(morning) + ' | ' + fmt(afternoon);
 }
 
+// Source-derived labels replace a redundant detail panel for morning cards.
+// Teams owns chart tooltip rendering; x/title are the only text fields.
+export function attendanceChartLabel(e,scope) {
+  return scope==='morning'
+    ?e.name+' · '+compactShift(e.morning)+' · '+e.status:e.name;
+}
 export function consolidatedShiftChart(s) {
   const morningOnly=scopeOf(s)==='morning';
   return {
@@ -149,7 +155,7 @@ export function consolidatedShiftChart(s) {
       const morning=shiftTotalMinutes(e,'morning');
       const afternoon=morningOnly?0:shiftTotalMinutes(e,'afternoon');
       return {
-        title:e.name,
+        title:attendanceChartLabel(e,scopeOf(s)),
         data:(morning===0 && afternoon===0
           ?[{legend:'Ca sáng',value:0,color:'categoricalBlue'}]
           :[
@@ -174,7 +180,7 @@ export function consolidatedWorkdayChart(s) {
     color:'categoricalBlue',
     spacing:'None',
     data:s.employees.map((e,i)=>({
-      x:e.name,
+      x:attendanceChartLabel(e,scopeOf(s)),
       y:workdaysFromMinutes(morningOnly
         ? shiftTotalMinutes(e,'morning'):recordedMinutes(e)),
       color:'categoricalBlue'
@@ -407,7 +413,7 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
           consolidatedShiftChart(s)
         ]
       },
-      employeeAccountList(s,directory)
+      ...(scopeOf(s)==='morning'?[]:[employeeAccountList(s,directory)])
     ]
   };
 }
@@ -444,22 +450,37 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     fail('Expected exactly two Microsoft native charts');
   if(types.filter(t=>t==='Image').length!==0)
     fail('Manually composed account images not allowed');
-  if(types.filter(t=>t==='Component').length!==8)
-    fail('Exactly eight native Microsoft Graph personas required');
+  const morning=scopeOf(source)==='morning';
+  const expectedPersonaCount=morning?0:8;
+  if(types.filter(t=>t==='Component').length!==expectedPersonaCount)
+    fail('Wrong native Microsoft persona count');
   const list=card.body.find(x=>x.id==='microsoft-account-list');
-  if(!list || list.items.filter(x=>/^account-row-[1-8]$/.test(x.id||'')).length!==8 ||
-    list.items.filter(x=>/^p[1-8]$/.test(x.id||'')).length!==8)
-    fail('Missing native account row or hidden attendance panel');
-  for(let i=0;i<8;i++){
-    const row=list.items.find(x=>x.id==='account-row-'+(i+1));
-    const expected=directory[source.employees[i].name];
-    const persona=row?.items?.[0]?.columns?.[0]?.items?.[0];
-    if(persona?.type!=='Component'||persona?.name!=='graph.microsoft.com/user'||
-       persona?.view!=='compact'||
-       JSON.stringify(persona.properties)!==JSON.stringify({
-         id:expected.id,displayName:expected.displayName,
-         userPrincipalName:expected.userPrincipalName
-       }))fail('Native Microsoft account mismatch');
+  if(morning){
+    if(list)fail('Morning chart cannot have an extra account section');
+    const a=card.body.find(x=>x.id==='chart-workday')?.items?.[1];
+    const b=card.body.find(x=>x.id==='chart-shift')?.items?.[1];
+    if(a?.data?.length!==8||b?.data?.length!==8)
+      fail('Missing morning chart rows');
+    for(let index=0;index<8;index++){
+      const expected=attendanceChartLabel(source.employees[index],'morning');
+      if(a.data[index].x!==expected||b.data[index].title!==expected)
+        fail('Morning chart source label mismatch');
+    }
+  }else{
+    if(!list||list.items.filter(x=>/^account-row-[1-8]$/.test(x.id||'')).length!==8||
+      list.items.filter(x=>/^p[1-8]$/.test(x.id||'')).length!==8)
+      fail('Daily Microsoft account rows missing');
+    for(let index=0;index<8;index++){
+      const row=list.items.find(x=>x.id==='account-row-'+(index+1));
+      const user=directory[source.employees[index].name];
+      const persona=row?.items?.[0]?.columns?.[0]?.items?.[0];
+      if(persona?.type!=='Component'||persona?.name!=='graph.microsoft.com/user'||
+        persona?.view!=='compact'||
+        JSON.stringify(persona.properties)!==JSON.stringify({
+          id:user.id,displayName:user.displayName,
+          userPrincipalName:user.userPrincipalName
+        }))fail('Native Microsoft account mismatch');
+    }
   }
 
   if (json!==JSON.stringify(buildNativeCard(source,directory,avatarUrls))) fail('Layout/data mismatch');
@@ -478,20 +499,23 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     persona_component_count:types.filter(t=>t==='Component').length,
     image_avatar_count:types.filter(t=>t==='Image').length,
     data_gate:'passed',
-    chart_architecture:'native_charts_with_microsoft_graph_persona_rows',
+    chart_architecture:morning?'native_chart_inline_full_morning_details':
+      'native_charts_with_microsoft_graph_persona_rows',
+    inline_chart_details:morning,
+    custom_chart_tooltips:false,
     shift_chart_count:1,
     workday_chart_count:1,
     avatar_directory_count:0,
-    native_account_row_count:source.employees.length,
-    profile_panel_count:source.employees.length,
+    native_account_row_count:morning?0:source.employees.length,
+    profile_panel_count:morning?0:source.employees.length,
     selector_count:0,
-    exclusive_profile_selection:true,
-    avatar_alignment:'native_graph_persona_in_account_row',
+    exclusive_profile_selection:!morning,
+    avatar_alignment:morning?'inline_chart_label_only':'native_graph_persona_in_account_row',
     shift_row_values:'exact_source_morning_and_afternoon_durations',
     workday_chart_layout:'single_chart_with_full_name_categories',
     bar_component:'Chart.HorizontalBar',
     legend_scope:'once_per_chart',
-    detail_interaction:'native_account_row_tap_exclusive_attendance_panel',
+    detail_interaction:morning?'source_attendance_in_chart_labels':'native_account_row_tap_exclusive_attendance_panel',
     detail_buttons:0,
     details_hidden_by_default:true,
     footer_notes:false,
@@ -506,10 +530,10 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     chart_scales:workforceScales(source),
     chart_mode_toggle_targets:4,
     chart_point_select_action_supported:false,
-    native_microsoft_personas:true,
-    avatar_render:'microsoft_graph_native_persona',
+    native_microsoft_personas:!morning,
+    avatar_render:morning?'no_chart_avatar':'microsoft_graph_native_persona',
     graph_avatar_count:0,
-    graph_persona_count:types.filter(t=>t==='Component').length,
+    graph_persona_count:expectedPersonaCount,
     external_chart_requests:0,
     image_generation:false,
     render_qa:'pending_real_teams_client'

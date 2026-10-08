@@ -91,9 +91,11 @@ if(String(me.userPrincipalName||me.mail||'').toLowerCase()!==EXPECTED_USER){
 
 const card=buildNativeCard(source,directory);
 const qa=auditCard(card,source,directory);
-if(qa.graph_persona_count!==8 || qa.image_avatar_count!==0 ||
-   qa.native_microsoft_personas!==true)
-  throw new Error('MICROSOFT_NATIVE_PERSONA_GATE_FAILED');
+const expectedPersonas=slot==='morning_1230'?0:8;
+if(qa.graph_persona_count!==expectedPersonas || qa.image_avatar_count!==0 ||
+   qa.native_microsoft_personas!==(expectedPersonas===8) ||
+   qa.inline_chart_details!==(slot==='morning_1230'))
+  throw new Error('ATTENDANCE_NATIVE_SCOPE_LAYOUT_GATE_FAILED');
 
 console.log('ATTENDANCE_NATIVE_PROD_LAYOUT='+LAYOUT);
 if(preview)console.log('ATTENDANCE_NATIVE_PREVIEW_MODE=LIVE_DATA_SEPARATE_LEDGER');

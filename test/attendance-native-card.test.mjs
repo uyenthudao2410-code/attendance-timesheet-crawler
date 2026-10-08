@@ -157,29 +157,24 @@ test('old numbered selector and manually assembled account avatars are completel
   assert.equal(section(card,'details'),undefined);
   assert.equal(section(card,'employee-directory'),undefined);
   assert.equal(all(card).filter(x=>x.type==='Image').length,0);
-  assert.equal(all(card).filter(x=>x.type==='Component').length,8);
+  assert.equal(all(card).filter(x=>x.type==='Component').length,0);
   assert.equal(all(card).filter(x=>x.type==='ProgressBar').length,0);
   assert.ok(!JSON.stringify(card.body).includes('Chọn số 01–08'));
   assert.equal(rows(card).length,8);
   assert.equal(panels(card).length,8);
 });
 
-test('each account is a genuine native Teams Graph user Persona bound to the Entra user',()=>{
+test('verified Microsoft 365 account rows show exact Entra display names and UPNs',()=>{
   const card=buildNativeCard(input,directory);
   for(let i=0;i<8;i++){
-    const e=input.employees[i];
-    const graph=directory[e.name];
-    const person=personaAt(card,i);
-    assert.deepEqual(person,microsoftNativeAccount(e,directory));
-    assert.deepEqual(person,{
-      type:'Component',name:'graph.microsoft.com/user',view:'compact',
-      properties:{
-        id:graph.id,
-        displayName:graph.displayName,
-        userPrincipalName:graph.userPrincipalName
-      }
-    });
-    assert.ok(/^[0-9a-f-]{36}$/.test(person.properties.id));
+    const e=input.employees[i],account=directory[e.name];
+    const rendered=personaAt(card,i);
+    assert.deepEqual(rendered,microsoftNativeAccount(e,directory));
+    assert.equal(rendered.type,'RichTextBlock');
+    assert.equal(rendered.inlines.length,2);
+    assert.equal(rendered.inlines[0].text,account.displayName);
+    assert.equal(rendered.inlines[1].text,'\n'+account.userPrincipalName);
+    assert.ok(/^[0-9a-f-]{36}$/.test(account.id));
   }
 });
 
@@ -194,7 +189,7 @@ test('clicking the native account row toggles only the selected attendance detai
     assert.equal(chevron.type,'Icon');
     assert.equal(chevron.name,'ChevronDown');
     assert.deepEqual(chevron.selectAction,row.selectAction);
-    assert.equal(row.items[0].columns[0].items[0].type,'Component');
+    assert.equal(row.items[0].columns[0].items[0].type,'RichTextBlock');
   });
 });
 
@@ -279,14 +274,15 @@ test('morning-only report hides afternoon source and shows morning-only workdays
   }
 });
 
-test('QA enforces Microsoft-native persona identity, chart data and payload budget',()=>{
+test('QA enforces Microsoft Entra account bindings, chart data and payload budget',()=>{
   const card=buildNativeCard(input,directory);
   const qa=auditCard(card,input,directory);
   assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS');
-  assert.equal(ROW_VISUAL_REVISION,'V24_KPI_TEXT_STACKED_VERTICAL_SHIFTS_2026_10_08');
+  assert.equal(ROW_VISUAL_REVISION,'V24_VERIFIED_ENTRA_ACCOUNTS_KPI_STACKED_2026_10_08');
   assert.equal(qa.chart_count,2);
-  assert.equal(qa.graph_persona_count,8);
-  assert.equal(qa.native_microsoft_personas,true);
+  assert.equal(qa.graph_persona_count,0);
+  assert.equal(qa.native_microsoft_personas,false);
+  assert.equal(qa.verified_Entra_account_count,8);
   assert.equal(qa.image_avatar_count,0);
   assert.equal(qa.graph_avatar_count,0);
   assert.equal(qa.native_account_row_count,8);
@@ -307,14 +303,14 @@ test('QA does not embed Graph profile photos even if legacy image parameters exi
   ]));
   const card=buildNativeCard(input,directory,avatars);
   assert.equal(all(card).filter(x=>x.type==='Image').length,0);
-  assert.equal(auditCard(card,input,directory,avatars).graph_persona_count,8);
+  assert.equal(auditCard(card,input,directory,avatars).verified_Entra_account_count,8);
   assert.equal(JSON.stringify(card),JSON.stringify(buildNativeCard(input,directory)));
 });
 
 test('QA fails closed when account identity or chart data has been modified',()=>{
   const card=buildNativeCard(input,directory);
-  personaAt(card,0).properties.id='00000000-0000-0000-0000-000000000000';
-  assert.throws(()=>auditCard(card,input,directory),/Native Microsoft account mismatch/);
+  personaAt(card,0).inlines[1].text='\nforged@example.invalid';
+  assert.throws(()=>auditCard(card,input,directory),/Verified Entra account mismatch/);
   const tampered=buildNativeCard(input,directory);
   section(tampered,'chart-workday').items[1].data[0].y=99;
   assert.throws(()=>auditCard(tampered,input,directory),/Layout\/data mismatch/);

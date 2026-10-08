@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
-export const ROW_VISUAL_REVISION = 'V24_KPI_TEXT_STACKED_VERTICAL_SHIFTS_2026_10_08';
+export const ROW_VISUAL_REVISION = 'V24_VERIFIED_ENTRA_ACCOUNTS_KPI_STACKED_2026_10_08';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
 const fail = message => { throw new Error('NATIVE_CARD_GATE: ' + message); };
@@ -246,17 +246,17 @@ export function employeeSelectionTargets(s,index) {
 // Native account: Teams controls picture, display name, profile behavior,
 // and Microsoft account styling. Never fabricate an image or reconstruct an
 // email label. The Entra GUID and UPN come from the validated directory.
+// Teams Graph message POST has rejected the full-day card containing eight
+// interactive Graph Persona components. Preserve the exact validated Entra
+// displayName and UPN in a lightweight, standard Adaptive Card RichTextBlock.
+// Do not generate surrogate avatar images or invent account information.
 export function microsoftNativeAccount(e,directory) {
   const user=directory[e.name];
   if(!user)fail('Microsoft directory user missing: '+e.name);
-  return {
-    type:'Component',name:'graph.microsoft.com/user',view:'compact',
-    properties:{
-      id:user.id,
-      displayName:user.displayName,
-      userPrincipalName:user.userPrincipalName
-    }
-  };
+  return rich([
+    inline(user.displayName,{weight:'Bolder',color:'Default'}),
+    inline('\n'+user.userPrincipalName,{size:'Small',isSubtle:true})
+  ],{spacing:'None'});
 }
 
 export function employeeDetailPanel(s,e,index) {
@@ -480,40 +480,36 @@ export function auditCard(card,source,directory,avatarUrls={}) {
   if(types.filter(t=>t==='Image').length!==0)
     fail('Manually composed account images not allowed');
   const morning=scopeOf(source)==='morning';
-  const expectedPersonaCount=morning?0:8;
-  if(types.filter(t=>t==='Component').length!==expectedPersonaCount)
-    fail('Wrong native Microsoft persona count');
+  // Microsoft Graph chatMessage rejects unsupported interactive Persona
+  // payloads with HTTP 400. Use source-verified UPN RichTextBlock in daily.
+  if(types.filter(t=>t==='Component').length!==0)
+    fail('Microsoft Graph Component must not appear in delegated chat payload');
   const list=card.body.find(x=>x.id==='microsoft-account-list');
   if(morning){
     if(list)fail('Morning chart cannot have an extra account section');
-    const a=card.body.find(x=>x.id==='chart-workday')?.items?.[1];
-    const b=card.body.find(x=>x.id==='chart-shift')?.items?.[1];
-    if(a?.data?.length!==8||b?.data?.length!==8)
-      fail('Missing morning chart rows');
-    const verticalLabels=verticalEmployeeNames(source);
-    for(let index=0;index<8;index++){
-      const e=source.employees[index];
-      const expected=attendanceChartLabel(e,'morning');
-      if(a.data[index].x!==expected||
-         b.data[index].x!==verticalLabels[index]||
-         b.data[index].y!==chartHours(shiftTotalMinutes(e,'morning'))||
-         b.data[index].color!=='categoricalTeal')
-        fail('Morning chart source label mismatch');
+    const chart=card.body.find(x=>x.id==='chart-workday')?.items?.[1];
+    const shift=card.body.find(x=>x.id==='chart-shift')?.items?.[1];
+    if(chart?.data?.length!==8 || shift?.data?.length!==8)
+      fail('Morning chart must contain eight employees');
+    const labels=verticalEmployeeNames(source);
+    for(let i=0;i<8;i++){
+      const e=source.employees[i];
+      if(chart.data[i].x!==attendanceChartLabel(e,'morning')||
+         shift.data[i].x!==labels[i]||
+         shift.data[i].y!==chartHours(shiftTotalMinutes(e,'morning'))||
+         shift.data[i].color!=='categoricalTeal')
+        fail('Morning chart source mismatch');
     }
   }else{
-    if(!list||list.items.filter(x=>/^account-row-[1-8]$/.test(x.id||'')).length!==8||
+    if(!list || list.items.filter(x=>/^account-row-[1-8]$/.test(x.id||'')).length!==8||
       list.items.filter(x=>/^p[1-8]$/.test(x.id||'')).length!==8)
-      fail('Daily Microsoft account rows missing');
-    for(let index=0;index<8;index++){
-      const row=list.items.find(x=>x.id==='account-row-'+(index+1));
-      const user=directory[source.employees[index].name];
-      const persona=row?.items?.[0]?.columns?.[0]?.items?.[0];
-      if(persona?.type!=='Component'||persona?.name!=='graph.microsoft.com/user'||
-        persona?.view!=='compact'||
-        JSON.stringify(persona.properties)!==JSON.stringify({
-          id:user.id,displayName:user.displayName,
-          userPrincipalName:user.userPrincipalName
-        }))fail('Native Microsoft account mismatch');
+      fail('Missing daily employee account rows');
+    for(let i=0;i<8;i++){
+      const e=source.employees[i];
+      const row=list.items.find(x=>x.id==='account-row-'+(i+1));
+      const account=row?.items?.[0]?.columns?.[0]?.items?.[0];
+      if(JSON.stringify(account)!==JSON.stringify(microsoftNativeAccount(e,directory)))
+        fail('Verified Entra account mismatch');
     }
   }
 
@@ -522,7 +518,7 @@ export function auditCard(card,source,directory,avatarUrls={}) {
   return {
     layout_version:LAYOUT,
     visual_revision:ROW_VISUAL_REVISION,
-    source_kind:'native_graph_persona_attendance',
+    source_kind:'verified_Entra_UPN_attendance',
     target_date:source.target_date,
     source_data_sha256:sourceDigest(source),
     card_sha256:digest(json),
@@ -530,7 +526,7 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     employee_count:source.employees.length,
     kpi_count:4,
     chart_count:types.filter(t=>t.startsWith('Chart.')).length,
-    persona_component_count:types.filter(t=>t==='Component').length,
+    persona_component_count:0,
     image_avatar_count:types.filter(t=>t==='Image').length,
     data_gate:'passed',
     chart_architecture:morning?'horizontal_workdays_vertical_morning':
@@ -548,12 +544,12 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     profile_panel_count:morning?0:source.employees.length,
     selector_count:0,
     exclusive_profile_selection:!morning,
-    avatar_alignment:morning?'inline_chart_label_only':'native_graph_persona_in_account_row',
+    avatar_alignment:morning?'inline_chart_label_only':'verified_Entra_UPN_account_rows',
     shift_row_values:'exact_source_morning_and_afternoon_durations',
     workday_chart_layout:'single_chart_with_full_name_categories',
     bar_component:'Chart.HorizontalBar',
     legend_scope:'once_per_chart',
-    detail_interaction:morning?'source_attendance_in_chart_labels':'native_account_row_tap_exclusive_attendance_panel',
+    detail_interaction:morning?'source_attendance_in_chart_labels':'Entra_account_row_tap_exclusive_attendance_panel',
     detail_buttons:0,
     details_hidden_by_default:true,
     footer_notes:false,
@@ -571,10 +567,11 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     chart_scales:workforceScales(source),
     chart_mode_toggle_targets:4,
     chart_point_select_action_supported:false,
-    native_microsoft_personas:!morning,
-    avatar_render:morning?'no_chart_avatar':'microsoft_graph_native_persona',
+    native_microsoft_personas:false,
+    avatar_render:'none_no_avatar_misrepresentation',
     graph_avatar_count:0,
-    graph_persona_count:expectedPersonaCount,
+    graph_persona_count:0,
+    verified_Entra_account_count:morning?0:source.employees.length,
     external_chart_requests:0,
     image_generation:false,
     render_qa:'pending_real_teams_client'

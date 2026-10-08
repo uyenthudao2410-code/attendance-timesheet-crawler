@@ -91,9 +91,10 @@ if(String(me.userPrincipalName||me.mail||'').toLowerCase()!==EXPECTED_USER){
 
 const card=buildNativeCard(source,directory);
 const qa=auditCard(card,source,directory);
-const expectedPersonas=slot==='morning_1230'?0:8;
-if(qa.graph_persona_count!==expectedPersonas || qa.image_avatar_count!==0 ||
-   qa.native_microsoft_personas!==(expectedPersonas===8) ||
+const expectedEntraAccounts=slot==='daily_2105'?8:0;
+if(qa.graph_persona_count!==0 || qa.image_avatar_count!==0 ||
+   qa.native_microsoft_personas!==false ||
+   qa.verified_Entra_account_count!==expectedEntraAccounts ||
    qa.inline_chart_details!==(slot==='morning_1230'))
   throw new Error('ATTENDANCE_NATIVE_SCOPE_LAYOUT_GATE_FAILED');
 
@@ -101,6 +102,7 @@ console.log('ATTENDANCE_NATIVE_PROD_LAYOUT='+LAYOUT);
 if(preview)console.log('ATTENDANCE_NATIVE_PREVIEW_MODE=LIVE_DATA_SEPARATE_LEDGER');
 console.log('ATTENDANCE_NATIVE_PROD_PAYLOAD_BYTES='+qa.bytes);
 console.log('ATTENDANCE_NATIVE_PROD_GRAPH_PERSONAS='+qa.graph_persona_count);
+console.log('ATTENDANCE_NATIVE_PROD_VERIFIED_ENTRA_ACCOUNTS='+qa.verified_Entra_account_count);
 console.log('ATTENDANCE_NATIVE_PROD_MANUAL_AVATARS='+qa.image_avatar_count);
 
 let receipt=await store.write(ledgerPath,{
@@ -114,6 +116,7 @@ let receipt=await store.write(ledgerPath,{
   source_report_sha256:digest(JSON.stringify(report)),
   card_sha256:qa.card_sha256,
   graph_persona_count:qa.graph_persona_count,
+  verified_Entra_account_count:qa.verified_Entra_account_count,
   native_microsoft_personas:qa.native_microsoft_personas,
   graph_avatar_count:0,
   publisher_run_id:process.env.GITHUB_RUN_ID,

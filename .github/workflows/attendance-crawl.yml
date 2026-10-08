@@ -247,15 +247,24 @@ jobs:
         run: |
           set -euo pipefail
           auto=false
+          preview=false
           if [ "${GITHUB_EVENT_NAME}" = "schedule" ]; then
             auto=true
           else
             case "${ATTENDANCE_REQUEST_ID}" in
               watchdog-*|self-heal-*) auto=true ;;
+              design-preview-morning_1230-*)
+                # An explicit design re-post uses a distinct audited preview ledger.
+                # Never clear or override the existing production sent receipt.
+                test "${ATTENDANCE_RUN_SLOT}" = "morning_1230" || exit 1
+                auto=true
+                preview=true
+                ;;
             esac
           fi
           echo "ATTENDANCE_NATIVE_AUTO_PUBLISH=$auto" >> "$GITHUB_ENV"
-          echo "V24 native auto-publication: $auto request_id=${ATTENDANCE_REQUEST_ID}"
+          echo "ATTENDANCE_NATIVE_PREVIEW=$preview" >> "$GITHUB_ENV"
+          echo "V24 native publication: auto=$auto preview=$preview request_id=${ATTENDANCE_REQUEST_ID}"
 
       - name: Install V24 profile-photo optimizer
         run: npm install --no-save sharp@0.34.5

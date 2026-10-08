@@ -253,10 +253,14 @@ jobs:
           else
             case "${ATTENDANCE_REQUEST_ID}" in
               watchdog-*|self-heal-*) auto=true ;;
-              design-preview-morning_1230-*)
-                # An explicit design re-post uses a distinct audited preview ledger.
-                # Never clear or override the existing production sent receipt.
-                test "${ATTENDANCE_RUN_SLOT}" = "morning_1230" || exit 1
+              design-preview-morning_1230-*|design-preview-daily_2105-*)
+                # User-requested design preview always uses a separate receipt.
+                # Publisher validates the exact request ID, slot and target date
+                # before any Teams call; never overwrite production sent ledger.
+                case "${ATTENDANCE_RUN_SLOT}" in
+                  morning_1230|daily_2105) ;;
+                  *) echo "Unsupported V24 design-preview slot" >&2; exit 1 ;;
+                esac
                 auto=true
                 preview=true
                 ;;

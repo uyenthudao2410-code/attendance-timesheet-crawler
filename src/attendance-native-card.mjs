@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
-export const ROW_VISUAL_REVISION = 'V24_BALANCED_KPI_VERTICAL_SHIFTS_2026_10_08';
+export const ROW_VISUAL_REVISION = 'V24_KPI_TEXT_STACKED_VERTICAL_SHIFTS_2026_10_08';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
 const fail = message => { throw new Error('NATIVE_CARD_GATE: ' + message); };
@@ -341,21 +341,21 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
     ),style:'warning',color:'Warning',icon:'Calendar'},
     {label:'Tỷ lệ ghi nhận',value:s.rate,style:'good',color:'Good',icon:'CheckmarkCircle'}
   ];
-  const kpiTile=({label,value,style,color,icon})=>({
+  // Teams renders native Icons wider than the declared 28px rail.
+  // Stack the KPI label and number separately; no shared icon/text baseline.
+  // Native colored text avoids overlap on both desktop and small phones.
+  const kpiTile=({label,value,style,color})=>({
     type:'Column',width:1,verticalContentAlignment:'Center',items:[{
-      type:'Container',style,roundedCorners:true,minHeight:'76px',
-      verticalContentAlignment:'Center',items:[{
-        type:'ColumnSet',spacing:'None',verticalContentAlignment:'Center',
-        columns:[
-          {type:'Column',width:'28px',verticalContentAlignment:'Center',
-            items:[{type:'Icon',name:icon,size:'Medium',color,fallback:'drop'}]},
-          {type:'Column',width:'stretch',verticalContentAlignment:'Center',
-            items:[
-              text(label,{size:'Small',weight:'Bolder',spacing:'None'}),
-              text(String(value),{size:'Medium',weight:'Bolder',color,spacing:'Small'})
-            ]}
-        ]
-      }]
+      type:'Container',style,roundedCorners:true,minHeight:'84px',
+      verticalContentAlignment:'Center',spacing:'None',items:[
+        rich([
+          inline('● ',{color,size:'Small'}),
+          inline(label,{size:'Small',weight:'Bolder',color:'Default'})
+        ],{spacing:'None'}),
+        text(String(value),{
+          size:'Large',weight:'Bolder',color,spacing:'Small'
+        })
+      ]
     }]
   });
 
@@ -564,8 +564,9 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     chart_full_names:'horizontal_full_vertical_compact',
     native_charts_visible_per_tab:1,
     compact_kpi_tile_count:4,
-    kpi_tile_min_height:'76px',
-    kpi_text_alignment:'icon_left_label_and_value_same_column',
+    kpi_tile_min_height:'84px',
+    kpi_text_alignment:'label_above_value_no_icon_collision',
+    kpi_icon_strategy:'semantic_color_dot_no_native_icon',
     row_lock:true,
     chart_scales:workforceScales(source),
     chart_mode_toggle_targets:4,

@@ -118,22 +118,26 @@ test('four small colored KPI cards remain legible and source-bound',()=>{
   const tiles=[...overview.items[0].columns,...overview.items[1].columns]
     .map(x=>x.items[0]);
   assert.deepEqual(tiles.map(x=>x.style),['good','emphasis','warning','good']);
-  assert.deepEqual(tiles.map(x=>x.items[0].columns[1].items[1].text),[
+  assert.deepEqual(tiles.map(x=>x.items[1].text),[
     input.total_hours,
     formatWorkdays(durationMinutes(input.total_hours)),
     formatWorkdays(input.employees.reduce((n,e)=>n+shiftTotalMinutes(e,'morning'),0)),
     input.rate
   ]);
-  tiles.forEach(tile=>{
-    assert.equal(tile.minHeight,'76px');
+  tiles.forEach((tile,i)=>{
+    assert.equal(tile.minHeight,'84px');
     assert.equal(tile.verticalContentAlignment,'Center');
-    const cols=tile.items[0].columns;
-    assert.equal(cols[0].width,'28px');
-    assert.equal(cols[1].width,'stretch');
-    assert.equal(cols[0].verticalContentAlignment,'Center');
-    assert.equal(cols[1].verticalContentAlignment,'Center');
-    assert.equal(cols[1].items[0].spacing,'None');
-    assert.equal(cols[1].items[1].spacing,'Small');
+    assert.equal(tile.items.length,2);
+    assert.equal(tile.items[0].type,'RichTextBlock');
+    assert.equal(tile.items[0].inlines.length,2);
+    assert.equal(tile.items[0].inlines[0].text,'● ');
+    assert.equal(tile.items[0].inlines[1].text,
+      ['Giờ xác nhận','Tổng công','Công ca sáng','Tỷ lệ ghi nhận'][i]);
+    assert.equal(tile.items[1].type,'TextBlock');
+    assert.equal(tile.items[1].size,'Large');
+    assert.equal(tile.items[1].spacing,'Small');
+    assert.equal(JSON.stringify(tile).includes('"type":"Icon"'),false);
+    assert.equal(JSON.stringify(tile).includes('"type":"ColumnSet"'),false);
   });
 });
 
@@ -279,7 +283,7 @@ test('QA enforces Microsoft-native persona identity, chart data and payload budg
   const card=buildNativeCard(input,directory);
   const qa=auditCard(card,input,directory);
   assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS');
-  assert.equal(ROW_VISUAL_REVISION,'V24_BALANCED_KPI_VERTICAL_SHIFTS_2026_10_08');
+  assert.equal(ROW_VISUAL_REVISION,'V24_KPI_TEXT_STACKED_VERTICAL_SHIFTS_2026_10_08');
   assert.equal(qa.chart_count,2);
   assert.equal(qa.graph_persona_count,8);
   assert.equal(qa.native_microsoft_personas,true);
@@ -292,7 +296,8 @@ test('QA enforces Microsoft-native persona identity, chart data and payload budg
     ['Chart.HorizontalBar','Chart.VerticalBar.Grouped']);
   assert.equal(qa.shift_chart_type,'Chart.VerticalBar.Grouped');
   assert.equal(qa.workday_chart_type,'Chart.HorizontalBar');
-  assert.equal(qa.kpi_tile_min_height,'76px');
+  assert.equal(qa.kpi_tile_min_height,'84px');
+  assert.equal(qa.kpi_icon_strategy,'semantic_color_dot_no_native_icon');
   assert.ok(qa.bytes<27000);
 });
 
@@ -362,5 +367,6 @@ test('morning chart renders every session and source status inline without extra
   const qa=auditCard(card,morning,directory);
   assert.equal(qa.chart_architecture,'horizontal_workdays_vertical_morning');
   assert.equal(qa.shift_chart_type,'Chart.VerticalBar');
-  assert.equal(qa.kpi_tile_min_height,'76px');
+  assert.equal(qa.kpi_tile_min_height,'84px');
+  assert.equal(qa.kpi_icon_strategy,'semantic_color_dot_no_native_icon');
 });

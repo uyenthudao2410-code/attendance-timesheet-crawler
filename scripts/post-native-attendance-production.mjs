@@ -53,8 +53,8 @@ if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw new Error('Invalid target date');
 const preview=process.env.ATTENDANCE_NATIVE_PREVIEW==='true';
 const requestId=String(process.env.ATTENDANCE_REQUEST_ID||'');
 if(preview && (
-  slot!=='morning_1230' ||
-  !/^design-preview-morning_1230-\d{4}-\d{2}-\d{2}-[A-Za-z0-9-]{6,80}$/.test(requestId) ||
+  !/^(?:morning_1230|daily_2105)$/.test(slot) ||
+  !/^design-preview-(?:morning_1230|daily_2105)-\d{4}-\d{2}-\d{2}-[A-Za-z0-9-]{6,80}$/.test(requestId) ||
   !requestId.startsWith('design-preview-'+slot+'-'+date+'-')
 ))throw new Error('INVALID_EXPLICIT_NATIVE_PREVIEW_REQUEST');
 
@@ -114,7 +114,7 @@ let receipt=await store.write(ledgerPath,{
   source_report_sha256:digest(JSON.stringify(report)),
   card_sha256:qa.card_sha256,
   graph_persona_count:qa.graph_persona_count,
-  native_microsoft_personas:true,
+  native_microsoft_personas:qa.native_microsoft_personas,
   graph_avatar_count:0,
   publisher_run_id:process.env.GITHUB_RUN_ID,
   target_chat_id:TEST_CHAT,

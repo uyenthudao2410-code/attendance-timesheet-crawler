@@ -231,7 +231,7 @@ test('tampered compact attendance or chart data is rejected before sending',()=>
   assert.throws(()=>auditCard(corrupt,input,directory),/Layout\/data mismatch/);
   const bad=buildNativeCard(input,directory);
   rows(bad)[0].items[1].text='forged hours';
-  assert.throws(()=>auditCard(bad,input,directory),/Layout\/data mismatch/);
+  assert.throws(()=>auditCard(bad,input,directory),/Daily compact row missing source attendance field|Layout\/data mismatch/);
 });
 
 test('invalid KPI, missing employees and wrong Entra identities cannot publish',()=>{

@@ -27,3 +27,13 @@ test('production recurring schedules and graph target do not change',()=>{
   assert.match(publisher,/status:'sending'/);
   assert.match(publisher,/ATTENDANCE_NATIVE_TEAMS_MESSAGE_ID/);
 });
+
+
+test('both production slots remain scheduled with native Adaptive Card publishing',()=>{
+  assert.match(workflow,/cron: "40 23 \* \* \*"/);
+  assert.match(workflow,/cron: "40 6 \* \* \*"/);
+  assert.match(workflow,/daily_2105\) publish_hm="06:50"/);
+  assert.match(workflow,/morning_1230\) publish_hm="13:50"/);
+  assert.match(workflow,/node scripts\/post-native-attendance-production\.mjs/);
+  assert.match(publisher,/ATTENDANCE_NATIVE_SCOPE_LAYOUT_GATE_FAILED/);
+});

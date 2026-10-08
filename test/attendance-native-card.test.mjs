@@ -7,7 +7,7 @@ import {
   sessionMinutes,shiftTotalMinutes,formatRecordedMinutes,formatWorkdays,
   workdaysFromMinutes,consolidatedShiftChart,consolidatedDailyShiftChart,consolidatedWorkdayChart,
   employeeSelectionTargets,attendanceChartLabel,verticalEmployeeNames,microsoftNativeAccount,
-  employeeDetailPanel,dailyCompactDetails
+  employeeDetailPanel,dailyCompactDetails,dailyDetailTargets
 } from '../src/attendance-native-card.mjs';
 
 const input=JSON.parse(fs.readFileSync(
@@ -195,7 +195,7 @@ test('QA enforces Microsoft Entra account bindings, chart data and payload budge
   const card=buildNativeCard(input,directory);
   const qa=auditCard(card,input,directory);
   assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS');
-  assert.equal(ROW_VISUAL_REVISION,'V24_MOBILE_SINGLE_STACKED_SHIFTS_2026_10_08');
+  assert.equal(ROW_VISUAL_REVISION,'V24_STACKED_SHIFTS_REVERSIBLE_DETAILS_2026_10_09');
   assert.equal(qa.chart_count,2);
   assert.equal(qa.graph_persona_count,0);
   assert.equal(qa.native_microsoft_personas,false);
@@ -207,7 +207,8 @@ test('QA enforces Microsoft Entra account bindings, chart data and payload budge
   assert.equal(qa.daily_compact_row_count,8);
   assert.equal(qa.daily_single_stacked_shift_chart,true);
   assert.equal(qa.selector_count,0);
-  assert.equal(qa.detail_interaction,'one_collapsible_full_day_details');
+  assert.equal(qa.detail_interaction,'reversible_sibling_actions_open_close_full_day_details');
+  assert.equal(qa.detail_close_control_outside_collapsible_panel,true);
   assert.deepEqual(all(card).filter(x=>x.type.startsWith('Chart.')).map(x=>x.type),
     ['Chart.HorizontalBar','Chart.HorizontalBar.Stacked']);
   assert.equal(qa.chart_architecture,
@@ -295,4 +296,62 @@ test('morning chart renders every session and source status inline without extra
   assert.equal(qa.shift_chart_type,'Chart.HorizontalBar');
   assert.equal(qa.kpi_tile_min_height,'84px');
   assert.equal(qa.kpi_icon_strategy,'semantic_color_dot_no_native_icon');
+});
+
+test('Teams detail open/close buttons are visible sibling controls, not nested inside the hidden panel',()=>{
+  const card=buildNativeCard(input,directory);
+  const group=section(card,'daily-compact-details');
+  assert.equal(group.items.length,3);
+  const [open,content,close]=group.items;
+  assert.equal(open.id,'daily-details-open-control');
+  assert.equal(content.id,'daily-details-content');
+  assert.equal(close.id,'daily-details-close-control');
+  assert.equal(open.isVisible,undefined);
+  assert.equal(content.isVisible,false);
+  assert.equal(close.isVisible,false);
+  assert.equal(content.items.some(x=>x.type==='ActionSet'),false);
+  assert.deepEqual(open.actions[0].targetElements,dailyDetailTargets(true));
+  assert.deepEqual(close.actions[0].targetElements,dailyDetailTargets(false));
+  assert.equal(open.actions[0].title,'Xem giờ vào/ra đủ 8 nhân sự');
+  assert.equal(close.actions[0].title,'Thu gọn chi tiết');
+});
+
+test('Teams detail visibility transitions close, reopen and close again with no residual panel',()=>{
+  const state=new Map([
+    ['daily-details-open-control',true],
+    ['daily-details-close-control',false],
+    ['daily-details-content',false]
+  ]);
+  for(const expanded of [true,false,true,false,true,false]){
+    const next=dailyDetailTargets(expanded);
+    assert.equal(next.length,3);
+    for(const {elementId,isVisible} of next)state.set(elementId,isVisible);
+    assert.equal(state.get('daily-details-content'),expanded);
+    assert.equal(state.get('daily-details-close-control'),expanded);
+    assert.equal(state.get('daily-details-open-control'),!expanded);
+  }
+  assert.equal(state.get('daily-details-content'),false);
+  assert.equal(state.get('daily-details-open-control'),true);
+});
+
+test('morning-only build has no daily details or close controls',()=>{
+  const morning=structuredClone(input);
+  morning.report_title='BÁO CÁO CHẤM CÔNG — CA SÁNG';
+  morning.report_scope='morning';
+  morning.employees.forEach(e=>{
+    e.afternoon='—';
+    if(e.status==='Đã ghi nhận')e.total=formatRecordedMinutes(shiftTotalMinutes(e,'morning'));
+  });
+  morning.kpis.with_record=morning.employees.filter(e=>e.morning!=='—').length;
+  morning.rate=String(Math.round(morning.kpis.with_record/8*100))+'%';
+  morning.total_hours=formatRecordedMinutes(
+    morning.employees.filter(e=>e.status==='Đã ghi nhận')
+      .reduce((n,e)=>n+durationMinutes(e.total),0)
+  );
+  const card=buildNativeCard(morning,directory);
+  for(const id of ['daily-compact-details','daily-details-open-control',
+    'daily-details-close-control','daily-details-content']){
+    assert.ok(!JSON.stringify(card).includes('"id":"'+id+'"'));
+  }
+  assert.equal(auditCard(card,morning,directory).detail_buttons,0);
 });

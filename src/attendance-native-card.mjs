@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
-export const ROW_VISUAL_REVISION = 'V24_MOBILE_SINGLE_STACKED_SHIFTS_2026_10_08';
+export const ROW_VISUAL_REVISION = 'V24_STACKED_SHIFTS_REVERSIBLE_DETAILS_2026_10_09';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
 const fail = message => { throw new Error('NATIVE_CARD_GATE: ' + message); };
@@ -334,13 +334,24 @@ export function employeeAccountRow(s,e,index,directory) {
 // main chart vertically focused and avoids eight repeated per-person actions
 // and panels that make Graph attachments large and difficult on mobile.
 // The exact source time strings and Entra UPNs remain available to readers.
+// Teams clients can fail to hide a container when the close action is nested
+// INSIDE that same disappearing container. Keep both controls as siblings of
+// the data panel; explicit visibility sets are reversible and idempotent.
+export function dailyDetailTargets(expanded) {
+  return [
+    {elementId:'daily-details-open-control',isVisible:!expanded},
+    {elementId:'daily-details-close-control',isVisible:expanded},
+    {elementId:'daily-details-content',isVisible:expanded}
+  ];
+}
+
 export function dailyCompactDetails(s,directory) {
   if(scopeOf(s)==='morning')fail('Daily detail panel forbidden in morning scope');
   return {
     type:'Container',id:'daily-compact-details',spacing:'Medium',items:[
-      {type:'ActionSet',spacing:'None',actions:[{
+      {type:'ActionSet',id:'daily-details-open-control',spacing:'None',actions:[{
         type:'Action.ToggleVisibility',title:'Xem giờ vào/ra đủ 8 nhân sự',
-        targetElements:[{elementId:'daily-details-content',isVisible:true}]
+        targetElements:dailyDetailTargets(true)
       }]},
       {type:'Container',id:'daily-details-content',isVisible:false,
         style:'emphasis',spacing:'Small',roundedCorners:true,items:[
@@ -360,15 +371,17 @@ export function dailyCompactDetails(s,directory) {
                 text(user.userPrincipalName,{size:'Small',isSubtle:true})
               ]
             };
-          }),
-          {type:'ActionSet',spacing:'Small',actions:[{
-            type:'Action.ToggleVisibility',title:'Thu gọn chi tiết',
-            targetElements:[{elementId:'daily-details-content',isVisible:false}]
-          }]}
-        ]}
+          })
+        ]},
+      {type:'ActionSet',id:'daily-details-close-control',isVisible:false,
+        spacing:'Small',actions:[{
+          type:'Action.ToggleVisibility',title:'Thu gọn chi tiết',
+          targetElements:dailyDetailTargets(false)
+        }]}
     ]
   };
 }
+
 
 export function buildNativeCard(source,directory,avatarUrls={}) {
   const s=validateSource(source),k=s.kpis;
@@ -575,9 +588,17 @@ export function auditCard(card,source,directory,avatarUrls={}) {
       fail('Daily card must initially show shift chart');
     const details=card.body.find(x=>x.id==='daily-compact-details');
     const content=details?.items?.find(x=>x.id==='daily-details-content');
+    const open=details?.items?.find(x=>x.id==='daily-details-open-control');
+    const close=details?.items?.find(x=>x.id==='daily-details-close-control');
     if(content?.isVisible!==false ||
       content.items.filter(x=>/^day-person-[1-8]$/.test(x.id||'')).length!==8)
       fail('Daily compact details must hide eight intact employee rows');
+    if(!open || open.isVisible===false || close?.isVisible!==false ||
+      content.items.some(x=>x.type==='ActionSet'))
+      fail('Detail controls must be outside hidden panel');
+    if(JSON.stringify(open.actions?.[0]?.targetElements)!==JSON.stringify(dailyDetailTargets(true)) ||
+       JSON.stringify(close.actions?.[0]?.targetElements)!==JSON.stringify(dailyDetailTargets(false)))
+      fail('Daily details open/close actions must be reversible and source-safe');
     for(let i=0;i<8;i++){
       const e=source.employees[i];
       const account=directory[e.name];
@@ -628,8 +649,9 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     workday_chart_layout:'single_chart_with_full_name_categories',
     bar_component:'Chart.HorizontalBar',
     legend_scope:'once_per_chart',
-    detail_interaction:morning?'source_attendance_in_chart_labels':'one_collapsible_full_day_details',
-    detail_buttons:0,
+    detail_interaction:morning?'source_attendance_in_chart_labels':'reversible_sibling_actions_open_close_full_day_details',
+    detail_buttons:morning?0:2,
+    detail_close_control_outside_collapsible_panel:!morning,
     details_hidden_by_default:true,
     daily_single_stacked_shift_chart:!morning,
     footer_notes:false,

@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "design-preview-daily_2105-2026-10-07-20261008-210923-horizontal",
+  "request_id": "design-preview-daily_2105-2026-10-07-20261008-212755-stacked",
   "slot": "daily_2105",
   "target_date": "2026-10-07",
-  "requested_at": "2026-10-08T21:09:23+07:00",
-  "reason": "One user-requested TEST preview after verified mobile vertical clipping: fresh full-day 07 Oct crawl, compact native horizontal bars with short employee labels and exact hour values, cyan morning/green afternoon, 2 short shift actions, one optional exact-detail section, no QuickChart external service, separate idempotent preview ledger; leave production sent receipt and recurring schedules untouched",
+  "requested_at": "2026-10-08T21:27:55+07:00",
+  "reason": "Single user-approved TEST preview of full-day attendance for 07/10/2026 using fresh crawl and one source-validated native Chart.HorizontalBar.Stacked containing exactly eight combined morning teal/afternoon green bars with exact total-time labels; no daypart switches, no duplicate production publication, leave recurring morning and daily jobs enabled.",
   "delivery": {
     "enabled": false
   }

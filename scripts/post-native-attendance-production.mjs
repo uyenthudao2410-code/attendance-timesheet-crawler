@@ -109,6 +109,16 @@ const date=required('TARGET_DATE');
 if(!['morning_1230','daily_2105'].includes(slot))throw new Error('Unsupported attendance slot');
 if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw new Error('Invalid target date');
 
+// An explicitly requested re-post uses a unique design-preview ledger and
+// fresh crawler data. Existing production 'sent' receipts remain immutable.
+const preview=process.env.ATTENDANCE_NATIVE_PREVIEW==='true';
+const requestId=String(process.env.ATTENDANCE_REQUEST_ID||'');
+if(preview && (
+  slot!=='morning_1230' ||
+  !/^design-preview-morning_1230-\d{4}-\d{2}-\d{2}-[A-Za-z0-9-]{6,80}$/.test(requestId) ||
+  !requestId.startsWith('design-preview-'+slot+'-'+date+'-')
+))throw new Error('INVALID_EXPLICIT_NATIVE_PREVIEW_REQUEST');
+
 const reportPath=path.join('output','report-'+slot+'-'+date+'.json');
 const report=JSON.parse(fs.readFileSync(reportPath,'utf8'));
 if(report.slot!==slot||report.date!==date)throw new Error('BUSINESS_REPORT_BINDING_MISMATCH');
@@ -117,11 +127,13 @@ const directory=JSON.parse(fs.readFileSync('test/fixtures/attendance-user-direct
 const source=businessReportToNativeSource(report);
 
 const store=createRepoStore(required('GITHUB_REPOSITORY'),required('GITHUB_TOKEN'));
-const ledgerPath='.github/attendance-publications/'+slot+'-'+date+'.json';
+const ledgerPath=preview
+  ? '.github/attendance-native-previews/'+requestId+'.json'
+  : '.github/attendance-publications/'+slot+'-'+date+'.json';
 const previous=await store.read(ledgerPath);
 
 if(previous?.value?.status==='sent' && /^\d+$/.test(String(previous.value.message_id||''))){
-  console.log('ATTENDANCE_NATIVE_PROD=ALREADY_SENT');
+  console.log(preview?'ATTENDANCE_NATIVE_PREVIEW=ALREADY_SENT':'ATTENDANCE_NATIVE_PROD=ALREADY_SENT');
   console.log('ATTENDANCE_NATIVE_TEAMS_MESSAGE_ID='+previous.value.message_id);
   process.exit(0);
 }
@@ -144,12 +156,14 @@ const qa=auditCard(card,source,directory,avatarUrls);
 if(qa.graph_avatar_count!==8)throw new Error('GRAPH_AVATAR_GATE_FAILED');
 
 console.log('ATTENDANCE_NATIVE_PROD_LAYOUT='+LAYOUT);
+if(preview)console.log('ATTENDANCE_NATIVE_PREVIEW_MODE=LIVE_DATA_SEPARATE_LEDGER');
 console.log('ATTENDANCE_NATIVE_PROD_PAYLOAD_BYTES='+qa.bytes);
 console.log('ATTENDANCE_NATIVE_PROD_GRAPH_AVATARS='+qa.graph_avatar_count);
 
 let receipt=await store.write(ledgerPath,{
   schema_version:1,
-  kind:'attendance_native_adaptive_card',
+  kind:preview?'attendance_native_adaptive_card_preview':'attendance_native_adaptive_card',
+  ...(preview?{preview_request_id:requestId}:{}),
   layout_version:LAYOUT,
   slot,
   target_date:date,
@@ -208,4 +222,4 @@ if(!/^\d+$/.test(messageId)){
 
 await mark('sent',{message_id:messageId,published_at:new Date().toISOString()});
 console.log('ATTENDANCE_NATIVE_TEAMS_MESSAGE_ID='+messageId);
-console.log('ATTENDANCE_NATIVE_PROD=SUCCESS');
+console.log(preview?'ATTENDANCE_NATIVE_PREVIEW=SUCCESS':'ATTENDANCE_NATIVE_PROD=SUCCESS');

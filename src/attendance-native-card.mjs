@@ -273,14 +273,11 @@ export function employeeNativeBar(e,index,view,scale) {
   return {
     type:'Chart.HorizontalBar.Stacked',
     id:view+'-employee-bar-'+(index+1),
-    title:'\u200B',
-    showTitle:false,
     showLegend:false,
     showBarValues:false,
     displayMode:'AbsoluteNoAxis',
     spacing:'None',
-    data:[{title:'\u200B',data:segments}],
-    fallback:chartFallback()
+    data:[{title:'\u200B',data:segments}]
   };
 }
 

@@ -11,8 +11,8 @@ test('daily and morning preview requests are routed through separate native Team
   assert.match(workflow,/case "\$\{ATTENDANCE_RUN_SLOT\}" in[\s\S]*morning_1230\|daily_2105/);
   assert.match(publisher,/design-preview-\(\?:morning_1230\|daily_2105\)/);
   assert.match(publisher,/requestId\.startsWith\('design-preview-'\+slot\+'-'\+date\+'-'\)/);
-  assert.match(publisher,/\.github\/attendance-native-previews\/\+requestId\+'\.json'/);
-  assert.match(publisher,/\.github\/attendance-publications\/\+slot\+'-'\+date\+'\.json'/);
+  assert.ok(publisher.includes("'.github/attendance-native-previews/'+requestId+'.json'"));
+  assert.ok(publisher.includes("'.github/attendance-publications/'+slot+'-'+date+'.json'"));
   assert.match(publisher,/DELIVERY_UNCERTAIN_RECONCILE_BEFORE_RESEND/);
   assert.match(publisher,/previous\?\.value\?\.status==='sent'/);
 });
@@ -22,7 +22,7 @@ test('production recurring schedules and graph target do not change',()=>{
   assert.match(workflow,/cron: "40 6 \* \* \*"/);
   assert.match(workflow,/daily_2105\) publish_hm="06:50"/);
   assert.match(workflow,/morning_1230\) publish_hm="13:50"/);
-  assert.match(workflow,/\[ "${GITHUB_EVENT_NAME}" = "schedule" \]/);
+  assert.ok(workflow.includes('if [ "${{ github.event_name }}" = "schedule" ]; then'));
   assert.match(publisher,/TEST_CHAT/);
   assert.match(publisher,/status:'sending'/);
   assert.match(publisher,/ATTENDANCE_NATIVE_TEAMS_MESSAGE_ID/);

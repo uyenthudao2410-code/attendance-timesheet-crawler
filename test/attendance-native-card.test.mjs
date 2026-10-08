@@ -33,18 +33,22 @@ test('workday values use only recorded minutes',()=>{
  assert.equal(shiftTotalMinutes(input.employees[0],'morning'),290);
  assert.equal(sessionMinutes(input.employees[6].afternoon).length,0);
 });
-test('workday bars are Microsoft ProgressBar elements using exact source minutes',()=>{
- assert.equal(overviewStatusChart(input).type,'Chart.HorizontalBar.Stacked');
+test('native 12px bars represent exact source workday values on a shared scale',()=>{
  const scales=workforceScales(input);
  assert.deepEqual(scales,{shift:12,workday:1.5});
  input.employees.forEach((e,i)=>{
   const bar=employeeNativeBar(e,i,'workday',scales.workday);
-  assert.equal(bar.type,'ProgressBar');
-  assert.equal(bar.id,'workday-employee-bar-'+(i+1));
-  assert.equal(bar.max,100);
-  assert.equal(bar.value,Math.round(workdaysFromMinutes(recordedMinutes(e))/scales.workday*100));
+  assert.equal(bar.type,'ColumnSet');
+  assert.equal(bar.spacing,'None');
+  assert.ok(bar.columns.every(c=>c.minHeight==='12px'));
+  assert.ok(bar.columns.every(c=>c.roundedCorners===true));
+  assert.ok(bar.columns.every(c=>['accent','emphasis'].includes(c.style)));
+  const percent=Math.round(workdaysFromMinutes(recordedMinutes(e))/scales.workday*100);
+  assert.equal(bar.columns.reduce((n,x)=>n+x.width,0),100);
+  assert.equal(bar.columns.find(x=>x.style==='accent')?.width||0,percent);
  });
 });
+
 test('shift bar preserves session hours with compact contrasting tracks',()=>{
  const bar=employeeShiftBar(input.employees[0],0,12,'daily');
  assert.equal(bar.type,'RichTextBlock');
@@ -70,7 +74,8 @@ test('avatar, charts and hidden details share the same employee ColumnSet',()=>{
   assert.deepEqual(avatar.selectAction.targetElements,['employee-detail-'+(i+1)]);
   assert.equal(metricCol.items[0].id,'shift-metric-'+(i+1));
   assert.equal(metricCol.items[1].id,'workday-metric-'+(i+1));
-  assert.equal(metricCol.items[1].items[1].id,'workday-employee-bar-'+(i+1));
+  assert.equal(metricCol.items[1].items[1].type,'ColumnSet');
+  assert.equal(metricCol.items[1].items[1].columns.reduce((n,c)=>n+c.width,0),100);
   assert.equal(r.items[1].id,'employee-detail-'+(i+1));
   assert.equal(r.items[1].isVisible,false);
  });
@@ -109,23 +114,38 @@ test('hidden attendance panel contains every unmodified employee session',()=>{
   '08:37–13:27 · 4h50','13:27–19:34 · 6h07'
  ])assert.ok(JSON.stringify(p).includes(value));
 });
-test('V24 audit stays below Teams card 27KB and locks the row layout',()=>{
+test('V24 color KPI scorecards remain compact, source-bound and visually distinct',()=>{
  const card=buildNativeCard(input,directory);
+ const overview=card.body.find(x=>x.id==='overview');
+ assert.equal(overview.items.length,3);
+ assert.equal(overview.items[0].columns.length,2);
+ assert.equal(overview.items[1].columns.length,2);
+ const tiles=[...overview.items[0].columns,...overview.items[1].columns]
+   .map(col=>col.items[0]);
+ assert.deepEqual(tiles.map(t=>t.style),['good','accent','warning','good']);
+ assert.deepEqual(tiles.map(t=>t.items[1].text),[
+  input.total_hours,
+  formatWorkdays(durationMinutes(input.total_hours)),
+  formatWorkdays(input.employees.reduce((n,e)=>n+shiftTotalMinutes(e,'morning'),0)),
+  input.rate
+ ]);
+ assert.ok(!JSON.stringify(card.body).includes('TEST · NATIVE'));
  const qa=auditCard(card,input,directory);
  assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS');
- assert.equal(ROW_VISUAL_REVISION,'V24_NATIVE_PROGRESS_MOBILE_2026_10_08');
+ assert.equal(ROW_VISUAL_REVISION,'V24_COLOR_KPI_THICK_WORKDAY_2026_10_08');
  assert.equal(qa.visual_revision,ROW_VISUAL_REVISION);
- assert.equal(qa.workday_chart_count,0);
- assert.equal(qa.progress_bar_count,8);
- assert.equal(qa.shift_chart_count,0);
- assert.equal(qa.chart_architecture,'one_native_progress_per_employee_row');
- assert.equal(qa.bar_component,'ProgressBar');
+ assert.equal(qa.chart_architecture,'thick_native_columnset_shared_scale');
+ assert.equal(qa.compact_kpi_tile_count,4);
+ assert.equal(qa.bar_component,'ColumnSet:12px');
+ assert.equal(qa.thick_bar_count,8);
+ assert.equal(qa.progress_bar_count,0);
  assert.equal(qa.avatar_alignment,'same_columnset_per_employee_row');
  assert.equal(qa.native_microsoft_charts_only,true);
- assert.equal(walk(card).filter(x=>x.type==='Chart.HorizontalBar.Stacked').length,1);
- assert.equal(walk(card).filter(x=>x.type==='ProgressBar').length,8);
+ assert.equal(walk(card).filter(x=>x.type==='Chart.HorizontalBar.Stacked').length,0);
+ assert.equal(walk(card).filter(x=>x.type==='ProgressBar').length,0);
  assert.ok(qa.bytes<27000);
 });
+
 test('budget passes with eight realistic-sized simulated Graph avatars',()=>{
  const avatars=Object.fromEntries(input.employees.map(e=>[e.name,'data:image/jpeg;base64,'+'A'.repeat(900)]));
  const qa=auditCard(buildNativeCard(input,directory,avatars),input,directory,avatars);
@@ -134,7 +154,7 @@ test('budget passes with eight realistic-sized simulated Graph avatars',()=>{
 });
 test('tampered native chart values and invalid employee mapping fail closed',()=>{
  const card=buildNativeCard(input,directory);
- rows(card)[0].items[0].columns[1].items[1].items[1].value=99;
+ rows(card)[0].items[0].columns[1].items[1].items[1].columns[0].width=99;
  assert.throws(()=>auditCard(card,input,directory),/Layout\/data mismatch/);
  const invalid=structuredClone(directory);
  invalid[input.employees[0].name].id='wrong';

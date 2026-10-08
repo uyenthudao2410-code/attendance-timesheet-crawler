@@ -287,7 +287,7 @@ test('QA enforces Microsoft Entra account bindings, chart data and payload budge
   assert.equal(qa.graph_avatar_count,0);
   assert.equal(qa.native_account_row_count,8);
   assert.equal(qa.selector_count,0);
-  assert.equal(qa.detail_interaction,'native_account_row_tap_exclusive_attendance_panel');
+  assert.equal(qa.detail_interaction,'Entra_account_row_tap_exclusive_attendance_panel');
   assert.deepEqual(all(card).filter(x=>x.type.startsWith('Chart.')).map(x=>x.type),
     ['Chart.HorizontalBar','Chart.VerticalBar.Grouped']);
   assert.equal(qa.shift_chart_type,'Chart.VerticalBar.Grouped');

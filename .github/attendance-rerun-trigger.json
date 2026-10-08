@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "self-heal-morning_1230-2026-10-07-20261007T071118Z",
-  "slot": "morning_1230",
+  "request_id": "watchdog-daily_2105-2026-10-07-37720135148-1",
+  "slot": "daily_2105",
   "target_date": "2026-10-07",
-  "requested_at": "2026-10-07T14:11:18+07:00",
-  "reason": "self-heal missing scheduled morning_1230 producer before V24 production publication",
+  "requested_at": "2026-10-08T02:54:21Z",
+  "reason": "automatic watchdog self-heal for stale or missing producer state",
   "delivery": {
     "enabled": false
   }

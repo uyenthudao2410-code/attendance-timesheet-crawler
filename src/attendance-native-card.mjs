@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
-export const ROW_VISUAL_REVISION = 'V24_DAILY_VERTICAL_DAYPART_SWITCH_2026_10_08';
+export const ROW_VISUAL_REVISION = 'V24_DAILY_VERTICAL_FOCUSED_COMPACT_2026_10_08';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
 const fail = message => { throw new Error('NATIVE_CARD_GATE: ' + message); };
@@ -332,15 +332,42 @@ export function employeeAccountRow(s,e,index,directory) {
   };
 }
 
-export function employeeAccountList(s,directory) {
+// Only one optional expansion for the whole full-day report. This keeps the
+// main chart vertically focused and avoids eight repeated per-person actions
+// and panels that make Graph attachments large and difficult on mobile.
+// The exact source time strings and Entra UPNs remain available to readers.
+export function dailyCompactDetails(s,directory) {
+  if(scopeOf(s)==='morning')fail('Daily detail panel forbidden in morning scope');
   return {
-    type:'Container',id:'microsoft-account-list',spacing:'Small',items:[
-      text('TÀI KHOẢN MICROSOFT 365 · Chạm vào tài khoản để xem chấm công',
-        {size:'Small',weight:'Bolder',color:'Accent'}),
-      ...s.employees.flatMap((e,i)=>[
-        employeeAccountRow(s,e,i,directory),
-        employeeDetailPanel(s,e,i)
-      ])
+    type:'Container',id:'daily-compact-details',spacing:'Medium',items:[
+      {type:'ActionSet',spacing:'None',actions:[{
+        type:'Action.ToggleVisibility',title:'Xem giờ vào/ra đủ 8 nhân sự',
+        targetElements:[{elementId:'daily-details-content',isVisible:true}]
+      }]},
+      {type:'Container',id:'daily-details-content',isVisible:false,
+        style:'emphasis',spacing:'Small',roundedCorners:true,items:[
+          text('CHI TIẾT CHẤM CÔNG CẢ NGÀY',{size:'Small',weight:'Bolder',color:'Accent'}),
+          ...s.employees.map((e,i)=>{
+            const user=directory[e.name];
+            return {
+              type:'Container',id:'day-person-'+(i+1),
+              spacing:i?'Small':'None',separator:i>0,items:[
+                rich([
+                  inline(e.name,{weight:'Bolder'}),
+                  inline(' · '+e.status,{color:statusColor(e)})
+                ]),
+                text('Sáng: '+e.morning+'\nChiều: '+e.afternoon+
+                  '\nTổng: '+e.total+' · '+formatWorkdays(recordedMinutes(e)),
+                  {size:'Small'}),
+                text(user.userPrincipalName,{size:'Small',isSubtle:true})
+              ]
+            };
+          }),
+          {type:'ActionSet',spacing:'Small',actions:[{
+            type:'Action.ToggleVisibility',title:'Thu gọn chi tiết',
+            targetElements:[{elementId:'daily-details-content',isVisible:false}]
+          }]}
+        ]}
     ]
   };
 }
@@ -403,7 +430,8 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
       },
       sectionTitle('DataBarHorizontal','BIỂU ĐỒ CÔNG / GIỜ'),
       {
-        type:'ActionSet',id:'native-tab-workday',spacing:'Small',
+        type:'ActionSet',id:'native-tab-workday',
+        isVisible:scopeOf(s)==='morning',spacing:'Small',
         actions:[
           {
             type:'Action.ToggleVisibility',title:'Theo ca',
@@ -419,7 +447,8 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
         ]
       },
       {
-        type:'ActionSet',id:'native-tab-shift',isVisible:false,spacing:'Small',
+        type:'ActionSet',id:'native-tab-shift',
+        isVisible:scopeOf(s)!=='morning',spacing:'Small',
         actions:[
           {type:'Action.ToggleVisibility',title:'Theo ca',style:'positive',
             targetElements:[{elementId:'chart-shift',isVisible:true}]},
@@ -436,7 +465,7 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
       },
       {
         type:'Container',id:'chart-workday',style:'emphasis',
-        roundedCorners:true,spacing:'Small',
+        isVisible:scopeOf(s)==='morning',roundedCorners:true,spacing:'Small',
         items:[
           text('Công quy đổi · 8 giờ = 1 công',
             {size:'Small',weight:'Bolder',color:'Accent'}),
@@ -445,7 +474,7 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
       },
       {
         type:'Container',id:'chart-shift',style:'emphasis',
-        isVisible:false,roundedCorners:true,spacing:'Small',
+        isVisible:scopeOf(s)!=='morning',roundedCorners:true,spacing:'Small',
         items:[
           text(scopeOf(s)==='morning'
             ?'CỘT XANH NGỌC · Thời lượng ca sáng (giờ)'
@@ -456,7 +485,7 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
           ...(scopeOf(s)==='morning'?[]:[consolidatedAfternoonChart(s)])
         ]
       },
-      ...(scopeOf(s)==='morning'?[]:[employeeAccountList(s,directory)])
+      ...(scopeOf(s)==='morning'?[]:[dailyCompactDetails(s,directory)])
     ]
   };
 }
@@ -538,15 +567,24 @@ export function auditCard(card,source,directory,avatarUrls={}) {
         fail('Morning chart source mismatch');
     }
   }else{
-    if(!list || list.items.filter(x=>/^account-row-[1-8]$/.test(x.id||'')).length!==8||
-      list.items.filter(x=>/^p[1-8]$/.test(x.id||'')).length!==8)
-      fail('Missing daily employee account rows');
+    if(list)fail('Daily card must not contain eight duplicate profile panels');
+    if(card.body.find(x=>x.id==='chart-shift')?.isVisible!==true ||
+       card.body.find(x=>x.id==='chart-workday')?.isVisible!==false)
+      fail('Daily card must initially show vertical chart');
+    const details=card.body.find(x=>x.id==='daily-compact-details');
+    const content=details?.items?.find(x=>x.id==='daily-details-content');
+    if(content?.isVisible!==false ||
+      content.items.filter(x=>/^day-person-[1-8]$/.test(x.id||'')).length!==8)
+      fail('Daily compact details must hide eight intact employee rows');
     for(let i=0;i<8;i++){
       const e=source.employees[i];
-      const row=list.items.find(x=>x.id==='account-row-'+(i+1));
-      const account=row?.items?.[0]?.columns?.[0]?.items?.[0];
-      if(JSON.stringify(account)!==JSON.stringify(microsoftNativeAccount(e,directory)))
-        fail('Verified Entra account mismatch');
+      const account=directory[e.name];
+      const row=content.items.find(x=>x.id==='day-person-'+(i+1));
+      const jsonRow=JSON.stringify(row);
+      if(!jsonRow.includes(e.name)||!jsonRow.includes(e.status)||
+         !jsonRow.includes(e.morning)||!jsonRow.includes(e.afternoon)||
+         !jsonRow.includes(e.total)||!jsonRow.includes(account.userPrincipalName))
+        fail('Daily compact row missing source attendance field');
     }
   }
 
@@ -567,7 +605,7 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     image_avatar_count:types.filter(t=>t==='Image').length,
     data_gate:'passed',
     chart_architecture:morning?'horizontal_workdays_vertical_morning':
-      'horizontal_workdays_switchable_native_vertical_shifts',
+      'vertical_first_compact_daypart_chart_horizontal_workdays_secondary',
     shift_chart_type:'Chart.VerticalBar',
     afternoon_chart_type:morning?null:'Chart.VerticalBar',
     workday_chart_type:'Chart.HorizontalBar',
@@ -578,18 +616,20 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     shift_chart_count:morning?1:2,
     workday_chart_count:1,
     avatar_directory_count:0,
-    native_account_row_count:morning?0:source.employees.length,
-    profile_panel_count:morning?0:source.employees.length,
+    native_account_row_count:0,
+    profile_panel_count:0,
+    daily_compact_row_count:morning?0:source.employees.length,
     selector_count:0,
-    exclusive_profile_selection:!morning,
-    avatar_alignment:morning?'inline_chart_label_only':'verified_Entra_UPN_account_rows',
+    exclusive_profile_selection:false,
+    avatar_alignment:morning?'inline_chart_label_only':'no_avatar_compact_Entra_details',
     shift_row_values:'exact_source_morning_and_afternoon_durations',
     workday_chart_layout:'single_chart_with_full_name_categories',
     bar_component:'Chart.HorizontalBar',
     legend_scope:'once_per_chart',
-    detail_interaction:morning?'source_attendance_in_chart_labels':'Entra_account_row_tap_exclusive_attendance_panel',
+    detail_interaction:morning?'source_attendance_in_chart_labels':'one_collapsible_full_day_details',
     detail_buttons:0,
     details_hidden_by_default:true,
+    daily_vertical_chart_default:!morning,
     footer_notes:false,
     repeated_legends:false,
     palette:'categoricalBlue_categoricalGreen_good_warning_emphasis',

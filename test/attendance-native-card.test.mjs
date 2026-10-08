@@ -7,7 +7,7 @@ import {
   sessionMinutes,shiftTotalMinutes,formatRecordedMinutes,formatWorkdays,
   workdaysFromMinutes,consolidatedShiftChart,consolidatedAfternoonChart,shiftDaypartTabs,consolidatedWorkdayChart,
   employeeSelectionTargets,attendanceChartLabel,verticalEmployeeNames,microsoftNativeAccount,
-  employeeDetailPanel,employeeAccountList
+  employeeDetailPanel,dailyCompactDetails
 } from '../src/attendance-native-card.mjs';
 
 const input=JSON.parse(fs.readFileSync(
@@ -17,9 +17,8 @@ const directory=JSON.parse(fs.readFileSync(
   'test/fixtures/attendance-user-directory.json','utf8'
 ));
 const section=(card,id)=>card.body.find(x=>x.id===id);
-const accounts=card=>section(card,'microsoft-account-list');
-const rows=card=>accounts(card).items.filter(x=>/^account-row-[1-8]$/.test(x.id||''));
-const panels=card=>accounts(card).items.filter(x=>/^p[1-8]$/.test(x.id||''));
+const details=card=>section(card,'daily-compact-details')?.items.find(x=>x.id==='daily-details-content');
+const rows=card=>details(card)?.items.filter(x=>/^day-person-[1-8]$/.test(x.id||''))||[];
 const all=root=>{
   const values=[];
   const go=x=>{
@@ -31,7 +30,6 @@ const all=root=>{
   go(root);
   return values;
 };
-const personaAt=(card,index)=>rows(card)[index].items[0].columns[0].items[0];
 
 test('source and Microsoft account directory remain immutable and preserve eight identities',()=>{
   const original=JSON.stringify(input);
@@ -137,97 +135,13 @@ test('four small colored KPI cards remain legible and source-bound',()=>{
   });
 });
 
-test('the two native charts switch tabs without modifying account visibility',()=>{
+test('daily tab selection starts in vertical mode and exposes secondary workdays',()=>{
   const card=buildNativeCard(input,directory);
-  assert.equal(section(card,'chart-workday').isVisible,undefined);
-  assert.equal(section(card,'chart-shift').isVisible,false);
-  assert.equal(section(card,'native-tab-shift').isVisible,false);
-  assert.equal(section(card,'native-tab-workday').actions[1].style,'positive');
-  assert.equal(section(card,'native-tab-workday').actions[0].targetElements.length,4);
+  assert.equal(section(card,'chart-shift').isVisible,true);
+  assert.equal(section(card,'chart-workday').isVisible,false);
+  assert.equal(section(card,'native-tab-shift').isVisible,true);
+  assert.equal(section(card,'native-tab-workday').isVisible,false);
   assert.equal(section(card,'native-tab-shift').actions[1].targetElements.length,4);
-});
-
-test('old numbered selector and manually assembled account avatars are completely absent',()=>{
-  const card=buildNativeCard(input,directory);
-  assert.equal(section(card,'sel'),undefined);
-  assert.equal(section(card,'details'),undefined);
-  assert.equal(section(card,'employee-directory'),undefined);
-  assert.equal(all(card).filter(x=>x.type==='Image').length,0);
-  assert.equal(all(card).filter(x=>x.type==='Component').length,0);
-  assert.equal(all(card).filter(x=>x.type==='ProgressBar').length,0);
-  assert.ok(!JSON.stringify(card.body).includes('Chọn số 01–08'));
-  assert.equal(rows(card).length,8);
-  assert.equal(panels(card).length,8);
-});
-
-test('verified Microsoft 365 account rows show exact Entra display names and UPNs',()=>{
-  const card=buildNativeCard(input,directory);
-  for(let i=0;i<8;i++){
-    const e=input.employees[i],account=directory[e.name];
-    const rendered=personaAt(card,i);
-    assert.deepEqual(rendered,microsoftNativeAccount(e,directory));
-    assert.equal(rendered.type,'RichTextBlock');
-    assert.equal(rendered.inlines.length,2);
-    assert.equal(rendered.inlines[0].text,account.displayName);
-    assert.equal(rendered.inlines[1].text,'\n'+account.userPrincipalName);
-    assert.ok(/^[0-9a-f-]{36}$/.test(account.id));
-  }
-});
-
-test('clicking the native account row toggles only the selected attendance detail',()=>{
-  const card=buildNativeCard(input,directory);
-  rows(card).forEach((row,i)=>{
-    assert.equal(row.type,'Container');
-    assert.equal(row.id,'account-row-'+(i+1));
-    assert.equal(row.selectAction.type,'Action.ToggleVisibility');
-    assert.deepEqual(row.selectAction.targetElements,employeeSelectionTargets(input,i));
-    const chevron=row.items[0].columns[1].items[0];
-    assert.equal(chevron.type,'Icon');
-    assert.equal(chevron.name,'ChevronDown');
-    assert.deepEqual(chevron.selectAction,row.selectAction);
-    assert.equal(row.items[0].columns[0].items[0].type,'RichTextBlock');
-  });
-});
-
-test('exclusive selection is deterministic and supports switching between people',()=>{
-  const card=buildNativeCard(input,directory);
-  const visibility=new Map(input.employees.map((e,i)=>['p'+(i+1),false]));
-  for (const index of [0,5,2,7,1]){
-    const targets=rows(card)[index].selectAction.targetElements;
-    assert.equal(targets.length,8);
-    for(const t of targets)visibility.set(t.elementId,t.isVisible);
-    assert.equal([...visibility].filter(([k,v])=>v).length,1);
-    assert.equal(visibility.get('p'+(index+1)),true);
-  }
-  assert.throws(()=>employeeSelectionTargets(input,8),/Invalid employee index/);
-  assert.throws(()=>employeeSelectionTargets(input,-1),/Invalid employee index/);
-});
-
-test('profile detail appears immediately after its Microsoft account row and is hidden initially',()=>{
-  const card=buildNativeCard(input,directory);
-  const list=accounts(card).items;
-  for(let i=0;i<8;i++){
-    assert.equal(list[i*2+1].id,'account-row-'+(i+1));
-    assert.equal(list[i*2+2].id,'p'+(i+1));
-    assert.equal(list[i*2+2].isVisible,false);
-    const close=list[i*2+2].items.at(-1).actions[0];
-    assert.equal(close.type,'Action.ToggleVisibility');
-    assert.equal(close.title,'Thu gọn');
-    assert.deepEqual(close.targetElements,[{
-      elementId:'p'+(i+1),isVisible:false
-    }]);
-  }
-});
-
-test('detail shows unmodified status, source time range, duration and converted work',()=>{
-  const card=buildNativeCard(input,directory);
-  const first=panels(card)[0];
-  const text=JSON.stringify(first);
-  for(const expected of [
-    'Cần đối soát','08:37–13:27 · 4h50',
-    '13:27–19:34 · 6h07','Chưa chốt','10h57','1,37 công'
-  ])assert.ok(text.includes(expected),expected);
-  assert.equal(all(first).filter(x=>x.type==='Image').length,0);
 });
 
 test('morning-only report hides afternoon source and shows morning-only workdays',()=>{
@@ -274,16 +188,19 @@ test('QA enforces Microsoft Entra account bindings, chart data and payload budge
   const card=buildNativeCard(input,directory);
   const qa=auditCard(card,input,directory);
   assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS');
-  assert.equal(ROW_VISUAL_REVISION,'V24_DAILY_VERTICAL_DAYPART_SWITCH_2026_10_08');
+  assert.equal(ROW_VISUAL_REVISION,'V24_DAILY_VERTICAL_FOCUSED_COMPACT_2026_10_08');
   assert.equal(qa.chart_count,3);
   assert.equal(qa.graph_persona_count,0);
   assert.equal(qa.native_microsoft_personas,false);
   assert.equal(qa.verified_Entra_account_count,8);
   assert.equal(qa.image_avatar_count,0);
   assert.equal(qa.graph_avatar_count,0);
-  assert.equal(qa.native_account_row_count,8);
+  assert.equal(qa.native_account_row_count,0);
+  assert.equal(qa.profile_panel_count,0);
+  assert.equal(qa.daily_compact_row_count,8);
+  assert.equal(qa.daily_vertical_chart_default,true);
   assert.equal(qa.selector_count,0);
-  assert.equal(qa.detail_interaction,'Entra_account_row_tap_exclusive_attendance_panel');
+  assert.equal(qa.detail_interaction,'one_collapsible_full_day_details');
   assert.deepEqual(all(card).filter(x=>x.type.startsWith('Chart.')).map(x=>x.type),
     ['Chart.HorizontalBar','Chart.VerticalBar','Chart.VerticalBar']);
   assert.equal(qa.shift_chart_count,2);
@@ -292,7 +209,7 @@ test('QA enforces Microsoft Entra account bindings, chart data and payload budge
   assert.equal(qa.workday_chart_type,'Chart.HorizontalBar');
   assert.equal(qa.kpi_tile_min_height,'84px');
   assert.equal(qa.kpi_icon_strategy,'semantic_color_dot_no_native_icon');
-  assert.ok(qa.bytes<27000);
+  assert.ok(qa.bytes<18000);
 });
 
 test('QA does not embed Graph profile photos even if legacy image parameters exist',()=>{
@@ -305,16 +222,16 @@ test('QA does not embed Graph profile photos even if legacy image parameters exi
   assert.equal(JSON.stringify(card),JSON.stringify(buildNativeCard(input,directory)));
 });
 
-test('QA fails closed when account identity or chart data has been modified',()=>{
+test('tampered compact attendance or chart data is rejected before sending',()=>{
   const card=buildNativeCard(input,directory);
-  personaAt(card,0).inlines[1].text='\nforged@example.invalid';
-  assert.throws(()=>auditCard(card,input,directory),/Verified Entra account mismatch/);
-  const tampered=buildNativeCard(input,directory);
-  section(tampered,'chart-workday').items[1].data[0].y=99;
-  assert.throws(()=>auditCard(tampered,input,directory),/Layout\/data mismatch/);
-  const altered=buildNativeCard(input,directory);
-  panels(altered)[0].items[2].text='forged hours';
-  assert.throws(()=>auditCard(altered,input,directory),/Layout\/data mismatch/);
+  rows(card)[0].items[2].text='forged@example.invalid';
+  assert.throws(()=>auditCard(card,input,directory),/Daily compact row missing|Layout\/data mismatch/);
+  const corrupt=buildNativeCard(input,directory);
+  section(corrupt,'chart-workday').items[1].data[0].y=99;
+  assert.throws(()=>auditCard(corrupt,input,directory),/Layout\/data mismatch/);
+  const bad=buildNativeCard(input,directory);
+  rows(bad)[0].items[1].text='forged hours';
+  assert.throws(()=>auditCard(bad,input,directory),/Layout\/data mismatch/);
 });
 
 test('invalid KPI, missing employees and wrong Entra identities cannot publish',()=>{

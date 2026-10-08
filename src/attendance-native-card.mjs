@@ -490,9 +490,14 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     const b=card.body.find(x=>x.id==='chart-shift')?.items?.[1];
     if(a?.data?.length!==8||b?.data?.length!==8)
       fail('Missing morning chart rows');
+    const verticalLabels=verticalEmployeeNames(source);
     for(let index=0;index<8;index++){
-      const expected=attendanceChartLabel(source.employees[index],'morning');
-      if(a.data[index].x!==expected||b.data[index].title!==expected)
+      const e=source.employees[index];
+      const expected=attendanceChartLabel(e,'morning');
+      if(a.data[index].x!==expected||
+         b.data[index].x!==verticalLabels[index]||
+         b.data[index].y!==chartHours(shiftTotalMinutes(e,'morning'))||
+         b.data[index].color!=='categoricalTeal')
         fail('Morning chart source label mismatch');
     }
   }else{

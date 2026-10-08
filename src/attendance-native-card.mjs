@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
+export const ROW_VISUAL_REVISION = 'V24_ROW_LOCKED_NATIVE_2026_10_08';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
 const fail = message => { throw new Error('NATIVE_CARD_GATE: ' + message); };
@@ -229,31 +230,127 @@ function detailTargets(source,index) {
   return ['employee-detail-'+(index+1)];
 }
 
-export function avatarRail(s,directory,avatarUrls={}) {
+
+// Every employee owns a single row containing the real Graph avatar and BOTH
+// native chart views. Independent avatar rails drift on narrow Teams screens.
+const SCOPE_MORNING='morning';
+const scopeOf=s=>s.report_scope===SCOPE_MORNING || (s.report_title||'').includes('CA SÁNG')
+  ? SCOPE_MORNING : 'daily';
+const two=v=>Number(v).toFixed(2).replace('.',',');
+
+export function workforceScales(s) {
+  const maxHours=Math.max(8,...s.employees.map(e=>
+    chartHours(shiftTotalMinutes(e,'morning'))+chartHours(shiftTotalMinutes(e,'afternoon'))
+  ));
+  const maxWorkdays=Math.max(1,...s.employees.map(e=>workdaysFromMinutes(recordedMinutes(e))));
+  return {
+    shift:Math.ceil(maxHours/2)*2,
+    workday:Math.ceil(maxWorkdays*2)/2
+  };
+}
+
+export function employeeNativeBar(e,index,view,scale) {
+  const recorded=recordedMinutes(e);
+  const value=workdaysFromMinutes(recorded);
+  const morning=chartHours(shiftTotalMinutes(e,'morning'));
+  const afternoon=chartHours(shiftTotalMinutes(e,'afternoon'));
+  const actual=view==='workday' ? value : Number((morning+afternoon).toFixed(2));
+  if(!['workday','shift'].includes(view)||actual>scale+0.001)fail('Native row scale mismatch');
+
+  // Hidden neutral remainder forces a COMMON chart scale across the 8 rows.
+  // The native renderer controls bar dimensions, never an absolute CSS offset.
+  const segments=view==='workday'
+    ? (actual>0?[{
+        legend:'Công quy đổi',value:actual,
+        color:displayStatus(e)==='Đã ghi nhận'?'categoricalBlue':'categoricalTeal'
+      }]:[])
+    : [
+        ...(morning>0?[{legend:'Ca sáng',value:morning,color:'categoricalBlue'}]:[]),
+        ...(afternoon>0?[{legend:'Ca chiều',value:afternoon,color:'categoricalGreen'}]:[])
+      ];
+  const remainder=Number(Math.max(0,scale-actual).toFixed(2));
+  if(remainder>0)segments.push({legend:'Mốc thang đo',value:remainder,color:'neutral'});
+  return {
+    type:'Chart.HorizontalBar.Stacked',
+    id:view+'-employee-bar-'+(index+1),
+    title:'\u200B',
+    showTitle:false,
+    showLegend:false,
+    showBarValues:false,
+    displayMode:'AbsoluteNoAxis',
+    spacing:'None',
+    data:[{title:'\u200B',data:segments}],
+    fallback:chartFallback()
+  };
+}
+
+function employeeMetric(e,index,view,scale,scope) {
+  const morning=shiftTotalMinutes(e,'morning');
+  const afternoon=shiftTotalMinutes(e,'afternoon');
+  const recorded=recordedMinutes(e);
+  const isWorkday=view==='workday';
+  const label=isWorkday
+    ? (recorded>0?'Ghi nhận '+formatRecordedMinutes(recorded):'Chưa có giờ xác nhận')
+    : (scope===SCOPE_MORNING
+      ? 'Sáng '+(morning>0?formatRecordedMinutes(morning):'—')
+      : 'Sáng '+(morning>0?formatRecordedMinutes(morning):'—')+
+        '  ·  Chiều '+(afternoon>0?formatRecordedMinutes(afternoon):'—'));
+  const value=isWorkday
+    ? formatWorkdays(recorded)
+    : (recorded>0?formatRecordedMinutes(recorded):'—');
   return {
     type:'Container',
-    id:'avatar-rail',
+    id:view+'-metric-'+(index+1),
+    isVisible:!isWorkday,
     spacing:'None',
     items:[
       {
-        type:'Container',
-        id:'avatar-top-spacer',
-        minHeight:'7px',
-        spacing:'None',
-        items:[]
+        type:'ColumnSet',spacing:'None',columns:[
+          {type:'Column',width:'stretch',items:[text(label,{size:'Small',isSubtle:true})]},
+          {type:'Column',width:'auto',items:[
+            text(value,{size:'Small',weight:'Bolder',
+              color:recorded>0?'Accent':'Default',horizontalAlignment:'Right'})
+          ]}
+        ]
       },
-      ...s.employees.map((e,i)=>({
-        type:'Container',
-        id:'avatar-slot-'+(i+1),
-        minHeight:'44px',
-        verticalContentAlignment:'Center',
-        spacing:'None',
-        selectAction:{
-          type:'Action.ToggleVisibility',
-          targetElements:detailTargets(s,i)
-        },
-        items:[avatarImage(e,avatarUrls)]
-      }))
+      employeeNativeBar(e,index,view,scale)
+    ]
+  };
+}
+
+export function employeeAlignedRow(s,e,index,avatarUrls,scales) {
+  const scope=scopeOf(s);
+  return {
+    type:'Container',
+    id:'employee-row-'+(index+1),
+    spacing:index===0?'Small':'None',
+    items:[
+      {
+        type:'ColumnSet',
+        separator:index>0,
+        spacing:index===0?'None':'Small',
+        columns:[
+          {
+            type:'Column',width:'46px',verticalContentAlignment:'Center',
+            items:[{
+              type:'Container',spacing:'None',
+              selectAction:{
+                type:'Action.ToggleVisibility',
+                targetElements:['employee-detail-'+(index+1)]
+              },
+              items:[avatarImage(e,avatarUrls)]
+            }]
+          },
+          {
+            type:'Column',width:'stretch',verticalContentAlignment:'Center',
+            items:[
+              employeeMetric(e,index,'shift',scales.shift,scope),
+              employeeMetric(e,index,'workday',scales.workday,scope)
+            ]
+          }
+        ]
+      },
+      employeeDetailPanel(e,index)
     ]
   };
 }
@@ -312,13 +409,15 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
             inline(' giờ xác nhận  ·  '),
             inline(formatWorkdays(durationMinutes(s.total_hours)),{weight:'Bolder',color:'Accent'}),
             inline('  ·  Sáng '+workdaysFromMinutes(morning).toFixed(2).replace('.',',')+
-              ' công  ·  Chiều '+workdaysFromMinutes(afternoon).toFixed(2).replace('.',',')+
-              ' công  ·  '+s.rate,{size:'Small'})
+              ' công'+(scopeOf(s)===SCOPE_MORNING?'':'  ·  Chiều '+
+                workdaysFromMinutes(afternoon).toFixed(2).replace('.',',')+' công')+
+              '  ·  '+s.rate,{size:'Small'})
           ],{spacing:'Small'})
         ]
       },
 
       sectionTitle('DataBarHorizontal','NHÂN SỰ THEO CÔNG / GIỜ'),
+
       {
         type:'ActionSet',
         id:'chart-view-toggle',
@@ -329,57 +428,60 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
             title:'Theo ca',
             style:'positive',
             targetElements:[
-              {elementId:'shift-chart-container',isVisible:true},
-              {elementId:'workday-chart-container',isVisible:false}
+              {elementId:'shift-view-guide',isVisible:true},
+              {elementId:'workday-view-guide',isVisible:false},
+              ...s.employees.flatMap((e,i)=>[
+                {elementId:'shift-metric-'+(i+1),isVisible:true},
+                {elementId:'workday-metric-'+(i+1),isVisible:false}
+              ])
             ]
           },
           {
             type:'Action.ToggleVisibility',
             title:'Công quy đổi',
             targetElements:[
-              {elementId:'shift-chart-container',isVisible:false},
-              {elementId:'workday-chart-container',isVisible:true}
+              {elementId:'shift-view-guide',isVisible:false},
+              {elementId:'workday-view-guide',isVisible:true},
+              ...s.employees.flatMap((e,i)=>[
+                {elementId:'shift-metric-'+(i+1),isVisible:false},
+                {elementId:'workday-metric-'+(i+1),isVisible:true}
+              ])
             ]
           }
         ]
       },
       {
-        type:'ColumnSet',
-        id:'compact-chart-grid',
-        spacing:'Small',
-        columns:[
-          {
-            type:'Column',
-            width:'46px',
-            items:[avatarRail(s,directory,avatarUrls)]
-          },
-          {
-            type:'Column',
-            width:'stretch',
-            items:[
-              {
-                type:'Container',
-                id:'shift-chart-container',
-                isVisible:true,
-                spacing:'None',
-                items:[consolidatedShiftChart(s)]
-              },
-              {
-                type:'Container',
-                id:'workday-chart-container',
-                isVisible:false,
-                spacing:'None',
-                items:[consolidatedWorkdayChart(s)]
-              }
-            ]
-          }
+        type:'Container',id:'shift-view-guide',spacing:'Small',
+        items:[rich([
+          inline('■',{color:'Accent'}),
+          inline(' Ca sáng'),
+          ...(scopeOf(s)===SCOPE_MORNING?[]:[
+            inline('  ·  '),
+            inline('■',{color:'Good'}),
+            inline(' Ca chiều')
+          ]),
+          inline('  ·  Chạm ảnh để xem chi tiết',{color:'Default'})
+        ],{spacing:'None'})]
+      },
+      {
+        type:'Container',id:'workday-view-guide',isVisible:false,spacing:'Small',
+        items:[
+          rich([
+            inline('■',{color:'Accent'}),
+            inline(' Đã chốt'),
+            inline('  ·  '),
+            inline('■',{color:'Good'}),
+            inline(' Chưa chốt / cần đối soát')
+          ],{spacing:'None'}),
+          text('Thang chung 0–'+two(workforceScales(s).workday)+' công · Chạm ảnh để xem chi tiết',
+            {size:'Small',isSubtle:true,spacing:'None'})
         ]
       },
       {
         type:'Container',
-        id:'details-area',
+        id:'employee-chart-rows',
         spacing:'Small',
-        items:s.employees.map(employeeDetailPanel)
+        items:s.employees.map((e,i)=>employeeAlignedRow(s,e,i,avatarUrls,workforceScales(s)))
       }
     ]
   };
@@ -418,6 +520,7 @@ export function auditCard(card,source,directory,avatarUrls={}) {
 
   return {
     layout_version:LAYOUT,
+    visual_revision:ROW_VISUAL_REVISION,
     source_kind:'design_test_fixture',
     target_date:source.target_date,
     source_data_sha256:sourceDigest(source),
@@ -429,21 +532,24 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     persona_component_count:types.filter(t=>t==='Component').length,
     image_avatar_count:types.filter(t=>t==='Image').length,
     data_gate:'passed',
-    chart_architecture:'single_consolidated_chart_with_row_values',
-    shift_chart_count:1,
-    workday_chart_count:1,
+    chart_architecture:'row_locked_native_stacked_comparative_bars',
+    shift_chart_count:source.employees.length,
+    workday_chart_count:source.employees.length,
     avatar_rail_count:source.employees.length,
-    avatar_alignment:'7px_top_spacer_44px_slots',
-    shift_row_values:'morning_hours | afternoon_hours',
-    workday_chart_layout:'horizontal_avatar_aligned',
+    avatar_alignment:'same_columnset_per_employee_row',
+    shift_row_values:'exact_source_morning_and_afternoon_durations',
+    workday_chart_layout:'same_row_as_avatar_common_scale',
     detail_interaction:'avatar_tap_toggle_own_detail',
     detail_buttons:0,
     details_hidden_by_default:true,
     footer_notes:false,
     repeated_legends:false,
-    palette:'categoricalBlue_categoricalGreen',
-    shift_legend:'native: Ca sáng | Ca chiều',
+    palette:'categoricalBlue_categoricalGreen_categoricalTeal_neutral',
+    shift_legend:'one_compact_guide_per_active_view',
     native_microsoft_charts_only:true,
+    row_lock:true,
+    chart_scales:workforceScales(source),
+    chart_mode_toggle_targets:18,
     native_microsoft_personas:false,
     avatar_render:Object.keys(avatarUrls).length ? 'graph_profile_photo' : 'embedded_png_fallback',
     graph_avatar_count:source.employees.filter(e=>Boolean(avatarUrls[e.name])).length,

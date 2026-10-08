@@ -533,7 +533,8 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     const labels=verticalEmployeeNames(source);
     for(let i=0;i<source.employees.length;i++){
       const e=source.employees[i],r=shift.data[i];
-      const title=String(i+1).padStart(2,'0')+' · '+labels[i]+' · '+e.total;
+      const title=String(i+1).padStart(2,'0')+' · '+labels[i]+' · '+
+        (recordedMinutes(e)>0?formatRecordedMinutes(recordedMinutes(e)):'—');
       const expected=[
         {legend:'Ca sáng',value:chartHours(shiftTotalMinutes(e,'morning')),
           color:'categoricalTeal'},

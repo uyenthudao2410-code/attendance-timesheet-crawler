@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "watchdog-daily_2105-2026-10-07-37720135148-1",
-  "slot": "daily_2105",
-  "target_date": "2026-10-07",
-  "requested_at": "2026-10-08T02:54:21Z",
-  "reason": "automatic watchdog self-heal for stale or missing producer state",
+  "request_id": "self-heal-morning_1230-2026-10-08-20261008T084825Z",
+  "slot": "morning_1230",
+  "target_date": "2026-10-08",
+  "requested_at": "2026-10-08T15:48:25+07:00",
+  "reason": "one-time recovery: rerun missing 2026-10-08 morning producer and auto-publish refreshed V24 Adaptive Card to TEST chat",
   "delivery": {
     "enabled": false
   }

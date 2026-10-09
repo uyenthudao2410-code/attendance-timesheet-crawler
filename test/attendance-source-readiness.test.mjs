@@ -67,16 +67,33 @@ test('a complete status without actual time evidence cannot pass source readines
   assert.equal(assess(input).ok,false);
 });
 
-test('all employees without recorded data is fail-closed, not an invented zero report',()=>{
+test('verified day off with zero punches is published as legitimate zero for both slots',()=>{
   const input=raw();
   input.employees=input.employees.map((e)=>({
     name:e.name,status:'date_not_found',access_ok:true,
     device_history:{history_record_count:9,target_date_present:false}
   }));
-  assert.equal(assess(input).verified_absent,8);
-  assert.equal(assess(input).recorded,0);
-  assert.equal(assess(input).ok,false);
-  assert.match(assess(input).problem_codes.join(','),/no_verified_target_date_punches/);
+  for(const slot of ['daily_2105','morning_1230']){
+    const check=assess(input,slot);
+    assert.equal(check.verified_absent,8);
+    assert.equal(check.recorded,0);
+    assert.equal(check.ok,true);
+    assert.deepEqual(check.problem_codes,[]);
+  }
+});
+
+test('all-zero API with unverifiable source history remains fail-closed',()=>{
+  const input=raw();
+  input.employees=input.employees.map(e=>({
+    name:e.name,status:'date_not_found',access_ok:true,
+    device_history:{history_record_count:0,target_date_present:false}
+  }));
+  for(const slot of ['daily_2105','morning_1230']){
+    const check=assess(input,slot);
+    assert.equal(check.ok,false);
+    assert.equal(check.unverified_absent,8);
+    assert.match(check.problem_codes.join(','),/no_verified_target_date_punches/);
+  }
 });
 
 test('morning requires morning evidence and ignores afternoon-only source records',()=>{

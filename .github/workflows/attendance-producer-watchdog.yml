@@ -68,7 +68,7 @@ jobs:
           try {
             const receipt = JSON.parse(fs.readFileSync(process.env.RECEIPT_PATH, 'utf8'));
             if (receipt?.status === 'sent') {
-              state = /^\\d+$/.test(String(receipt?.message_id || '')) ? 'sent' : 'uncertain';
+              state = /^\d+$/.test(String(receipt?.message_id || '')) ? 'sent' : 'uncertain';
             } else if (['sending','uncertain'].includes(String(receipt?.status || ''))) {
               state = receipt.status;
             } else if (receipt?.status) {

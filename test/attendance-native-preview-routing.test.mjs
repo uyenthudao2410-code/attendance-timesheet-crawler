@@ -17,9 +17,12 @@ test('daily and morning preview requests are routed through separate native Team
   assert.match(publisher,/previous\?\.value\?\.status==='sent'/);
 });
 
-test('production recurring schedules and graph target do not change',()=>{
-  assert.match(workflow,/cron: "40 23 \* \* \*"/);
-  assert.match(workflow,/cron: "40 6 \* \* \*"/);
+test('production crawl 06:00/13:00 leads unchanged 06:50/13:50 Teams publication',()=>{
+  assert.match(workflow,/cron: "0 6 \* \* \*"/);
+  assert.match(workflow,/cron: "0 13 \* \* \*"/);
+  assert.equal((workflow.match(/timezone: "Asia\/Ho_Chi_Minh"/g)||[]).length,2);
+  assert.match(workflow,/timeout-minutes: 90/);
+  assert.match(workflow,/wait_seconds" -gt 3600/);
   assert.match(workflow,/daily_2105\) publish_hm="06:50"/);
   assert.match(workflow,/morning_1230\) publish_hm="13:50"/);
   assert.ok(workflow.includes('if [ "${{ github.event_name }}" = "schedule" ]; then'));
@@ -30,8 +33,8 @@ test('production recurring schedules and graph target do not change',()=>{
 
 
 test('both production slots remain scheduled with native Adaptive Card publishing',()=>{
-  assert.match(workflow,/cron: "40 23 \* \* \*"/);
-  assert.match(workflow,/cron: "40 6 \* \* \*"/);
+  assert.match(workflow,/cron: "0 6 \* \* \*"/);
+  assert.match(workflow,/cron: "0 13 \* \* \*"/);
   assert.match(workflow,/daily_2105\) publish_hm="06:50"/);
   assert.match(workflow,/morning_1230\) publish_hm="13:50"/);
   assert.match(workflow,/node scripts\/post-native-attendance-production\.mjs/);

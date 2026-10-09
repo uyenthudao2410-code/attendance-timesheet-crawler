@@ -39,9 +39,9 @@ async function delegatedToken(){
   return token;
 }
 
-// User images and account labels are now rendered directly by the Teams
-// Microsoft Graph Persona component. No photo downloads or recomposition.
-// Publisher only authenticates the sending account and posts the card.
+// V24 intentionally uses NO profile photos, avatars, or Persona components.
+// Teams displays compact, source-verified Entra account labels and native charts.
+// The publisher authenticates the sending account and posts the audited card.
 
 const slot=required('ATTENDANCE_RUN_SLOT');
 const date=required('TARGET_DATE');

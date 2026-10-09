@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "contract_id": "ATTENDANCE_V24_SCOPE_LOCK_2026_10_09",
+  "stage": "staging",
+  "layout": "ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS",
+  "visual_revision": "V24_STACKED_SHIFTS_REVERSIBLE_DETAILS_2026_10_09",
+  "timezone": "Asia/Ho_Chi_Minh",
+  "expected_employees": 8,
+  "source_policy": {
+    "exact_target_date": true,
+    "require_live_recrawl": true,
+    "fail_closed_on_technical_error": true,
+    "verified_absence_only": true,
+    "maximum_final_crawl_attempts": 3
+  },
+  "slots": {
+    "daily_2105": {
+      "crawl": "06:00",
+      "target_refresh": "06:48",
+      "publish": "06:50",
+      "date_rule": "yesterday"
+    },
+    "morning_1230": {
+      "crawl": "13:00",
+      "target_refresh": "13:48",
+      "publish": "13:50",
+      "date_rule": "today"
+    }
+  },
+  "visuals": {
+    "native_adaptive_card": true,
+    "chart_count": 2,
+    "daily_shift_chart": "Chart.HorizontalBar.Stacked",
+    "morning_shift_chart": "Chart.HorizontalBar",
+    "converted_workday_chart": "Chart.HorizontalBar",
+    "daily_reversible_details": true,
+    "embeds_avatar": false,
+    "embeds_persona": false,
+    "uses_image_ai": false,
+    "max_card_bytes": 18000
+  },
+  "delivery": {
+    "mode": "test_chat_only",
+    "test_chat_id": "19:0e02d613cded448892f27d74cff19d63@thread.v2",
+    "ledger_namespace": ".github/attendance-publications",
+    "sent_receipt_stops_repost": true,
+    "uncertain_fails_closed": true,
+    "production_channel": "NOT_CONFIGURED",
+    "smoke_posts_teams": false
+  },
+  "pending_acceptance": [
+    "verify_production_schedule_with_new_workflow_06_00_and_13_00",
+    "verify_expand_collapse_on_actual_teams_mobile",
+    "separate_production_channel_and_receipt_after_explicit_target_approval"
+  ]
+}

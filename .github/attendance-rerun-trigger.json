@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "self-heal-morning_1230-2026-10-09-20261009-135703",
+  "request_id": "route-check-morning_1230-2026-10-09-20261009-142407-configuredchat",
   "slot": "morning_1230",
   "target_date": "2026-10-09",
-  "requested_at": "2026-10-09T13:57:03+07:00",
-  "reason": "Recovery of missing scheduled Attendance Crawl at 13:00 and missing Teams 13:50 morning publication on 09/10/2026. Run fresh 8-person crawl, native Adaptive Card QA, then idempotent production Teams publication to existing target; do not modify recurring schedules or previous ledgers.",
+  "requested_at": "2026-10-09T14:24:07+07:00",
+  "reason": "User explicitly requested a real attendance Adaptive Card in the configured Teams group chat (repository TEAMS_CHAT_ID=BC- Bao cao hinh anh). Fresh 09 Oct morning crawl, verify eight sources, post exactly once to configured chat using an independent route-check preview ledger without reopening the existing sent production receipt. Never post to legacy TEST.",
   "delivery": {
     "enabled": false
   }

@@ -146,15 +146,17 @@ jobs:
           echo "ATTENDANCE_ROSTER_FINGERPRINT=$roster_fingerprint" >> "$GITHUB_ENV"
           echo "ATTENDANCE_IDENTITY_FINGERPRINT=$identity_fingerprint" >> "$GITHUB_ENV"
 
+      # Install the browser BEFORE the 06:48/13:48 final refresh, not after
+      # a temporary API outage. Otherwise an unplanned direct API miss could
+      # return technical_error for one employee even though H5 is readable.
+      - name: Preinstall read-only Chromium fallback
+        run: npx playwright install --with-deps chromium
+
       - name: Check whether browser fallback is required
         id: browser_preflight
         env:
           ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
         run: node scripts/browser-fallback-preflight.mjs
-
-      - name: Install Chromium only for browser fallback
-        if: ${{ steps.browser_preflight.outputs.browser_required == 'true' }}
-        run: npx playwright install --with-deps chromium
 
       - name: Crawl all attendance sources and wait for completion
         id: crawl_initial
@@ -162,10 +164,6 @@ jobs:
         env:
           ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
         run: node scripts/attendance-crawl.mjs
-
-      - name: Install Chromium after unexpected direct-API failure
-        if: ${{ steps.crawl_initial.outcome == 'failure' && steps.browser_preflight.outputs.browser_required != 'true' }}
-        run: npx playwright install --with-deps chromium
 
       - name: Retry crawl once after initial failure
         if: ${{ steps.crawl_initial.outcome == 'failure' }}
@@ -306,10 +304,6 @@ jobs:
         env:
           ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
         run: node scripts/browser-fallback-preflight.mjs
-
-      - name: Install browser for final refresh if newly required
-        if: ${{ env.ATTENDANCE_NATIVE_AUTO_PUBLISH == 'true' && steps.final_browser_preflight.outputs.browser_required == 'true' && steps.browser_preflight.outputs.browser_required != 'true' }}
-        run: npx playwright install --with-deps chromium
 
       - name: Recrawl all eight and require verified same-day source evidence
         if: ${{ env.ATTENDANCE_NATIVE_AUTO_PUBLISH == 'true' }}

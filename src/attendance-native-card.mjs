@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
-export const ROW_VISUAL_REVISION = 'V24_STACKED_SHIFTS_REVERSIBLE_DETAILS_2026_10_09';
+export const ROW_VISUAL_REVISION = 'V24_STACKED_SHIFTS_REVERSIBLE_DETAILS_BLUE_2026_10_09';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
 const fail = message => { throw new Error('NATIVE_CARD_GATE: ' + message); };
@@ -171,18 +171,18 @@ export function consolidatedShiftChart(s) {
   const labels=verticalEmployeeNames(s);
   return {
     type:'Chart.HorizontalBar',id:'workforce-shift-chart',
-    color:'categoricalTeal',showTitle:false,showLegend:false,
+    color:'categoricalBlue',showTitle:false,showLegend:false,
     showBarValues:true,displayMode:'AbsoluteNoAxis',spacing:'None',
     data:s.employees.map((e,i)=>({
       x:String(i+1).padStart(2,'0')+' · '+labels[i],
       y:chartHours(shiftTotalMinutes(e,'morning')),
-      color:'categoricalTeal'
+      color:'categoricalBlue'
     })),
     fallback:chartFallback()
   };
 }
 
-// One employee per stacked bar: morning teal + afternoon green.
+// One employee per stacked bar: refined deep-blue morning + green afternoon.
 // Retain exact source total in the category label to avoid ambiguity from
 // native chart values rounded to a tenth of an hour.
 export function consolidatedDailyShiftChart(s) {
@@ -197,7 +197,7 @@ export function consolidatedDailyShiftChart(s) {
         (recordedMinutes(e)>0?formatRecordedMinutes(recordedMinutes(e)):'—'),
       data:[
         {legend:'Ca sáng',value:chartHours(shiftTotalMinutes(e,'morning')),
-          color:'categoricalTeal'},
+          color:'categoricalBlue'},
         {legend:'Ca chiều',value:chartHours(shiftTotalMinutes(e,'afternoon')),
           color:'categoricalGreen'}
       ]
@@ -489,7 +489,7 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
         items:[
           text(scopeOf(s)==='morning'
             ?'CA SÁNG · Giờ xác nhận'
-            :'CẢ NGÀY · Xanh ngọc: Sáng · Xanh lá: Chiều',
+            :'CẢ NGÀY · Xanh dương đậm: Sáng · Xanh lá: Chiều',
             {size:'Small',weight:'Bolder',color:'Accent'}),
           ...(scopeOf(s)==='morning'
             ?[consolidatedShiftChart(s)]
@@ -550,7 +550,7 @@ export function auditCard(card,source,directory,avatarUrls={}) {
         (recordedMinutes(e)>0?formatRecordedMinutes(recordedMinutes(e)):'—');
       const expected=[
         {legend:'Ca sáng',value:chartHours(shiftTotalMinutes(e,'morning')),
-          color:'categoricalTeal'},
+          color:'categoricalBlue'},
         {legend:'Ca chiều',value:chartHours(shiftTotalMinutes(e,'afternoon')),
           color:'categoricalGreen'}
       ];
@@ -578,7 +578,7 @@ export function auditCard(card,source,directory,avatarUrls={}) {
       if(chart.data[i].x!==attendanceChartLabel(e,'morning')||
          shift.data[i].x!==String(i+1).padStart(2,'0')+' · '+labels[i]||
          shift.data[i].y!==chartHours(shiftTotalMinutes(e,'morning'))||
-         shift.data[i].color!=='categoricalTeal')
+         shift.data[i].color!=='categoricalBlue')
         fail('Morning chart source mismatch');
     }
   }else{

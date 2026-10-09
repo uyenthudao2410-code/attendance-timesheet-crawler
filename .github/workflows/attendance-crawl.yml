@@ -272,17 +272,14 @@ jobs:
           echo "ATTENDANCE_NATIVE_PREVIEW=$preview" >> "$GITHUB_ENV"
           echo "V24 native publication: auto=$auto preview=$preview request_id=${ATTENDANCE_REQUEST_ID}"
 
-      - name: Install V24 profile-photo optimizer
-        run: npm install --no-save sharp@0.34.5
-
-      - name: Wait for scheduled publication minute
+      # Initial source capture occurs at 06:00/13:00. A second complete
+      # eight-person read happens just before publication so Teams never uses
+      # a snapshot left idle for 50 minutes or an unverified empty data source.
+      - name: Wait until two minutes before Teams publication
+        if: ${{ env.ATTENDANCE_NATIVE_AUTO_PUBLISH == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
-          if [ "${ATTENDANCE_NATIVE_AUTO_PUBLISH:-false}" != "true" ]; then
-            echo "V24 publication wait skipped for non-production request"
-            exit 0
-          fi
           now="$(date +%s)"
           local_day="$(TZ=Asia/Ho_Chi_Minh date +%F)"
           case "${ATTENDANCE_RUN_SLOT}" in
@@ -291,18 +288,77 @@ jobs:
             *) echo "Unsupported publication slot" >&2; exit 1 ;;
           esac
           target="$(TZ=Asia/Ho_Chi_Minh date -d "$local_day $publish_hm:00" +%s)"
-          wait_seconds=$((target-now))
+          wait_seconds=$((target-now-120))
           if [ "$wait_seconds" -gt 3600 ]; then
             echo "Publication target unexpectedly more than 60 minutes away" >&2
             exit 1
           fi
           if [ "$wait_seconds" -gt 0 ]; then
-            echo "Waiting ${wait_seconds}s until ${publish_hm} Asia/Ho_Chi_Minh"
+            echo "Waiting ${wait_seconds}s before final ${publish_hm} source refresh"
             sleep "$wait_seconds"
           else
-            echo "Publication minute already reached; publishing immediately"
+            echo "Publication window reached or late; refreshing source immediately"
           fi
 
+      - name: Verify browser fallback for final source refresh
+        id: final_browser_preflight
+        if: ${{ env.ATTENDANCE_NATIVE_AUTO_PUBLISH == 'true' }}
+        env:
+          ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
+        run: node scripts/browser-fallback-preflight.mjs
+
+      - name: Install browser for final refresh if newly required
+        if: ${{ env.ATTENDANCE_NATIVE_AUTO_PUBLISH == 'true' && steps.final_browser_preflight.outputs.browser_required == 'true' && steps.browser_preflight.outputs.browser_required != 'true' }}
+        run: npx playwright install --with-deps chromium
+
+      - name: Recrawl all eight and require verified same-day source evidence
+        if: ${{ env.ATTENDANCE_NATIVE_AUTO_PUBLISH == 'true' }}
+        env:
+          ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "ATTENDANCE_FINAL_CRAWL_ATTEMPT=$attempt slot=${ATTENDANCE_RUN_SLOT} date=${TARGET_DATE}"
+            if node scripts/attendance-crawl.mjs \
+               && node scripts/assert-attendance-source-ready.mjs \
+               && node scripts/build-report-payload.mjs \
+               && node scripts/validate-publication-freshness.mjs report; then
+              echo "ATTENDANCE_FINAL_CRAWL_GATE=PASS attempt=$attempt"
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "ATTENDANCE_FINAL_CRAWL_GATE=FAILED_ALL_3_ATTEMPTS; Teams publication blocked" >&2
+              exit 1
+            fi
+            echo "Source unavailable or unverified; bounded fresh retry after 20 seconds"
+            sleep 20
+          done
+
+      - name: Wait until exact Teams publication minute
+        if: ${{ env.ATTENDANCE_NATIVE_AUTO_PUBLISH == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          now="$(date +%s)"
+          local_day="$(TZ=Asia/Ho_Chi_Minh date +%F)"
+          case "${ATTENDANCE_RUN_SLOT}" in
+            daily_2105) publish_hm="06:50" ;;
+            morning_1230) publish_hm="13:50" ;;
+            *) exit 1 ;;
+          esac
+          target="$(TZ=Asia/Ho_Chi_Minh date -d "$local_day $publish_hm:00" +%s)"
+          wait_seconds=$((target-now))
+          if [ "$wait_seconds" -gt 180 ]; then
+            echo "Final refresh completed outside the publication window" >&2
+            exit 1
+          fi
+          if [ "$wait_seconds" -gt 0 ]; then
+            echo "Fresh V24 report ready; waiting ${wait_seconds}s for ${publish_hm}"
+            sleep "$wait_seconds"
+          else
+            echo "Fresh report validated; publication minute reached"
+          fi
       - name: Publish V24 Adaptive Card to Teams
         env:
           GITHUB_TOKEN: ${{ github.token }}

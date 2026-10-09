@@ -37,16 +37,21 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Run regression suite
         run: npm test
-      - name: Resolve previous Vietnam calendar day for both slot source tests
+      - name: Resolve exact Vietnam date for each independent slot
         shell: bash
         run: |
           set -euo pipefail
-          target="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"
+          case "${{ matrix.slot }}" in
+            daily_2105) target="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)" ;;
+            morning_1230) target="$(TZ=Asia/Ho_Chi_Minh date +%F)" ;;
+            *) echo "SMOKE_INVALID_SLOT" >&2; exit 1 ;;
+          esac
           echo "TARGET_DATE=$target" >> "$GITHUB_ENV"
           echo "ATTENDANCE_RUN_SLOT=${{ matrix.slot }}" >> "$GITHUB_ENV"
           echo "ATTENDANCE_REQUEST_ID=production-smoke-${{ matrix.slot }}-${target}-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
           echo "ATTENDANCE_REQUESTED_AT=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
           echo "SMOKE_TARGET_DATE=$target"
+          echo "SMOKE_RUN_SLOT=${{ matrix.slot }}"
       - name: Verify private roster configuration
         env:
           ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}

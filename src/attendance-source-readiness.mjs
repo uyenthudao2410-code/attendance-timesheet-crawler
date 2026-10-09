@@ -59,8 +59,14 @@ export function assessAttendanceSourceReadiness(raw,{slot,targetDate,expectedCou
     if(morningMark(employee))counters.morning_recorded+=1;
   });
 
-  if(counters.recorded===0)problems.push('no_verified_target_date_punches');
-  if(slot==='morning_1230'&&counters.morning_recorded===0){
+  // A day with zero punches is a valid business outcome only when ALL
+  // eight source links independently confirm historical records and the
+  // absence of the requested date. Never treat empty/broken APIs as leave.
+  const allVerifiedNoRecords=counters.verified_absent===expectedCount;
+  if(counters.recorded===0&&!allVerifiedNoRecords){
+    problems.push('no_verified_target_date_punches');
+  }
+  if(slot==='morning_1230'&&counters.morning_recorded===0&&!allVerifiedNoRecords){
     problems.push('no_verified_morning_punches');
   }
   return {

@@ -61,33 +61,50 @@ export function buildDirectApiHistoryRequest(attendanceUrl, isoDate, days = 45) 
   return buildApiRequest(attendanceUrl, targetDateHistoryEpochRange(isoDate, days), 500);
 }
 
-async function executeApiRequest(request, fetchImpl) {
-  if (typeof fetchImpl !== "function") throw new Error("Fetch implementation unavailable");
-  const response = await fetchImpl(request.url, {
-    method: request.method,
-    headers: request.headers,
-    body: JSON.stringify(request.body),
-    signal: typeof AbortSignal?.timeout === "function" ? AbortSignal.timeout(15000) : undefined,
-  });
+// Only idempotent attendance read requests are retried, never writes.
+// Keep retries short so a temporary backend outage cannot consume the 50-minute
+// producer -> Teams publication window. The final V24 refresh has its own bound.
+const MAX_READ_ATTEMPTS=2;
+const BACKOFF_MS=300;
+const transientStatus=status=>status===408||status===429||status>=500;
 
-  let body;
-  try {
-    body = await response.json();
-  } catch {
-    throw new Error(`Attendance API returned non-JSON response (${response.status})`);
+async function executeApiRequest(request,fetchImpl){
+  if(typeof fetchImpl!=='function')throw new Error('Fetch implementation unavailable');
+  let lastError;
+  for(let attempt=1;attempt<=MAX_READ_ATTEMPTS;attempt++){
+    try{
+      const response=await fetchImpl(request.url,{
+        method:request.method,
+        headers:request.headers,
+        body:JSON.stringify(request.body),
+        signal:typeof AbortSignal?.timeout==='function'?AbortSignal.timeout(15000):undefined,
+      });
+      if(transientStatus(Number(response.status))){
+        throw new Error('ATTENDANCE_API_TRANSIENT_HTTP_'+response.status);
+      }
+      let body;
+      try{body=await response.json();}
+      catch{throw new Error('ATTENDANCE_API_NON_JSON_HTTP_'+response.status);}
+      const applicationCode=Number(body?.code);
+      if(applicationCode===408||applicationCode===429||applicationCode>=500){
+        throw new Error('ATTENDANCE_API_TRANSIENT_APP_'+applicationCode);
+      }
+      return {
+        status:response.status,
+        endpoint:request.url,
+        request:{
+          method:request.method,url:request.url,
+          post_data:JSON.stringify(request.body),headers:request.headers,
+        },
+        body,
+      };
+    }catch(error){
+      lastError=error;
+      if(attempt===MAX_READ_ATTEMPTS)throw error;
+      await new Promise(resolve=>setTimeout(resolve,BACKOFF_MS*attempt));
+    }
   }
-
-  return {
-    status: response.status,
-    endpoint: request.url,
-    request: {
-      method: request.method,
-      url: request.url,
-      post_data: JSON.stringify(request.body),
-      headers: request.headers,
-    },
-    body,
-  };
+  throw lastError;
 }
 
 export async function fetchDirectAttendancePayload(attendanceUrl, isoDate, { fetchImpl = globalThis.fetch } = {}) {

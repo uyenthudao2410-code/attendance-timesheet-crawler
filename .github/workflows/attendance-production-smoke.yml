@@ -1,0 +1,94 @@
+name: Attendance Production Readiness Smoke (No Teams)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/attendance-production-smoke.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: attendance-production-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TZ: Asia/Ho_Chi_Minh
+      DEBUG_MODE: "false"
+    steps:
+      - name: Checkout approved V24
+        uses: actions/checkout@v7
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run regression suite
+        run: npm test
+      - name: Resolve previous Vietnam calendar day
+        shell: bash
+        run: |
+          set -euo pipefail
+          target="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"
+          echo "TARGET_DATE=$target" >> "$GITHUB_ENV"
+          echo "ATTENDANCE_RUN_SLOT=daily_2105" >> "$GITHUB_ENV"
+          echo "ATTENDANCE_REQUEST_ID=production-smoke-${target}-${GITHUB_RUN_ID}" >> "$GITHUB_ENV"
+          echo "ATTENDANCE_REQUESTED_AT=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
+          echo "SMOKE_TARGET_DATE=$target"
+      - name: Verify private roster configuration
+        env:
+          ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ATTENDANCE_ROSTER_JSON" || { echo "SMOKE_MISSING_ROSTER_SECRET" >&2; exit 1; }
+          node scripts/derive-artifact-material.mjs fingerprint > /dev/null
+      - name: Prepare optional Chromium read-only H5 fallback
+        run: npx playwright install --with-deps chromium
+      - name: Live read-only crawl for all eight sources
+        env:
+          ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
+        run: node scripts/attendance-crawl.mjs
+      - name: Prove source readiness (no incomplete technical sources)
+        run: node scripts/assert-attendance-source-ready.mjs
+      - name: Assemble canonical report for exact fresh run
+        env:
+          ATTENDANCE_ROSTER_JSON: ${{ secrets.ATTENDANCE_ROSTER_JSON }}
+        run: node scripts/build-report-payload.mjs
+      - name: Audit complete V24 chart, binding, and payload without posting
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import {businessReportToNativeSource} from './src/attendance-native-production-source.mjs';
+          import {LAYOUT,buildNativeCard,auditCard} from './src/attendance-native-card.mjs';
+          const slot=process.env.ATTENDANCE_RUN_SLOT;
+          const date=process.env.TARGET_DATE;
+          const report=JSON.parse(fs.readFileSync('output/report-'+slot+'-'+date+'.json','utf8'));
+          if(report.date!==date||report.slot!==slot||report.employee_count!==8)throw new Error('SMOKE_REPORT_IDENTITY_FAILED');
+          const source=businessReportToNativeSource(report);
+          const directory=JSON.parse(fs.readFileSync('test/fixtures/attendance-user-directory.json','utf8'));
+          const card=buildNativeCard(source,directory);
+          const qa=auditCard(card,source,directory);
+          if(qa.layout_version!==LAYOUT||qa.bytes>18000||
+             qa.graph_persona_count!==0||qa.image_avatar_count!==0||
+             qa.verified_Entra_account_count!==8){
+            throw new Error('SMOKE_V24_CARD_GATE_FAILED');
+          }
+          console.log('SMOKE_SOURCE_AND_NATIVE_V24=PASS date='+date+
+            ' employees='+report.employee_count+' bytes='+qa.bytes+
+            ' charts='+qa.chart_count+' avatar_count=0');
+          console.log('SMOKE_TEAMS_POST=NOT_ATTEMPTED');
+          NODE
+      - name: Remove raw employee records from runner
+        if: always()
+        shell: bash
+        run: rm -rf output debug secure-bundle

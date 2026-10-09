@@ -104,3 +104,49 @@ test("history API client uses the same unauthenticated read-only endpoint", asyn
   assert.equal(calls[0].options.headers.cookie, undefined);
   assert.equal(JSON.parse(calls[0].options.body).pageSize, 500);
 });
+
+test("transient network failure is retried once for read-only attendance", async () => {
+  let calls=0;
+  const fakeFetch=async()=>{
+    calls+=1;
+    if(calls===1)throw new Error("network temporarily unavailable");
+    return {status:200,async json(){return {code:200,data:{status:0,records:[],totalNum:0}};}};
+  };
+  const result=await fetchDirectAttendancePayload(
+    "https://h5.timemark.com/attendance-management?deviceId=retry-test",
+    "2026-10-08",{fetchImpl:fakeFetch}
+  );
+  assert.equal(result.status,200);
+  assert.equal(calls,2);
+});
+
+test("transient HTTP 503 is retried but HTTP 404 is not", async () => {
+  let calls=0;
+  const transient=async()=>{
+    calls+=1;
+    if(calls===1)return {status:503,async json(){return {code:503};}};
+    return {status:200,async json(){return {code:200,data:{status:0,records:[],totalNum:0}};}};
+  };
+  const url="https://h5.timemark.com/attendance-management?deviceId=retry-http";
+  const recovered=await fetchDirectAttendancePayload(url,"2026-10-08",{fetchImpl:transient});
+  assert.equal(recovered.status,200);
+  assert.equal(calls,2);
+  let nonretryCalls=0;
+  const bad=await fetchDirectAttendancePayload(url,"2026-10-08",{
+    fetchImpl:async()=>{nonretryCalls+=1;return {status:404,async json(){return {code:404};}};}
+  });
+  assert.equal(bad.status,404);
+  assert.equal(nonretryCalls,1);
+});
+
+test("persistent transient API failures are bounded to two attempts", async () => {
+  let calls=0;
+  const url="https://h5.timemark.com/attendance-management?deviceId=retry-limit";
+  await assert.rejects(
+    ()=>fetchDirectAttendancePayload(url,"2026-10-08",{
+      fetchImpl:async()=>{calls+=1;return {status:429,async json(){return {code:429};}};}
+    }),
+    /ATTENDANCE_API_TRANSIENT_HTTP_429/
+  );
+  assert.equal(calls,2);
+});

@@ -10,7 +10,7 @@ export async function request(url, init = {}, { retrySafe = false, fetchImpl = f
       await sleep(1000 * 2 ** attempt); continue;
     }
     const throttled = response.status === 429;
-    if (attempt < 2 && (throttled || (retrySafe && [500, 502, 503, 504].includes(response.status)))) {
+    if (retrySafe && attempt < 2 && (throttled || [500, 502, 503, 504].includes(response.status))) {
       const retryAfter = response.headers.get('retry-after');
       const seconds = /^\d+$/.test(retryAfter || '') ? Number(retryAfter) : Math.max(0, (Date.parse(retryAfter) - Date.now()) / 1000);
       if (Number.isFinite(seconds) && seconds > 60) return response;

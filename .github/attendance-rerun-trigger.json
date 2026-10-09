@@ -4,7 +4,7 @@
   "slot": "daily_2105",
   "target_date": "2026-10-08",
   "requested_at": "2026-10-09T00:05:34.760Z",
-  "reason": "one-shot recovery: missing scheduled 06:00 producer / native V24 publication for 2026-10-08",
+  "reason": "retry the SAME one-shot self-heal request after fixing the scheduled-time regression test (original run 37862970565 failed at npm test)",
   "delivery": {
     "enabled": false
   }

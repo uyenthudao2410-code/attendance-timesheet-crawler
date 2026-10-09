@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "design-preview-daily_2105-2026-10-08-20261009-1034-bluev24",
-  "slot": "daily_2105",
-  "target_date": "2026-10-08",
-  "requested_at": "2026-10-09T03:33:48.357Z",
-  "reason": "User-approved Teams TEST preview: morning deep-blue categoricalBlue versus unchanged afternoon green; keep reversible details and separate receipt",
+  "request_id": "self-heal-morning_1230-2026-10-09-20261009-135703",
+  "slot": "morning_1230",
+  "target_date": "2026-10-09",
+  "requested_at": "2026-10-09T13:57:03+07:00",
+  "reason": "Recovery of missing scheduled Attendance Crawl at 13:00 and missing Teams 13:50 morning publication on 09/10/2026. Run fresh 8-person crawl, native Adaptive Card QA, then idempotent production Teams publication to existing target; do not modify recurring schedules or previous ledgers.",
   "delivery": {
     "enabled": false
   }

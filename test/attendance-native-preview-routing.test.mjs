@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const workflow=fs.readFileSync('.github/workflows/attendance-crawl.yml','utf8');
 const publisher=fs.readFileSync('scripts/post-native-attendance-production.mjs','utf8');
+const watchdog=fs.readFileSync('.github/workflows/attendance-producer-watchdog.yml','utf8');
 
 test('daily and morning preview requests are routed through separate native Teams ledgers',()=>{
   assert.match(workflow,/design-preview-morning_1230-\*\|design-preview-daily_2105-\*/);
@@ -39,4 +40,21 @@ test('both production slots remain scheduled with native Adaptive Card publishin
   assert.match(workflow,/morning_1230\) publish_hm="13:50"/);
   assert.match(workflow,/node scripts\/post-native-attendance-production\.mjs/);
   assert.match(publisher,/ATTENDANCE_NATIVE_SCOPE_LAYOUT_GATE_FAILED/);
+});
+
+test('native V24 watchdog runs early and fails closed on unsettled Teams receipts',()=>{
+  const crons=[...watchdog.matchAll(/- cron: "(\\d+ \\d+ \\* \\* \\*)"\\n      timezone: "Asia\\/Ho_Chi_Minh"/g)].map(m=>m[1]);
+  assert.deepEqual(crons,[
+    '12 6 * * *','30 6 * * *','42 6 * * *',
+    '12 13 * * *','30 13 * * *','42 13 * * *'
+  ]);
+  assert.ok(watchdog.includes("state = /^\\d+$/.test(String(receipt?.message_id || ''))"));
+  assert.ok(watchdog.includes('WATCHDOG_STATE=publication_receipt_sent'));
+  assert.ok(watchdog.includes('WATCHDOG_STATE=delivery_uncertain_fail_closed'));
+  assert.ok(watchdog.includes('WATCHDOG_STATE=producer_pending'));
+  assert.ok(watchdog.includes('WATCHDOG_STATE=self_heal_already_requested'));
+  assert.ok(watchdog.includes('/^(?:watchdog-|self-heal-)/.test(id)'));
+  assert.ok(watchdog.indexOf('WATCHDOG_STATE=publication_receipt_sent')<
+    watchdog.indexOf('request_id="watchdog-'));
+  assert.doesNotMatch(watchdog,/ATTENDANCE_AI_VISUAL_V10/);
 });

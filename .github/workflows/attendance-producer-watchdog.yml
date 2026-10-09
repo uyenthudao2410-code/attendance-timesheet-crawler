@@ -2,11 +2,20 @@ name: Attendance Producer Watchdog
 
 on:
   schedule:
-    # Two fail-closed checks before each ChatGPT publication task.
-    - cron: "43 23 * * *"
-    - cron: "48 23 * * *"
-    - cron: "43 6 * * *"
-    - cron: "48 6 * * *"
+    # Three fail-closed recovery checks between producer and V24 Teams publication.
+    # Keep off the top of each hour to reduce GitHub scheduler congestion.
+    - cron: "12 6 * * *"
+      timezone: "Asia/Ho_Chi_Minh"
+    - cron: "30 6 * * *"
+      timezone: "Asia/Ho_Chi_Minh"
+    - cron: "42 6 * * *"
+      timezone: "Asia/Ho_Chi_Minh"
+    - cron: "12 13 * * *"
+      timezone: "Asia/Ho_Chi_Minh"
+    - cron: "30 13 * * *"
+      timezone: "Asia/Ho_Chi_Minh"
+    - cron: "42 13 * * *"
+      timezone: "Asia/Ho_Chi_Minh"
 
 permissions:
   contents: write
@@ -38,11 +47,11 @@ jobs:
           set -euo pipefail
 
           case "$WATCHDOG_CRON" in
-            "43 23 * * *"|"48 23 * * *")
+            "12 6 * * *"|"30 6 * * *"|"42 6 * * *")
               slot="daily_2105"
               target_date="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"
               ;;
-            "43 6 * * *"|"48 6 * * *")
+            "12 13 * * *"|"30 13 * * *"|"42 13 * * *")
               slot="morning_1230"
               target_date="$(TZ=Asia/Ho_Chi_Minh date +%F)"
               ;;
@@ -53,50 +62,37 @@ jobs:
           esac
 
           receipt_path=".github/attendance-publications/${slot}-${target_date}.json"
-          receipt_sent="$(RECEIPT_PATH="$receipt_path" node --input-type=module <<'NODE'
+          receipt_state="$(RECEIPT_PATH="$receipt_path" node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          let sent = false;
+          let state = 'missing';
           try {
             const receipt = JSON.parse(fs.readFileSync(process.env.RECEIPT_PATH, 'utf8'));
-            sent = receipt?.status === 'sent' && /^\d+$/.test(String(receipt?.message_id || ''));
+            if (receipt?.status === 'sent') {
+              state = /^\\d+$/.test(String(receipt?.message_id || '')) ? 'sent' : 'uncertain';
+            } else if (['sending','uncertain'].includes(String(receipt?.status || ''))) {
+              state = receipt.status;
+            } else if (receipt?.status) {
+              state = String(receipt.status);
+            }
           } catch {}
-          process.stdout.write(sent ? 'yes' : 'no');
+          process.stdout.write(state);
           NODE
           )"
 
-          if [ "$receipt_sent" = "yes" ]; then
+          if [ "$receipt_state" = "sent" ]; then
             echo "WATCHDOG_STATE=publication_receipt_sent slot=$slot target_date=$target_date"
             exit 0
           fi
+          if [ "$receipt_state" = "sending" ] || [ "$receipt_state" = "uncertain" ]; then
+            echo "WATCHDOG_STATE=delivery_uncertain_fail_closed slot=$slot target_date=$target_date receipt_status=$receipt_state" >&2
+            exit 1
+          fi
 
-          state_path=".github/attendance-state/${slot}.json"
-          valid_state="$(SLOT="$slot" TARGET_DATE="$target_date" STATE_PATH="$state_path" node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const required = {
-            schema_version: 12,
-            publication_contract_version: 'ATTENDANCE_PUBLICATION_V1',
-            input_contract_version: 'ATTENDANCE_CHATGPT_IMAGE_INPUT_V1',
-            image_context_contract_version: 'ATTENDANCE_IMAGEGEN_ISOLATED_CONTEXT_V1',
-            ai_visual_spec_version: 'ATTENDANCE_AI_VISUAL_V10_FLEX_VISUAL_STRICT_DATA_2026_10_05',
-            input_gate: 'passed',
-            slot: process.env.SLOT,
-            target_date: process.env.TARGET_DATE,
-            crawl_complete: true,
-            crawl_employee_count: 8,
-          };
-          let ok = false;
-          try {
-            const state = JSON.parse(fs.readFileSync(process.env.STATE_PATH, 'utf8'));
-            ok = Object.entries(required).every(([key, value]) => state?.[key] === value)
-              && /^\d+$/.test(String(state?.run_id || ''))
-              && /^\d+$/.test(String(state?.teams_self_handoff_message_id || ''));
-          } catch {}
-          process.stdout.write(ok ? 'yes' : 'no');
-          NODE
-          )"
-
-          if [ "$valid_state" = "yes" ]; then
-            echo "WATCHDOG_STATE=valid slot=$slot target_date=$target_date"
+          # V24's authoritative state is its Teams publication receipt, not legacy AI producer state.
+          # A live crawl run may be waiting until the exact Teams publication minute.
+          pending="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/workflows/attendance-crawl.yml/runs?per_page=40" --jq '[.workflow_runs[] | select(.status == "queued" or .status == "in_progress")] | length')"
+          if [ "${pending:-0}" -gt 0 ]; then
+            echo "WATCHDOG_STATE=producer_pending count=$pending slot=$slot target_date=$target_date"
             exit 0
           fi
 
@@ -105,10 +101,12 @@ jobs:
           let same = false;
           try {
             const trigger = JSON.parse(fs.readFileSync('.github/attendance-rerun-trigger.json', 'utf8'));
+            const id = String(trigger?.request_id || '');
             same = trigger?.schema_version === 1
               && trigger?.slot === process.env.SLOT
               && trigger?.target_date === process.env.TARGET_DATE
-              && trigger?.delivery?.enabled === false;
+              && trigger?.delivery?.enabled === false
+              && /^(?:watchdog-|self-heal-)/.test(id);
           } catch {}
           process.stdout.write(same ? 'yes' : 'no');
           NODE
@@ -116,12 +114,6 @@ jobs:
 
           if [ "$same_request" = "yes" ]; then
             echo "WATCHDOG_STATE=self_heal_already_requested slot=$slot target_date=$target_date"
-            exit 0
-          fi
-
-          pending="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/workflows/attendance-crawl.yml/runs?per_page=20"             --jq '[.workflow_runs[] | select(.status == "queued" or .status == "in_progress")] | length')"
-          if [ "${pending:-0}" -gt 0 ]; then
-            echo "WATCHDOG_STATE=producer_pending count=$pending slot=$slot target_date=$target_date"
             exit 0
           fi
 

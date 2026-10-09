@@ -11,7 +11,8 @@ test('daily and morning preview requests are routed through separate native Team
   assert.match(workflow,/ATTENDANCE_NATIVE_PREVIEW=\$preview/);
   assert.match(workflow,/case "\$\{ATTENDANCE_RUN_SLOT\}" in[\s\S]*morning_1230\|daily_2105/);
   assert.match(publisher,/design-preview-\(\?:morning_1230\|daily_2105\)/);
-  assert.match(publisher,/requestId\.startsWith\('design-preview-'\+slot\+'-'\+date\+'-'\)/);
+  assert.match(publisher,/route-check-\(\?:morning_1230\|daily_2105\)/);
+  assert.match(publisher,/routeCheck\?'route-check-':'design-preview-'/);
   assert.ok(publisher.includes("'.github/attendance-native-previews/'+requestId+'.json'"));
   assert.ok(publisher.includes("'.github/attendance-publications/'+slot+'-'+date+'.json'"));
   assert.match(publisher,/DELIVERY_UNCERTAIN_RECONCILE_BEFORE_RESEND/);

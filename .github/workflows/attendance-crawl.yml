@@ -248,6 +248,7 @@ jobs:
           set -euo pipefail
           auto=false
           preview=false
+          route_check=false
           if [ "${GITHUB_EVENT_NAME}" = "schedule" ]; then
             auto=true
           else
@@ -264,11 +265,25 @@ jobs:
                 auto=true
                 preview=true
                 ;;
+              route-check-morning_1230-*|route-check-daily_2105-*)
+                # One explicit, source-fresh route verification to the configured
+                # production CHAT. It uses an isolated preview ledger, never
+                # the existing sent production receipt. Design previews still
+                # route only to TEST. Validated again by the publisher.
+                case "${ATTENDANCE_RUN_SLOT}" in
+                  morning_1230|daily_2105) ;;
+                  *) echo "Unsupported configured chat route-check slot" >&2; exit 1 ;;
+                esac
+                auto=true
+                preview=true
+                route_check=true
+                ;;
             esac
           fi
           echo "ATTENDANCE_NATIVE_AUTO_PUBLISH=$auto" >> "$GITHUB_ENV"
           echo "ATTENDANCE_NATIVE_PREVIEW=$preview" >> "$GITHUB_ENV"
-          echo "V24 native publication: auto=$auto preview=$preview request_id=${ATTENDANCE_REQUEST_ID}"
+          echo "ATTENDANCE_NATIVE_ROUTE_CHECK=$route_check" >> "$GITHUB_ENV"
+          echo "V24 native publication: auto=$auto preview=$preview route_check=$route_check request_id=${ATTENDANCE_REQUEST_ID}"
 
       # Initial source capture occurs at 06:00/13:00. A second complete
       # eight-person read happens just before publication so Teams never uses
@@ -361,9 +376,9 @@ jobs:
           MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
           MS_REFRESH_TOKEN: ${{ secrets.MS_REFRESH_TOKEN }}
           # A production destination must be explicit. Do not fall back to TEST.
-          # Read both GitHub Variables and Secrets; prefer ATTENDANCE_ names.
-          ATTENDANCE_TEAMS_TARGET_TYPE: ${{ vars.ATTENDANCE_TEAMS_TARGET_TYPE || secrets.ATTENDANCE_TEAMS_TARGET_TYPE || vars.TEAMS_TARGET_TYPE || secrets.TEAMS_TARGET_TYPE }}
-          ATTENDANCE_TEAMS_CHAT_ID: ${{ vars.ATTENDANCE_TEAMS_CHAT_ID || secrets.ATTENDANCE_TEAMS_CHAT_ID || vars.TEAMS_CHAT_ID || secrets.TEAMS_CHAT_ID }}
+          # Prefer the exact repository variables TEAMS_CHAT_ID and TEAMS_TARGET_TYPE visible in GitHub settings; fall back to compatible aliases.
+          ATTENDANCE_TEAMS_TARGET_TYPE: ${{ vars.TEAMS_TARGET_TYPE || vars.ATTENDANCE_TEAMS_TARGET_TYPE || secrets.ATTENDANCE_TEAMS_TARGET_TYPE || secrets.TEAMS_TARGET_TYPE }}
+          ATTENDANCE_TEAMS_CHAT_ID: ${{ vars.TEAMS_CHAT_ID || vars.ATTENDANCE_TEAMS_CHAT_ID || secrets.ATTENDANCE_TEAMS_CHAT_ID || secrets.TEAMS_CHAT_ID }}
           ATTENDANCE_TEAMS_TEAM_ID: ${{ vars.ATTENDANCE_TEAMS_TEAM_ID || secrets.ATTENDANCE_TEAMS_TEAM_ID || vars.TEAMS_TEAM_ID || secrets.TEAMS_TEAM_ID || vars.TEAMS_GROUP_ID || secrets.TEAMS_GROUP_ID }}
           ATTENDANCE_TEAMS_CHANNEL_ID: ${{ vars.ATTENDANCE_TEAMS_CHANNEL_ID || secrets.ATTENDANCE_TEAMS_CHANNEL_ID || vars.TEAMS_CHANNEL_ID || secrets.TEAMS_CHANNEL_ID }}
           ATTENDANCE_TEAMS_TARGET_ID: ${{ vars.ATTENDANCE_TEAMS_TARGET_ID || secrets.ATTENDANCE_TEAMS_TARGET_ID || vars.TEAMS_TARGET_ID || secrets.TEAMS_TARGET_ID }}

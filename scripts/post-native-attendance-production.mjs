@@ -54,12 +54,18 @@ if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw new Error('Invalid target date');
 // An explicitly requested re-post uses a unique design-preview ledger and
 // fresh crawler data. Existing production 'sent' receipts remain immutable.
 const preview=process.env.ATTENDANCE_NATIVE_PREVIEW==='true';
+const routeCheck=process.env.ATTENDANCE_NATIVE_ROUTE_CHECK==='true';
 const requestId=String(process.env.ATTENDANCE_REQUEST_ID||'');
+const designPreviewId=/^design-preview-(?:morning_1230|daily_2105)-\d{4}-\d{2}-\d{2}-[A-Za-z0-9-]{6,80}$/;
+const configuredRouteId=/^route-check-(?:morning_1230|daily_2105)-\d{4}-\d{2}-\d{2}-[A-Za-z0-9-]{6,80}$/;
+if(routeCheck&&!preview)throw new Error('ATTENDANCE_ROUTE_CHECK_REQUIRES_SEPARATE_PREVIEW_LEDGER');
 if(preview && (
   !/^(?:morning_1230|daily_2105)$/.test(slot) ||
-  !/^design-preview-(?:morning_1230|daily_2105)-\d{4}-\d{2}-\d{2}-[A-Za-z0-9-]{6,80}$/.test(requestId) ||
-  !requestId.startsWith('design-preview-'+slot+'-'+date+'-')
+  !(routeCheck?configuredRouteId:designPreviewId).test(requestId) ||
+  !requestId.startsWith((routeCheck?'route-check-':'design-preview-')+slot+'-'+date+'-')
 ))throw new Error('INVALID_EXPLICIT_NATIVE_PREVIEW_REQUEST');
+if(!routeCheck && configuredRouteId.test(requestId))
+  throw new Error('CONFIGURED_CHAT_ROUTE_CHECK_FLAG_REQUIRED');
 
 const reportPath=path.join('output','report-'+slot+'-'+date+'.json');
 const report=JSON.parse(fs.readFileSync(reportPath,'utf8'));
@@ -68,9 +74,13 @@ if(report.slot!==slot||report.date!==date)throw new Error('BUSINESS_REPORT_BINDI
 const directory=JSON.parse(fs.readFileSync('test/fixtures/attendance-user-directory.json','utf8'));
 const source=businessReportToNativeSource(report);
 
-const target=resolveAttendanceTeamsTarget(process.env,preview,TEST_CHAT);
+const target=resolveAttendanceTeamsTarget(process.env,preview&&!routeCheck,TEST_CHAT);
+if(routeCheck && (
+  target.type!=='chat' || target.is_preview ||
+  !/^19:[A-Fa-f0-9]{32}@thread\.v2$/.test(target.chat_id)
+))throw new Error('ATTENDANCE_ROUTE_CHECK_REQUIRES_CONFIGURED_GROUP_CHAT');
 console.log('ATTENDANCE_NATIVE_DESTINATION_TYPE='+target.type);
-console.log('ATTENDANCE_NATIVE_DESTINATION_SOURCE='+(preview?'preview_TEST':'configured_production'));
+console.log('ATTENDANCE_NATIVE_DESTINATION_SOURCE='+(routeCheck?'configured_chat_route_check':preview?'preview_TEST':'configured_production'));
 const store=createRepoStore(required('GITHUB_REPOSITORY'),required('GITHUB_TOKEN'));
 const ledgerPath=preview
   ? '.github/attendance-native-previews/'+requestId+'.json'
@@ -118,8 +128,10 @@ console.log('ATTENDANCE_NATIVE_PROD_MANUAL_AVATARS='+qa.image_avatar_count);
 
 let receipt=await store.write(ledgerPath,{
   schema_version:1,
-  kind:preview?'attendance_native_adaptive_card_preview':'attendance_native_adaptive_card',
+  kind:routeCheck?'attendance_native_adaptive_card_route_check'
+    :preview?'attendance_native_adaptive_card_preview':'attendance_native_adaptive_card',
   ...(preview?{preview_request_id:requestId}:{}),
+  ...(routeCheck?{explicit_configured_chat_route_check:true}:{}),
   layout_version:LAYOUT,
   slot,
   target_date:date,

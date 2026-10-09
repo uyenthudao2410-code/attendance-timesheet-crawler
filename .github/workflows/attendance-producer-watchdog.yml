@@ -2,7 +2,7 @@ name: Attendance Producer Watchdog
 
 on:
   schedule:
-    # Three fail-closed recovery checks between producer and V24 Teams publication.
+    # Three early checks and one post-publication recovery for each V24 slot.
     # Keep off the top of each hour to reduce GitHub scheduler congestion.
     - cron: "12 6 * * *"
       timezone: "Asia/Ho_Chi_Minh"
@@ -10,11 +10,15 @@ on:
       timezone: "Asia/Ho_Chi_Minh"
     - cron: "42 6 * * *"
       timezone: "Asia/Ho_Chi_Minh"
+    - cron: "10 7 * * *"
+      timezone: "Asia/Ho_Chi_Minh"
     - cron: "12 13 * * *"
       timezone: "Asia/Ho_Chi_Minh"
     - cron: "30 13 * * *"
       timezone: "Asia/Ho_Chi_Minh"
     - cron: "42 13 * * *"
+      timezone: "Asia/Ho_Chi_Minh"
+    - cron: "10 14 * * *"
       timezone: "Asia/Ho_Chi_Minh"
 
 permissions:
@@ -45,13 +49,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Read latest committed receipt/trigger rather than stale checkout state.
+          git pull --ff-only origin main
 
           case "$WATCHDOG_CRON" in
-            "12 6 * * *"|"30 6 * * *"|"42 6 * * *")
+            "12 6 * * *"|"30 6 * * *"|"42 6 * * *"|"10 7 * * *")
               slot="daily_2105"
               target_date="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"
               ;;
-            "12 13 * * *"|"30 13 * * *"|"42 13 * * *")
+            "12 13 * * *"|"30 13 * * *"|"42 13 * * *"|"10 14 * * *")
               slot="morning_1230"
               target_date="$(TZ=Asia/Ho_Chi_Minh date +%F)"
               ;;
@@ -113,8 +119,45 @@ jobs:
           )"
 
           if [ "$same_request" = "yes" ]; then
-            echo "WATCHDOG_STATE=self_heal_already_requested slot=$slot target_date=$target_date"
-            exit 0
+            # Earlier recovery already exists. Only the late watchdog may retry
+            # that SAME request, once, after all live runs have finished.
+            case "$WATCHDOG_CRON" in
+              "10 7 * * *"|"10 14 * * *")
+                retry_path=".github/attendance-watchdog-retries/${slot}-${target_date}.json"
+                if [ -e "$retry_path" ]; then
+                  echo "WATCHDOG_STATE=post_publication_retry_already_used slot=$slot target_date=$target_date"
+                  exit 0
+                fi
+                mkdir -p .github/attendance-watchdog-retries
+                SLOT="$slot" TARGET_DATE="$target_date" RETRY_PATH="$retry_path" node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const trigger=JSON.parse(fs.readFileSync('.github/attendance-rerun-trigger.json','utf8'));
+          if(trigger.slot!==process.env.SLOT||trigger.target_date!==process.env.TARGET_DATE){
+            throw new Error('POST_PUBLICATION_RETRY_TRIGGER_MISMATCH');
+          }
+          const marker={
+            schema_version:1,slot:process.env.SLOT,target_date:process.env.TARGET_DATE,
+            request_id:trigger.request_id,reason:'single_late_retry_of_existing_self_heal_request',
+            requested_at:new Date().toISOString()
+          };
+          fs.writeFileSync(process.env.RETRY_PATH,JSON.stringify(marker,null,2)+'\n');
+          NODE
+                git config user.name "github-actions[bot]"
+                git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                git add "$retry_path"
+                git commit -m "watchdog: one late retry ${slot} ${target_date} [skip ci]"
+                git pull --rebase origin main
+                git push origin HEAD:main
+                # GitHub Actions token commits do not automatically retrigger workflows.
+                gh api --method POST "/repos/${GITHUB_REPOSITORY}/actions/workflows/attendance-crawl.yml/dispatches" -f ref=main
+                echo "WATCHDOG_STATE=existing_request_redispatched_once slot=$slot target_date=$target_date"
+                exit 0
+                ;;
+              *)
+                echo "WATCHDOG_STATE=self_heal_already_requested slot=$slot target_date=$target_date"
+                exit 0
+                ;;
+            esac
           fi
 
           request_id="watchdog-${slot}-${target_date}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"

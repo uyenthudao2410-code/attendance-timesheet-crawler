@@ -14,19 +14,23 @@ const publisher=read('scripts/post-native-attendance-production.mjs');
 const cardSource=read('src/attendance-native-card.mjs');
 const io=read('src/attendance-delivery-io.mjs');
 
-test('SCOPE LOCK: approved V24 and TEST-only destination cannot silently change',()=>{
+test('SCOPE LOCK: V24 scheduled production honors configured Teams destination; previews alone use TEST',()=>{
   assert.equal(contract.schema_version,1);
-  assert.equal(contract.stage,'staging');
+  assert.equal(contract.stage,'production');
   assert.equal(contract.layout,LAYOUT);
   assert.equal(contract.visual_revision,ROW_VISUAL_REVISION);
   assert.equal(contract.timezone,'Asia/Ho_Chi_Minh');
   assert.equal(contract.expected_employees,8);
-  assert.equal(contract.delivery.mode,'test_chat_only');
-  assert.equal(contract.delivery.production_channel,'NOT_CONFIGURED');
+  assert.equal(contract.delivery.mode,'configured_chat_or_channel');
+  assert.equal(contract.delivery.production_channel,'GITHUB_ACTIONS_RUNTIME_CONFIG');
   assert.equal(contract.delivery.test_chat_id,TEST_CHAT);
-  assert.ok(publisher.includes('target_chat_id:TEST_CHAT'));
-  assert.ok(publisher.includes("encodeURIComponent(TEST_CHAT)+'/messages'"));
-  assert.ok(!publisher.includes('TEAMS_CHANNEL_ID'));
+  assert.ok(publisher.includes('resolveAttendanceTeamsTarget(process.env,preview,TEST_CHAT)'));
+  assert.ok(publisher.includes('GRAPH+target.endpoint'));
+  assert.ok(publisher.includes('ATTENDANCE_ALREADY_SENT_DIFFERENT_TEAMS_DESTINATION_NO_AUTOREPOST'));
+  assert.ok(workflow.includes('ATTENDANCE_TEAMS_CHAT_ID:'));
+  assert.ok(workflow.includes('ATTENDANCE_TEAMS_CHANNEL_ID:'));
+  assert.ok(workflow.includes('ATTENDANCE_TEAMS_TEAM_ID:'));
+  assert.ok(!publisher.includes("GRAPH+'/chats/'+encodeURIComponent(TEST_CHAT)"));
 });
 
 test('SCOPE LOCK: crawler and publisher timing is 06:00->06:50 and 13:00->13:50',()=>{
@@ -118,7 +122,7 @@ test('SCOPE LOCK: 2 native charts, no avatar, and reversible detail layout',()=>
 test('SCOPE LOCK: no duplicate Teams send when ledger sent or uncertain',()=>{
   const pSent=publisher.indexOf("previous?.value?.status==='sent'");
   const pUncertain=publisher.indexOf("['sending','uncertain'].includes");
-  const pToken=publisher.indexOf('const token=await delegatedToken()');
+  const pToken=publisher.indexOf('const token=await delegatedToken(target.permission)');
   const pSending=publisher.indexOf("status:'sending'");
   const pNetwork=publisher.indexOf('DELIVERY_UNCERTAIN_NO_AUTOMATIC_RESEND');
   assert.ok(pSent>=0&&pUncertain>pSent&&pToken>pUncertain);

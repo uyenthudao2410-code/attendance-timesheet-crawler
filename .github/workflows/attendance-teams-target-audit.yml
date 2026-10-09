@@ -1,0 +1,50 @@
+name: Attendance Teams Destination Audit (No Post)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/attendance-teams-target-audit.yml"
+      - ".github/workflows/attendance-crawl.yml"
+      - "src/attendance-teams-target.mjs"
+      - "scripts/post-native-attendance-production.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ATTENDANCE_TEAMS_TARGET_TYPE: ${{ vars.ATTENDANCE_TEAMS_TARGET_TYPE || secrets.ATTENDANCE_TEAMS_TARGET_TYPE || vars.TEAMS_TARGET_TYPE || secrets.TEAMS_TARGET_TYPE }}
+      ATTENDANCE_TEAMS_CHAT_ID: ${{ vars.ATTENDANCE_TEAMS_CHAT_ID || secrets.ATTENDANCE_TEAMS_CHAT_ID || vars.TEAMS_CHAT_ID || secrets.TEAMS_CHAT_ID }}
+      ATTENDANCE_TEAMS_TEAM_ID: ${{ vars.ATTENDANCE_TEAMS_TEAM_ID || secrets.ATTENDANCE_TEAMS_TEAM_ID || vars.TEAMS_TEAM_ID || secrets.TEAMS_TEAM_ID || vars.TEAMS_GROUP_ID || secrets.TEAMS_GROUP_ID }}
+      ATTENDANCE_TEAMS_CHANNEL_ID: ${{ vars.ATTENDANCE_TEAMS_CHANNEL_ID || secrets.ATTENDANCE_TEAMS_CHANNEL_ID || vars.TEAMS_CHANNEL_ID || secrets.TEAMS_CHANNEL_ID }}
+      ATTENDANCE_TEAMS_TARGET_ID: ${{ vars.ATTENDANCE_TEAMS_TARGET_ID || secrets.ATTENDANCE_TEAMS_TARGET_ID || vars.TEAMS_TARGET_ID || secrets.TEAMS_TARGET_ID }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+      - name: Verify production Teams destination without sending a message
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {resolveAttendanceTeamsTarget} from './src/attendance-teams-target.mjs';
+          import {TEST_CHAT} from './src/attendance-native-card.mjs';
+          let target;
+          try{
+            target=resolveAttendanceTeamsTarget(process.env,false,TEST_CHAT);
+          }catch(error){
+            const code=String(error?.message||'UNKNOWN').replace(/[^A-Z0-9_]/g,'');
+            console.error('ATTENDANCE_TEAMS_DESTINATION_AUDIT=FAILED');
+            console.error('ATTENDANCE_TEAMS_DESTINATION_ERROR='+code);
+            process.exit(1);
+          }
+          if(target.is_preview)throw new Error('PRODUCTION_PREVIEW_MIXUP');
+          console.log('ATTENDANCE_TEAMS_DESTINATION_AUDIT=PASSED');
+          console.log('ATTENDANCE_TEAMS_DESTINATION_TYPE='+target.type);
+          console.log('ATTENDANCE_TEAMS_DESTINATION_PERMISSION='+target.permission);
+          console.log('ATTENDANCE_TEAMS_DESTINATION_EQUALS_TEST=false');
+          console.log('ATTENDANCE_TEAMS_MESSAGE_POST_ATTEMPTED=false');
+          NODE

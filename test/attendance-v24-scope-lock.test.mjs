@@ -89,6 +89,16 @@ test('SCOPE LOCK: exact-slot watchdog windows remain enabled and fail closed',()
 });
 
 test('SCOPE LOCK: 2 native charts, no avatar, and reversible detail layout',()=>{
+  // Color-only accepted revision: Microsoft native categoricalBlue (not turquoise)
+  // remains distinct from the unchanged afternoon categoricalGreen segments.
+  assert.equal(contract.visuals.morning_shift_native_color,'categoricalBlue');
+  assert.equal(contract.visuals.afternoon_shift_native_color,'categoricalGreen');
+  assert.equal(contract.visuals.daily_legend,
+    'CẢ NGÀY · Xanh dương đậm: Sáng · Xanh lá: Chiều');
+  assert.ok(cardSource.includes("color:'categoricalBlue'"));
+  assert.ok(cardSource.includes("color:'categoricalGreen'"));
+  assert.ok(cardSource.includes(contract.visuals.daily_legend));
+  assert.ok(!cardSource.includes('categoricalTeal'));
   assert.equal(contract.visuals.chart_count,2);
   assert.equal(contract.visuals.native_adaptive_card,true);
   assert.equal(contract.visuals.embeds_avatar,false);

@@ -123,6 +123,12 @@ test('SCOPE LOCK: smoke test cannot post Teams or mutate its ledger',()=>{
   assert.ok(smoke.includes('name: Attendance Production Readiness Smoke (No Teams)'));
   assert.ok(smoke.includes('contents: read'));
   assert.ok(smoke.includes('slot: [daily_2105, morning_1230]'));
+  // Lock the date-binding bug fixed after earlier smoke tests mistakenly
+  // used yesterday for BOTH slots. Morning must always read today's source.
+  assert.ok(smoke.includes('daily_2105) target='));
+  assert.ok(smoke.includes("date -d 'yesterday' +%F"));
+  assert.ok(smoke.includes('morning_1230) target='));
+  assert.ok(smoke.includes('date +%F'));
   assert.ok(smoke.includes('SMOKE_TEAMS_POST=NOT_ATTEMPTED'));
   assert.ok(!smoke.includes('post-native-attendance-production.mjs'));
   assert.ok(!smoke.includes('MS_REFRESH_TOKEN'));

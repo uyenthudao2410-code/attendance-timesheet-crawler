@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "design-preview-daily_2105-2026-10-08-20261009-1016-toggleqa",
+  "request_id": "design-preview-daily_2105-2026-10-08-20261009-1034-bluev24",
   "slot": "daily_2105",
   "target_date": "2026-10-08",
-  "requested_at": "2026-10-09T03:16:32.993Z",
-  "reason": "User-approved TEST Teams expand/collapse QA for current V24 native Adaptive Card; unique preview ledger, preserve production receipts",
+  "requested_at": "2026-10-09T03:33:48.357Z",
+  "reason": "User-approved Teams TEST preview: morning deep-blue categoricalBlue versus unchanged afternoon green; keep reversible details and separate receipt",
   "delivery": {
     "enabled": false
   }

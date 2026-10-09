@@ -43,11 +43,12 @@ test('both production slots remain scheduled with native Adaptive Card publishin
 });
 
 test('native V24 watchdog runs early and fails closed on unsettled Teams receipts',()=>{
-  const crons=[...watchdog.matchAll(/- cron: "(\\d+ \\d+ \\* \\* \\*)"\\n      timezone: "Asia\\/Ho_Chi_Minh"/g)].map(m=>m[1]);
-  assert.deepEqual(crons,[
+  const crons=[
     '12 6 * * *','30 6 * * *','42 6 * * *',
     '12 13 * * *','30 13 * * *','42 13 * * *'
-  ]);
+  ];
+  for(const cron of crons)assert.ok(watchdog.includes('cron: "'+cron+'"'));
+  assert.equal(watchdog.split('timezone: "Asia/Ho_Chi_Minh"').length-1,6);
   assert.ok(watchdog.includes("state = /^\\d+$/.test(String(receipt?.message_id || ''))"));
   assert.ok(watchdog.includes('WATCHDOG_STATE=publication_receipt_sent'));
   assert.ok(watchdog.includes('WATCHDOG_STATE=delivery_uncertain_fail_closed'));

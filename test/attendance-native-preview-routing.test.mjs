@@ -42,18 +42,22 @@ test('both production slots remain scheduled with native Adaptive Card publishin
   assert.match(publisher,/ATTENDANCE_NATIVE_SCOPE_LAYOUT_GATE_FAILED/);
 });
 
-test('native V24 watchdog runs early and fails closed on unsettled Teams receipts',()=>{
+test('native V24 watchdog has early checks, one late recovery and fail-closed receipt gating',()=>{
   const crons=[
-    '12 6 * * *','30 6 * * *','42 6 * * *',
-    '12 13 * * *','30 13 * * *','42 13 * * *'
+    '12 6 * * *','30 6 * * *','42 6 * * *','10 7 * * *',
+    '12 13 * * *','30 13 * * *','42 13 * * *','10 14 * * *'
   ];
   for(const cron of crons)assert.ok(watchdog.includes('cron: "'+cron+'"'));
-  assert.equal(watchdog.split('timezone: "Asia/Ho_Chi_Minh"').length-1,6);
+  assert.equal(watchdog.split('timezone: "Asia/Ho_Chi_Minh"').length-1,8);
   assert.ok(watchdog.includes("state = /^\\d+$/.test(String(receipt?.message_id || ''))"));
   assert.ok(watchdog.includes('WATCHDOG_STATE=publication_receipt_sent'));
   assert.ok(watchdog.includes('WATCHDOG_STATE=delivery_uncertain_fail_closed'));
   assert.ok(watchdog.includes('WATCHDOG_STATE=producer_pending'));
   assert.ok(watchdog.includes('WATCHDOG_STATE=self_heal_already_requested'));
+  assert.ok(watchdog.includes('WATCHDOG_STATE=post_publication_retry_already_used'));
+  assert.ok(watchdog.includes('WATCHDOG_STATE=existing_request_redispatched_once'));
+  assert.ok(watchdog.includes('POST_PUBLICATION_RETRY_TRIGGER_MISMATCH'));
+  assert.ok(watchdog.includes('git pull --ff-only origin main'));
   assert.ok(watchdog.includes('/^(?:watchdog-|self-heal-)/.test(id)'));
   assert.ok(watchdog.indexOf('WATCHDOG_STATE=publication_receipt_sent')<
     watchdog.indexOf('request_id="watchdog-'));

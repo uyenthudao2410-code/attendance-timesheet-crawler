@@ -96,7 +96,22 @@ jobs:
 
           # V24's authoritative state is its Teams publication receipt, not legacy AI producer state.
           # A live crawl run may be waiting until the exact Teams publication minute.
-          pending="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/workflows/attendance-crawl.yml/runs?per_page=40" --jq '[.workflow_runs[] | select(.status == "queued" or .status == "in_progress")] | length')"
+          # An unrelated stale/test Attendance Crawl must not suppress today's
+          # slot-specific recovery. Match only production-like runs started in
+          # the current Vietnamese slot window. Both slots are seven hours apart.
+          local_day="$(TZ=Asia/Ho_Chi_Minh date +%F)"
+          case "$slot" in
+            daily_2105) slot_start="05:45" ;;
+            morning_1230) slot_start="12:45" ;;
+            *) exit 1 ;;
+          esac
+          cutoff_epoch="$(TZ=Asia/Ho_Chi_Minh date -d "$local_day $slot_start:00" +%s)"
+          cutoff_utc="$(date -u -d "@$cutoff_epoch" +'%Y-%m-%dT%H:%M:%SZ')"
+          pending="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/workflows/attendance-crawl.yml/runs?per_page=80" |
+            jq --arg cutoff "$cutoff_utc" '[.workflow_runs[] |
+              select((.status == "queued" or .status == "in_progress") and .created_at >= $cutoff) |
+              select(.event == "schedule" or .event == "workflow_dispatch" or
+                (.event == "push" and ((.display_title // "") | test("^(self-heal:|watchdog:)"))))] | length')"
           if [ "${pending:-0}" -gt 0 ]; then
             echo "WATCHDOG_STATE=producer_pending count=$pending slot=$slot target_date=$target_date"
             exit 0

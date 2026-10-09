@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "route-check-morning_1230-2026-10-09-20261009-142407-configuredchat",
+  "request_id": "route-check-morning_1230-2026-10-09-20261009-143952-reversible",
   "slot": "morning_1230",
   "target_date": "2026-10-09",
-  "requested_at": "2026-10-09T14:24:07+07:00",
-  "reason": "User explicitly requested a real attendance Adaptive Card in the configured Teams group chat (repository TEAMS_CHAT_ID=BC- Bao cao hinh anh). Fresh 09 Oct morning crawl, verify eight sources, post exactly once to configured chat using an independent route-check preview ledger without reopening the existing sent production receipt. Never post to legacy TEST.",
+  "requested_at": "2026-10-09T14:39:52+07:00",
+  "reason": "User found morning V24 card missing Xem chi tiet and Thu gon. Post exactly one refreshed 8-employee morning Adaptive Card with verified Entra details and reversible sibling expand/collapse controls to configured official BC- Bao cao hinh anh Teams chat. Fresh crawl and separate route-check receipt; do not touch existing production sent ledger, do not post to TEST.",
   "delivery": {
     "enabled": false
   }

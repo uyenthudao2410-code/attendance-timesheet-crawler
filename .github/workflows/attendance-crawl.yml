@@ -3,11 +3,13 @@ name: Attendance Crawl
 on:
   workflow_dispatch:
   schedule:
-    # Producer runs 10 minutes before each ChatGPT publication task.
-    # 23:40 UTC = 06:40 Asia/Ho_Chi_Minh (next local day), for the 06:50 previous-day report.
-    - cron: "40 23 * * *"
-    # 06:40 UTC = 13:40 Asia/Ho_Chi_Minh, for the 13:50 morning report.
-    - cron: "40 6 * * *"
+    # Produce 50 minutes before native V24 Teams publication; IANA timezone avoids date confusion.
+    # 06:00 Vietnam time: prepare yesterday's full-day report, publish at 06:50.
+    - cron: "0 6 * * *"
+      timezone: "Asia/Ho_Chi_Minh"
+    # 13:00 Vietnam time: prepare today's morning report, publish at 13:50.
+    - cron: "0 13 * * *"
+      timezone: "Asia/Ho_Chi_Minh"
   push:
     paths:
       - ".github/attendance-rerun-trigger.json"
@@ -22,7 +24,7 @@ concurrency:
 jobs:
   crawl:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 90
     env:
       TZ: Asia/Ho_Chi_Minh
       DEBUG_MODE: "false"
@@ -46,13 +48,13 @@ jobs:
             requested_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
             case "$cron" in
-              "40 6 * * *")
-                # 13:40 Vietnam time: prepare data for the 13:50 ChatGPT morning report.
+              "0 13 * * *")
+                # 13:00 Vietnam time: prepare data for the 13:50 native V24 morning report.
                 run_slot="morning_1230"
                 target_date="$(TZ=Asia/Ho_Chi_Minh date +%F)"
                 ;;
-              "40 23 * * *")
-                # 06:40 Vietnam time: prepare data for the 06:50 ChatGPT previous-day report.
+              "0 6 * * *")
+                # 06:00 Vietnam time: prepare data for the 06:50 native V24 previous-day report.
                 run_slot="daily_2105"
                 target_date="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"
                 ;;
@@ -76,8 +78,8 @@ jobs:
             target_date: process.env.SCHEDULE_TARGET_DATE,
             requested_at: process.env.REQUESTED_AT,
             reason: process.env.RUN_SLOT === 'morning_1230'
-              ? 'scheduled 13:40 producer for 13:50 ChatGPT morning attendance report'
-              : 'scheduled 06:40 producer for 06:50 ChatGPT previous-day attendance report',
+              ? 'scheduled 13:00 producer for 13:50 native V24 morning attendance report'
+              : 'scheduled 06:00 producer for 06:50 native V24 previous-day attendance report',
             delivery: {
               enabled: false,
             },
@@ -290,8 +292,8 @@ jobs:
           esac
           target="$(TZ=Asia/Ho_Chi_Minh date -d "$local_day $publish_hm:00" +%s)"
           wait_seconds=$((target-now))
-          if [ "$wait_seconds" -gt 1200 ]; then
-            echo "Publication target unexpectedly more than 20 minutes away" >&2
+          if [ "$wait_seconds" -gt 3600 ]; then
+            echo "Publication target unexpectedly more than 60 minutes away" >&2
             exit 1
           fi
           if [ "$wait_seconds" -gt 0 ]; then

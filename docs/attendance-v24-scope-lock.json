@@ -3,7 +3,7 @@
   "contract_id": "ATTENDANCE_V24_SCOPE_LOCK_2026_10_09",
   "stage": "staging",
   "layout": "ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS",
-  "visual_revision": "V24_STACKED_SHIFTS_REVERSIBLE_DETAILS_2026_10_09",
+  "visual_revision": "V24_STACKED_SHIFTS_REVERSIBLE_DETAILS_BLUE_2026_10_09",
   "timezone": "Asia/Ho_Chi_Minh",
   "expected_employees": 8,
   "source_policy": {
@@ -37,7 +37,10 @@
     "embeds_avatar": false,
     "embeds_persona": false,
     "uses_image_ai": false,
-    "max_card_bytes": 18000
+    "max_card_bytes": 18000,
+    "morning_shift_native_color": "categoricalBlue",
+    "afternoon_shift_native_color": "categoricalGreen",
+    "daily_legend": "CẢ NGÀY · Xanh dương đậm: Sáng · Xanh lá: Chiều"
   },
   "delivery": {
     "mode": "test_chat_only",

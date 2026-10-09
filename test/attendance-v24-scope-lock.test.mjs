@@ -14,7 +14,7 @@ const publisher=read('scripts/post-native-attendance-production.mjs');
 const cardSource=read('src/attendance-native-card.mjs');
 const io=read('src/attendance-delivery-io.mjs');
 
-test('SCOPE LOCK: V24 scheduled production honors configured Teams destination; previews alone use TEST',()=>{
+test('SCOPE LOCK: V24 scheduled production honors configured Teams destination; design previews use TEST, explicit route checks use configured chat',()=>{
   assert.equal(contract.schema_version,1);
   assert.equal(contract.stage,'production');
   assert.equal(contract.layout,LAYOUT);
@@ -24,7 +24,9 @@ test('SCOPE LOCK: V24 scheduled production honors configured Teams destination; 
   assert.equal(contract.delivery.mode,'configured_chat_or_channel');
   assert.equal(contract.delivery.production_channel,'GITHUB_ACTIONS_RUNTIME_CONFIG');
   assert.equal(contract.delivery.test_chat_id,TEST_CHAT);
-  assert.ok(publisher.includes('resolveAttendanceTeamsTarget(process.env,preview,TEST_CHAT)'));
+  assert.ok(publisher.includes('resolveAttendanceTeamsTarget(process.env,preview&&!routeCheck,TEST_CHAT)'));
+  assert.ok(publisher.includes("if(routeCheck && ("));
+  assert.ok(publisher.includes("routeCheck?'attendance_native_adaptive_card_route_check'"));
   assert.ok(publisher.includes('GRAPH+target.endpoint'));
   assert.ok(publisher.includes('ATTENDANCE_ALREADY_SENT_DIFFERENT_TEAMS_DESTINATION_NO_AUTOREPOST'));
   assert.ok(workflow.includes('ATTENDANCE_TEAMS_CHAT_ID:'));

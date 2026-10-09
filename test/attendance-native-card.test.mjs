@@ -80,7 +80,7 @@ test('full-day Theo ca uses one native stacked horizontal chart for eight people
       (minutes?formatRecordedMinutes(minutes):'—'));
     assert.deepEqual(row.data,[
       {legend:'Ca sáng',value:Math.round(shiftTotalMinutes(e,'morning')/6)/10,
-        color:'categoricalTeal'},
+        color:'categoricalBlue'},
       {legend:'Ca chiều',value:Math.round(shiftTotalMinutes(e,'afternoon')/6)/10,
         color:'categoricalGreen'}
     ]);
@@ -185,7 +185,7 @@ test('morning-only report hides afternoon source and shows morning-only workdays
     const p=section(card,'chart-shift').items[1].data[i];
     assert.equal(p.x,String(i+1).padStart(2,'0')+' · '+verticalEmployeeNames(morning)[i]);
     assert.equal(p.y,Math.round(shiftTotalMinutes(e,'morning')/6)/10);
-    assert.equal(p.color,'categoricalTeal');
+    assert.equal(p.color,'categoricalBlue');
     assert.ok(expected.includes(e.name)&&expected.includes(e.status));
     assert.ok(expected.includes(e.morning==='—'?'—':e.morning.slice(0,5)));
   }
@@ -195,7 +195,7 @@ test('QA enforces Microsoft Entra account bindings, chart data and payload budge
   const card=buildNativeCard(input,directory);
   const qa=auditCard(card,input,directory);
   assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS');
-  assert.equal(ROW_VISUAL_REVISION,'V24_STACKED_SHIFTS_REVERSIBLE_DETAILS_2026_10_09');
+  assert.equal(ROW_VISUAL_REVISION,'V24_STACKED_SHIFTS_REVERSIBLE_DETAILS_BLUE_2026_10_09');
   assert.equal(qa.chart_count,2);
   assert.equal(qa.graph_persona_count,0);
   assert.equal(qa.native_microsoft_personas,false);
@@ -282,7 +282,7 @@ test('morning chart renders every session and source status inline without extra
   const bars=section(card,'chart-workday').items[1].data;
   const shift=section(card,'chart-shift').items[1];
   assert.equal(shift.type,'Chart.HorizontalBar');
-  assert.equal(shift.color,'categoricalTeal');
+  assert.equal(shift.color,'categoricalBlue');
   assert.equal(bars.length,8);
   bars.forEach((bar,i)=>{
     const e=morning.employees[i];

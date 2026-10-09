@@ -360,6 +360,13 @@ jobs:
           MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
           MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
           MS_REFRESH_TOKEN: ${{ secrets.MS_REFRESH_TOKEN }}
+          # A production destination must be explicit. Do not fall back to TEST.
+          # Read both GitHub Variables and Secrets; prefer ATTENDANCE_ names.
+          ATTENDANCE_TEAMS_TARGET_TYPE: ${{ vars.ATTENDANCE_TEAMS_TARGET_TYPE || secrets.ATTENDANCE_TEAMS_TARGET_TYPE || vars.TEAMS_TARGET_TYPE || secrets.TEAMS_TARGET_TYPE }}
+          ATTENDANCE_TEAMS_CHAT_ID: ${{ vars.ATTENDANCE_TEAMS_CHAT_ID || secrets.ATTENDANCE_TEAMS_CHAT_ID || vars.TEAMS_CHAT_ID || secrets.TEAMS_CHAT_ID }}
+          ATTENDANCE_TEAMS_TEAM_ID: ${{ vars.ATTENDANCE_TEAMS_TEAM_ID || secrets.ATTENDANCE_TEAMS_TEAM_ID || vars.TEAMS_TEAM_ID || secrets.TEAMS_TEAM_ID || vars.TEAMS_GROUP_ID || secrets.TEAMS_GROUP_ID }}
+          ATTENDANCE_TEAMS_CHANNEL_ID: ${{ vars.ATTENDANCE_TEAMS_CHANNEL_ID || secrets.ATTENDANCE_TEAMS_CHANNEL_ID || vars.TEAMS_CHANNEL_ID || secrets.TEAMS_CHANNEL_ID }}
+          ATTENDANCE_TEAMS_TARGET_ID: ${{ vars.ATTENDANCE_TEAMS_TARGET_ID || secrets.ATTENDANCE_TEAMS_TARGET_ID || vars.TEAMS_TARGET_ID || secrets.TEAMS_TARGET_ID }}
         shell: bash
         run: |
           set -euo pipefail

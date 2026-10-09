@@ -3,6 +3,9 @@ import path from 'node:path';
 import {
   LAYOUT, TEST_CHAT, buildNativeCard, auditCard, digest
 } from '../src/attendance-native-card.mjs';
+import {
+  resolveAttendanceTeamsTarget, attendanceReceiptMatchesTarget
+} from '../src/attendance-teams-target.mjs';
 import {businessReportToNativeSource} from '../src/attendance-native-production-source.mjs';
 import {createRepoStore, request} from '../src/attendance-delivery-io.mjs';
 
@@ -15,14 +18,14 @@ const required=name=>{
   return value;
 };
 
-async function delegatedToken(){
+async function delegatedToken(targetPermission){
   const form=new URLSearchParams({
     client_id:required('MS_CLIENT_ID'),
     grant_type:'refresh_token',
     refresh_token:required('MS_REFRESH_TOKEN'),
     scope:[
       'offline_access',
-      'https://graph.microsoft.com/ChatMessage.Send',
+      'https://graph.microsoft.com/'+targetPermission,
       'https://graph.microsoft.com/User.Read'
     ].join(' ')
   });
@@ -65,6 +68,9 @@ if(report.slot!==slot||report.date!==date)throw new Error('BUSINESS_REPORT_BINDI
 const directory=JSON.parse(fs.readFileSync('test/fixtures/attendance-user-directory.json','utf8'));
 const source=businessReportToNativeSource(report);
 
+const target=resolveAttendanceTeamsTarget(process.env,preview,TEST_CHAT);
+console.log('ATTENDANCE_NATIVE_DESTINATION_TYPE='+target.type);
+console.log('ATTENDANCE_NATIVE_DESTINATION_SOURCE='+(preview?'preview_TEST':'configured_production'));
 const store=createRepoStore(required('GITHUB_REPOSITORY'),required('GITHUB_TOKEN'));
 const ledgerPath=preview
   ? '.github/attendance-native-previews/'+requestId+'.json'
@@ -72,6 +78,8 @@ const ledgerPath=preview
 const previous=await store.read(ledgerPath);
 
 if(previous?.value?.status==='sent' && /^\d+$/.test(String(previous.value.message_id||''))){
+  if(!attendanceReceiptMatchesTarget(previous.value,target))
+    throw new Error('ATTENDANCE_ALREADY_SENT_DIFFERENT_TEAMS_DESTINATION_NO_AUTOREPOST');
   console.log(preview?'ATTENDANCE_NATIVE_PREVIEW=ALREADY_SENT':'ATTENDANCE_NATIVE_PROD=ALREADY_SENT');
   console.log('ATTENDANCE_NATIVE_TEAMS_MESSAGE_ID='+previous.value.message_id);
   process.exit(0);
@@ -80,7 +88,7 @@ if(previous && ['sending','uncertain'].includes(String(previous.value.status||''
   throw new Error('DELIVERY_UNCERTAIN_RECONCILE_BEFORE_RESEND');
 }
 
-const token=await delegatedToken();
+const token=await delegatedToken(target.permission);
 const headers={Authorization:'Bearer '+token};
 const meRes=await request(GRAPH+'/me?$select=userPrincipalName,mail',{headers},{retrySafe:true});
 if(!meRes.ok)throw new Error('GRAPH_ME_HTTP_'+meRes.status);
@@ -123,7 +131,10 @@ let receipt=await store.write(ledgerPath,{
   native_microsoft_personas:qa.native_microsoft_personas,
   graph_avatar_count:0,
   publisher_run_id:process.env.GITHUB_RUN_ID,
-  target_chat_id:TEST_CHAT,
+  target_type:target.type,
+  ...(target.type==='chat'
+    ?{target_chat_id:target.chat_id}
+    :{target_team_id:target.team_id,target_channel_id:target.channel_id}),
   claimed_at:new Date().toISOString()
 },previous?.sha,'state: claim native attendance '+slot+' '+date);
 
@@ -150,7 +161,7 @@ const payload={
 let response;
 try{
   response=await request(
-    GRAPH+'/chats/'+encodeURIComponent(TEST_CHAT)+'/messages',
+    GRAPH+target.endpoint,
     {method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify(payload)}
   );
 }catch{

@@ -41,6 +41,6 @@ test('eight independently confirmed no-punch source records produce valid V24 ze
     assert.ok(qa.bytes<=18000);
     assert.equal(qa.image_avatar_count,0);
     assert.equal(qa.graph_persona_count,0);
-    assert.equal(qa.verified_Entra_account_count,slot==='daily_2105'?8:0);
+    assert.equal(qa.verified_Entra_account_count,8);
   }
 });

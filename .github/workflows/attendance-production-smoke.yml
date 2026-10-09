@@ -90,7 +90,7 @@ jobs:
           const qa=auditCard(card,source,directory);
           if(qa.layout_version!==LAYOUT||qa.bytes>18000||
              qa.graph_persona_count!==0||qa.image_avatar_count!==0||
-             qa.verified_Entra_account_count!==(slot==='daily_2105'?8:0)){
+             qa.verified_Entra_account_count!==8){
             throw new Error('SMOKE_V24_CARD_GATE_FAILED');
           }
           console.log('SMOKE_SOURCE_AND_NATIVE_V24=PASS slot='+slot+' date='+date+

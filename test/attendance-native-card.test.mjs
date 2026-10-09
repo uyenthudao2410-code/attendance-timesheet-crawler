@@ -7,7 +7,7 @@ import {
   sessionMinutes,shiftTotalMinutes,formatRecordedMinutes,formatWorkdays,
   workdaysFromMinutes,consolidatedShiftChart,consolidatedDailyShiftChart,consolidatedWorkdayChart,
   employeeSelectionTargets,attendanceChartLabel,verticalEmployeeNames,microsoftNativeAccount,
-  employeeDetailPanel,dailyCompactDetails,dailyDetailTargets
+  employeeDetailPanel,dailyCompactDetails,dailyDetailTargets,morningCompactDetails,morningDetailTargets
 } from '../src/attendance-native-card.mjs';
 
 const input=JSON.parse(fs.readFileSync(
@@ -195,7 +195,7 @@ test('QA enforces Microsoft Entra account bindings, chart data and payload budge
   const card=buildNativeCard(input,directory);
   const qa=auditCard(card,input,directory);
   assert.equal(LAYOUT,'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS');
-  assert.equal(ROW_VISUAL_REVISION,'V24_STACKED_SHIFTS_REVERSIBLE_DETAILS_BLUE_2026_10_09');
+  assert.equal(ROW_VISUAL_REVISION,'V24_BOTH_SHIFTS_REVERSIBLE_DETAILS_2026_10_09');
   assert.equal(qa.chart_count,2);
   assert.equal(qa.graph_persona_count,0);
   assert.equal(qa.native_microsoft_personas,false);
@@ -334,24 +334,92 @@ test('Teams detail visibility transitions close, reopen and close again with no 
   assert.equal(state.get('daily-details-open-control'),true);
 });
 
-test('morning-only build has no daily details or close controls',()=>{
+test('morning-only card has eight verified Entra detail rows and reversible sibling controls',()=>{
   const morning=structuredClone(input);
   morning.report_title='BÁO CÁO CHẤM CÔNG — CA SÁNG';
   morning.report_scope='morning';
   morning.employees.forEach(e=>{
     e.afternoon='—';
-    if(e.status==='Đã ghi nhận')e.total=formatRecordedMinutes(shiftTotalMinutes(e,'morning'));
+    if(e.status==='Đã ghi nhận')
+      e.total=formatRecordedMinutes(shiftTotalMinutes(e,'morning'));
   });
   morning.kpis.with_record=morning.employees.filter(e=>e.morning!=='—').length;
   morning.rate=String(Math.round(morning.kpis.with_record/8*100))+'%';
   morning.total_hours=formatRecordedMinutes(
     morning.employees.filter(e=>e.status==='Đã ghi nhận')
-      .reduce((n,e)=>n+durationMinutes(e.total),0)
-  );
+      .reduce((n,e)=>n+durationMinutes(e.total),0));
   const card=buildNativeCard(morning,directory);
-  for(const id of ['daily-compact-details','daily-details-open-control',
-    'daily-details-close-control','daily-details-content']){
-    assert.ok(!JSON.stringify(card).includes('"id":"'+id+'"'));
+  const group=section(card,'morning-compact-details');
+  assert.ok(group);
+  assert.equal(group.items.length,3);
+  const [open,content,close]=group.items;
+  assert.equal(open.id,'morning-details-open-control');
+  assert.equal(content.id,'morning-details-content');
+  assert.equal(close.id,'morning-details-close-control');
+  assert.equal(open.isVisible,undefined);
+  assert.equal(content.isVisible,false);
+  assert.equal(close.isVisible,false);
+  assert.equal(open.actions[0].title,'Xem chi tiết ca sáng');
+  assert.equal(close.actions[0].title,'Thu gọn chi tiết');
+  assert.deepEqual(open.actions[0].targetElements,morningDetailTargets(true));
+  assert.deepEqual(close.actions[0].targetElements,morningDetailTargets(false));
+  assert.equal(content.items.some(x=>x.type==='ActionSet'),false);
+  const entries=content.items.filter(x=>/^morning-person-[1-8]$/.test(x.id||''));
+  assert.equal(entries.length,8);
+  entries.forEach((row,i)=>{
+    const e=morning.employees[i],minutes=shiftTotalMinutes(e,'morning');
+    const value=JSON.stringify(row);
+    for(const part of [e.name,e.status,e.morning,directory[e.name].userPrincipalName,
+      formatRecordedMinutes(minutes),formatWorkdays(minutes)])
+      assert.ok(value.includes(part),part);
+    assert.ok(!value.includes('Chiều:'));
+  });
+  assert.equal(section(card,'daily-compact-details'),undefined);
+  const qa=auditCard(card,morning,directory);
+  assert.equal(qa.morning_compact_row_count,8);
+  assert.equal(qa.daily_compact_row_count,0);
+  assert.equal(qa.detail_buttons,2);
+  assert.equal(qa.detail_close_control_outside_collapsible_panel,true);
+  assert.equal(qa.verified_Entra_account_count,8);
+  assert.equal(qa.detail_interaction,'reversible_sibling_actions_open_close_morning_details');
+  assert.ok(qa.bytes<18000);
+});
+
+test('morning detail buttons repeatedly open, close and reopen without orphaned panels',()=>{
+  const state=new Map([
+    ['morning-details-open-control',true],
+    ['morning-details-close-control',false],
+    ['morning-details-content',false]
+  ]);
+  for(const expanded of [true,false,true,false,true,false]){
+    const changes=morningDetailTargets(expanded);
+    assert.equal(changes.length,3);
+    for(const {elementId,isVisible} of changes)state.set(elementId,isVisible);
+    assert.equal(state.get('morning-details-content'),expanded);
+    assert.equal(state.get('morning-details-close-control'),expanded);
+    assert.equal(state.get('morning-details-open-control'),!expanded);
   }
-  assert.equal(auditCard(card,morning,directory).detail_buttons,0);
+  assert.equal(state.get('morning-details-content'),false);
+});
+
+test('morning details reject tampered arrival/departure or visibility targets',()=>{
+  const morning=structuredClone(input);
+  morning.report_title='BÁO CÁO CHẤM CÔNG — CA SÁNG';
+  morning.report_scope='morning';
+  morning.employees.forEach(e=>{
+    e.afternoon='—';
+    if(e.status==='Đã ghi nhận')
+      e.total=formatRecordedMinutes(shiftTotalMinutes(e,'morning'));
+  });
+  morning.kpis.with_record=morning.employees.filter(e=>e.morning!=='—').length;
+  morning.rate=String(Math.round(morning.kpis.with_record/8*100))+'%';
+  morning.total_hours=formatRecordedMinutes(
+    morning.employees.filter(e=>e.status==='Đã ghi nhận')
+      .reduce((n,e)=>n+durationMinutes(e.total),0));
+  const bad=buildNativeCard(morning,directory);
+  section(bad,'morning-compact-details').items[1].items[1].items[1].text='Không khớp giờ';
+  assert.throws(()=>auditCard(bad,morning,directory),/Morning compact details source mismatch/);
+  const broken=buildNativeCard(morning,directory);
+  section(broken,'morning-compact-details').items[2].actions[0].targetElements[0].isVisible=false;
+  assert.throws(()=>auditCard(broken,morning,directory),/Morning detail controls must be reversible/);
 });

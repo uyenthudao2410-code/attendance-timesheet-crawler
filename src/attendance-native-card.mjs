@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 export const LAYOUT = 'ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS';
 export const TEST_CHAT = '19:0e02d613cded448892f27d74cff19d63@thread.v2';
-export const ROW_VISUAL_REVISION = 'V24_STACKED_SHIFTS_REVERSIBLE_DETAILS_BLUE_2026_10_09';
+export const ROW_VISUAL_REVISION = 'V24_BOTH_SHIFTS_REVERSIBLE_DETAILS_2026_10_09';
 
 const DATA_KEYS = ['target_date','date_label','updated','kpis','total_hours','rate','attention_summary','employees'];
 const fail = message => { throw new Error('NATIVE_CARD_GATE: ' + message); };
@@ -383,6 +383,50 @@ export function dailyCompactDetails(s,directory) {
 }
 
 
+// Morning details mirror daily: the hidden panel does not own the close button.
+export function morningDetailTargets(expanded) {
+  return [
+    {elementId:'morning-details-open-control',isVisible:!expanded},
+    {elementId:'morning-details-close-control',isVisible:expanded},
+    {elementId:'morning-details-content',isVisible:expanded}
+  ];
+}
+
+export function morningCompactDetails(s,directory) {
+  if(scopeOf(s)!=='morning')fail('Morning details require morning scope');
+  return {
+    type:'Container',id:'morning-compact-details',spacing:'Medium',items:[
+      {type:'ActionSet',id:'morning-details-open-control',spacing:'None',
+        actions:[{type:'Action.ToggleVisibility',title:'Xem chi tiết ca sáng',
+          targetElements:morningDetailTargets(true)}]},
+      {type:'Container',id:'morning-details-content',isVisible:false,
+        style:'emphasis',spacing:'Small',roundedCorners:true,items:[
+          text('CHI TIẾT CHẤM CÔNG CA SÁNG',
+            {size:'Small',weight:'Bolder',color:'Accent'}),
+          ...s.employees.map((e,i)=>{
+            const minutes=shiftTotalMinutes(e,'morning');
+            return {
+              type:'Container',id:'morning-person-'+(i+1),
+              spacing:i?'Small':'None',separator:i>0,items:[
+                rich([inline(e.name,{weight:'Bolder'}),
+                  inline(' · '+e.status,{color:statusColor(e)})]),
+                text('Giờ vào/ra: '+e.morning+
+                  '\nThời lượng: '+formatRecordedMinutes(minutes)+
+                  ' · '+formatWorkdays(minutes),{size:'Small'}),
+                text(directory[e.name].userPrincipalName,
+                  {size:'Small',isSubtle:true})
+              ]
+            };
+          })
+        ]},
+      {type:'ActionSet',id:'morning-details-close-control',
+        isVisible:false,spacing:'Small',
+        actions:[{type:'Action.ToggleVisibility',title:'Thu gọn chi tiết',
+          targetElements:morningDetailTargets(false)}]}
+    ]
+  };
+}
+
 export function buildNativeCard(source,directory,avatarUrls={}) {
   const s=validateSource(source),k=s.kpis;
   validateDirectory(s,directory);
@@ -496,7 +540,9 @@ export function buildNativeCard(source,directory,avatarUrls={}) {
             :[consolidatedDailyShiftChart(s)])
         ]
       },
-      ...(scopeOf(s)==='morning'?[]:[dailyCompactDetails(s,directory)])
+      ...(scopeOf(s)==='morning'
+        ?[morningCompactDetails(s,directory)]
+        :[dailyCompactDetails(s,directory)])
     ]
   };
 }
@@ -568,6 +614,32 @@ export function auditCard(card,source,directory,avatarUrls={}) {
   const list=card.body.find(x=>x.id==='microsoft-account-list');
   if(morning){
     if(list)fail('Morning chart cannot have an extra account section');
+    if(card.body.find(x=>x.id==='daily-compact-details'))
+      fail('Morning card cannot contain daily details');
+    const detail=card.body.find(x=>x.id==='morning-compact-details');
+    const content=detail?.items?.find(x=>x.id==='morning-details-content');
+    const open=detail?.items?.find(x=>x.id==='morning-details-open-control');
+    const close=detail?.items?.find(x=>x.id==='morning-details-close-control');
+    if(content?.isVisible!==false ||
+       content.items.filter(x=>/^morning-person-[1-8]$/.test(x.id||'')).length!==8)
+      fail('Morning details must hide eight complete rows');
+    if(!open || open.isVisible===false || close?.isVisible!==false ||
+       content.items.some(x=>x.type==='ActionSet') ||
+       JSON.stringify(open.actions?.[0]?.targetElements)!==JSON.stringify(morningDetailTargets(true)) ||
+       JSON.stringify(close.actions?.[0]?.targetElements)!==JSON.stringify(morningDetailTargets(false)))
+      fail('Morning detail controls must be reversible and external to the panel');
+    for(let i=0;i<8;i++){
+      const e=source.employees[i];
+      const account=directory[e.name];
+      const row=content.items.find(x=>x.id==='morning-person-'+(i+1));
+      const value=JSON.stringify(row);
+      const minutes=shiftTotalMinutes(e,'morning');
+      if(!value.includes(e.name)||!value.includes(e.status)||
+         !value.includes(e.morning)||!value.includes(account.userPrincipalName)||
+         !value.includes(formatRecordedMinutes(minutes))||
+         !value.includes(formatWorkdays(minutes))||value.includes('Chiều:'))
+        fail('Morning compact details source mismatch');
+    }
     const chart=card.body.find(x=>x.id==='chart-workday')?.items?.[1];
     const shift=card.body.find(x=>x.id==='chart-shift')?.items?.[1];
     if(chart?.data?.length!==8 || shift?.data?.length!==8)
@@ -642,16 +714,17 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     native_account_row_count:0,
     profile_panel_count:0,
     daily_compact_row_count:morning?0:source.employees.length,
+    morning_compact_row_count:morning?source.employees.length:0,
     selector_count:0,
     exclusive_profile_selection:false,
-    avatar_alignment:morning?'inline_chart_label_only':'no_avatar_compact_Entra_details',
+    avatar_alignment:morning?'verified_Entra_UPN_morning_details':'no_avatar_compact_Entra_details',
     shift_row_values:'exact_source_morning_and_afternoon_durations',
     workday_chart_layout:'single_chart_with_full_name_categories',
     bar_component:'Chart.HorizontalBar',
     legend_scope:'once_per_chart',
-    detail_interaction:morning?'source_attendance_in_chart_labels':'reversible_sibling_actions_open_close_full_day_details',
-    detail_buttons:morning?0:2,
-    detail_close_control_outside_collapsible_panel:!morning,
+    detail_interaction:morning?'reversible_sibling_actions_open_close_morning_details':'reversible_sibling_actions_open_close_full_day_details',
+    detail_buttons:2,
+    detail_close_control_outside_collapsible_panel:true,
     details_hidden_by_default:true,
     daily_single_stacked_shift_chart:!morning,
     footer_notes:false,
@@ -673,7 +746,7 @@ export function auditCard(card,source,directory,avatarUrls={}) {
     avatar_render:'none_no_avatar_misrepresentation',
     graph_avatar_count:0,
     graph_persona_count:0,
-    verified_Entra_account_count:morning?0:source.employees.length,
+    verified_Entra_account_count:source.employees.length,
     external_chart_requests:0,
     image_generation:false,
     render_qa:'pending_real_teams_client'

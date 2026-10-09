@@ -112,7 +112,7 @@ const qa=auditCard(card,source,directory);
 // Keep delegated Teams Graph chat attachments well below the observed
 // rejected 24-26 KB payloads. Fail before claiming the delivery ledger.
 if(qa.bytes>18000)throw new Error('ATTENDANCE_NATIVE_TEAMS_SIZE_GATE_'+qa.bytes);
-const expectedEntraAccounts=slot==='daily_2105'?8:0;
+const expectedEntraAccounts=8;
 if(qa.graph_persona_count!==0 || qa.image_avatar_count!==0 ||
    qa.native_microsoft_personas!==false ||
    qa.verified_Entra_account_count!==expectedEntraAccounts ||

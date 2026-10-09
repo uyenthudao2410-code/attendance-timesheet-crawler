@@ -114,7 +114,12 @@ test('SCOPE LOCK: 2 native charts, no avatar, and reversible detail layout',()=>
   assert.ok(cardSource.includes("type:'Action.ToggleVisibility',title:'Xem giờ vào/ra đủ 8 nhân sự'"));
   assert.ok(cardSource.includes("type:'Action.ToggleVisibility',title:'Thu gọn chi tiết'"));
   assert.ok(cardSource.includes("isVisible:false,"));
-  assert.ok(cardSource.includes("detail_close_control_outside_collapsible_panel:!morning"));
+  assert.ok(cardSource.includes("detail_close_control_outside_collapsible_panel:true"));
+  assert.equal(contract.visuals.morning_reversible_details,true);
+  assert.equal(contract.visuals.morning_detail_action_count,2);
+  assert.equal(contract.visuals.daily_detail_action_count,2);
+  assert.ok(cardSource.includes("export function morningCompactDetails("));
+  assert.ok(cardSource.includes("export function morningDetailTargets("));
   assert.ok(cardSource.includes("graph_avatar_count:0"));
   assert.ok(cardSource.includes("native_microsoft_personas:false"));
   assert.ok(publisher.includes("if(qa.bytes>18000)"));

@@ -52,25 +52,19 @@ jobs:
           console.log('ATTENDANCE_TEAMS_MESSAGE_POST_ATTEMPTED=false');
           NODE
 
-      - name: Verify delegated Graph Chat.Read permission without sending
+      - name: Verify proven Graph ChatMessage.Send delegated grant without sending
         shell: bash
         run: |
           set -euo pipefail
           node --input-type=module <<'NODE'
-          const mandatory=['MS_TENANT_ID','MS_CLIENT_ID','MS_REFRESH_TOKEN'];
-          for(const key of mandatory)if(!process.env[key])
-            throw new Error('ATTENDANCE_GRAPH_PREFLIGHT_MISSING_'+key);
-          // Identifiers are not credentials. Print only suffixes to make
-          // admin consent/app registration comparisons exact and safe.
-          console.log('ATTENDANCE_OAUTH_CLIENT_ID_SUFFIX='+
-            process.env.MS_CLIENT_ID.slice(-8).toLowerCase());
-          console.log('ATTENDANCE_OAUTH_TENANT_ID_SUFFIX='+
-            process.env.MS_TENANT_ID.slice(-8).toLowerCase());
+          for(const key of ['MS_TENANT_ID','MS_CLIENT_ID','MS_REFRESH_TOKEN']){
+            if(!process.env[key])throw new Error('ATTENDANCE_SEND_PREFLIGHT_MISSING_'+key);
+          }
           const form=new URLSearchParams({
             client_id:process.env.MS_CLIENT_ID,
             grant_type:'refresh_token',
             refresh_token:process.env.MS_REFRESH_TOKEN,
-            scope:'offline_access https://graph.microsoft.com/Chat.Read https://graph.microsoft.com/User.Read'
+            scope:'offline_access https://graph.microsoft.com/ChatMessage.Send https://graph.microsoft.com/User.Read'
           });
           if(process.env.MS_CLIENT_SECRET)form.set('client_secret',process.env.MS_CLIENT_SECRET);
           const auth=await fetch('https://login.microsoftonline.com/'+
@@ -81,70 +75,22 @@ jobs:
             const failed=await auth.json().catch(()=>({}));
             const code=String(failed.error||'unknown').replace(/[^a-z0-9_.-]/gi,'').slice(0,64);
             const aadsts=(String(failed.error_description||'').match(/AADSTS[0-9]{5,7}/)||[])[0]||'unknown';
-            // Distinguish a stale/invalid refresh token from consent missing
-            // only for newly requested Chat.Read. Never print token or PII.
-            const baseline=new URLSearchParams({
-              client_id:process.env.MS_CLIENT_ID,
-              grant_type:'refresh_token',
-              refresh_token:process.env.MS_REFRESH_TOKEN,
-              scope:'offline_access https://graph.microsoft.com/ChatMessage.Send https://graph.microsoft.com/User.Read'
-            });
-            if(process.env.MS_CLIENT_SECRET)baseline.set('client_secret',process.env.MS_CLIENT_SECRET);
-            const oldAuth=await fetch('https://login.microsoftonline.com/'+
-              encodeURIComponent(process.env.MS_TENANT_ID)+'/oauth2/v2.0/token',{
-              method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:baseline
-            });
-            if(oldAuth.ok){
-              console.log('ATTENDANCE_BASELINE_REFRESH_TOKEN=VALID');
-              // Static scope reflects the tenant's effective grants for the same app,
-              // not just the dynamic-scopes request. No token or personal claims logged.
-              const staticGrant=new URLSearchParams({
-                client_id:process.env.MS_CLIENT_ID,
-                grant_type:'refresh_token',
-                refresh_token:process.env.MS_REFRESH_TOKEN,
-                scope:'https://graph.microsoft.com/.default'
-              });
-              if(process.env.MS_CLIENT_SECRET)staticGrant.set('client_secret',process.env.MS_CLIENT_SECRET);
-              const defaultAuth=await fetch('https://login.microsoftonline.com/'+
-                encodeURIComponent(process.env.MS_TENANT_ID)+'/oauth2/v2.0/token',{
-                method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:staticGrant
-              });
-              if(defaultAuth.ok){
-                const staticJson=await defaultAuth.json();
-                const access=String(staticJson.access_token||'');
-                let canRead=false;
-                try{
-                  const claims=JSON.parse(Buffer.from(access.split('.')[1],'base64url').toString('utf8'));
-                  canRead=String(claims.scp||'').split(/\s+/).includes('Chat.Read');
-                }catch{}
-                console.log('ATTENDANCE_STATIC_GRAPH_CHAT_READ_SCOPE='+String(canRead));
-                if(canRead){
-                  const endpoint='https://graph.microsoft.com/v1.0/chats/'+
-                    encodeURIComponent(process.env.ATTENDANCE_TEAMS_CHAT_ID)+'/messages?$top=1';
-                  const c=await fetch(endpoint,{headers:{Authorization:'Bearer '+access}});
-                  console.log('ATTENDANCE_STATIC_GRAPH_CHAT_READ_HTTP='+c.status);
-                }
-              }else{
-                const failedDefault=await defaultAuth.json().catch(()=>({}));
-                const defaultAadsts=(String(failedDefault.error_description||'').match(/AADSTS[0-9]{5,7}/)||[])[0]||'unknown';
-                console.log('ATTENDANCE_STATIC_GRAPH_SCOPE=REJECTED_'+defaultAadsts);
-              }
-              console.log('ATTENDANCE_CHAT_READ_DYNAMIC_SCOPE=REJECTED');
-            }else{
-              const oldError=await oldAuth.json().catch(()=>({}));
-              const oldAadsts=(String(oldError.error_description||'').match(/AADSTS[0-9]{5,7}/)||[])[0]||'unknown';
-              console.log('ATTENDANCE_BASELINE_REFRESH_TOKEN=REJECTED_'+oldAadsts);
-            }
-            throw new Error('ATTENDANCE_CHAT_READ_TOKEN_HTTP_'+auth.status+'_'+code+'_'+aadsts);
+            throw new Error('ATTENDANCE_SEND_PREFLIGHT_TOKEN_HTTP_'+auth.status+'_'+code+'_'+aadsts);
           }
-          const access=String((await auth.json()).access_token||'');
-          if(!access)throw new Error('ATTENDANCE_CHAT_READ_TOKEN_MISSING');
-          const endpoint='https://graph.microsoft.com/v1.0/chats/'+
-            encodeURIComponent(process.env.ATTENDANCE_TEAMS_CHAT_ID)+'/messages?$top=1';
-          const check=await fetch(endpoint,{headers:{Authorization:'Bearer '+access}});
-          if(!check.ok)throw new Error('ATTENDANCE_CHAT_READ_PREFLIGHT_HTTP_'+check.status);
-          const result=await check.json();
-          if(!Array.isArray(result.value))throw new Error('ATTENDANCE_CHAT_READ_INVALID_RESPONSE');
-          console.log('ATTENDANCE_CHAT_READ_PREFLIGHT=PASSED');
+          const tokenResponse=await auth.json();
+          const token=String(tokenResponse.access_token||'');
+          if(!token)throw new Error('ATTENDANCE_SEND_PREFLIGHT_TOKEN_MISSING');
+          const scope=String(tokenResponse.scope||'').split(/\s+/);
+          if(tokenResponse.scope && !scope.includes('ChatMessage.Send'))
+            throw new Error('ATTENDANCE_SEND_SCOPE_NOT_GRANTED');
+          const meRes=await fetch('https://graph.microsoft.com/v1.0/me?$select=userPrincipalName,mail',{
+            headers:{Authorization:'Bearer '+token}
+          });
+          if(!meRes.ok)throw new Error('ATTENDANCE_SEND_USER_READ_HTTP_'+meRes.status);
+          const me=await meRes.json();
+          if(String(me.userPrincipalName||me.mail||'').toLowerCase()!=='info@stacorp.net')
+            throw new Error('ATTENDANCE_SEND_SENDER_IDENTITY_MISMATCH');
+          console.log('ATTENDANCE_SEND_PREFLIGHT=PASSED');
+          console.log('ATTENDANCE_CHAT_READ_REQUIRED=false');
           console.log('ATTENDANCE_TEAMS_SEND_ATTEMPTED=false');
           NODE

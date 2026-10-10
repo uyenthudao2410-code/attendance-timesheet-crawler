@@ -37,7 +37,7 @@ export function findDuplicateAttendanceMessage(messages,source,slot){
 
 export function verifyTeamsAdaptiveMessage(message,expectedMessageId,cardSha256,source,slot){
   const id=String(message?.id||'');
-  if(!/^\\d+$/.test(id)||id!==String(expectedMessageId))
+  if(!/^\d+$/.test(id)||id!==String(expectedMessageId))
     throw new Error('TEAMS_PROOF_MESSAGE_ID_MISMATCH');
   const cards=adaptiveCardsInMessage(message);
   if(cards.length!==1||!isSameAttendancePublication(cards[0],source,slot))

@@ -17,11 +17,12 @@ test('production V24 destination uses only current GitHub repository variables',
   assert.doesNotMatch(publisher,/GRAPH\+'\/chats\/'\+encodeURIComponent\(TEST_CHAT\)/);
 });
 
-test('no-post audit validates official group chat and Graph Chat.Read',()=>{
+test('no-post audit validates official chat and already-granted ChatMessage.Send',()=>{
   assert.match(audit,/vars[.]TEAMS_TARGET_TYPE/);
   assert.match(audit,/vars[.]TEAMS_CHAT_ID/);
   assert.match(audit,/PRODUCTION_OFFICIAL_CHAT_ID_MISMATCH/);
-  assert.match(audit,/ATTENDANCE_CHAT_READ_PREFLIGHT=PASSED/);
+  assert.match(audit,/ATTENDANCE_SEND_PREFLIGHT=PASSED/);
+  assert.match(audit,/ATTENDANCE_CHAT_READ_REQUIRED=false/);
   assert.match(audit,/ATTENDANCE_TEAMS_SEND_ATTEMPTED=false/);
 });
 
@@ -32,5 +33,6 @@ test('route check only uses separate receipt and a configured official group cha
   assert.match(publisher,/attendance_native_adaptive_card_route_check/);
   assert.match(publisher,/ATTENDANCE_ROUTE_CHECK_REQUIRES_CONFIGURED_GROUP_CHAT/);
   assert.ok(publisher.includes("'.github/attendance-native-previews/'+requestId+'.json'"));
-  assert.ok(publisher.includes('ATTENDANCE_CARD_ALREADY_EXISTS_IN_OFFICIAL_CHAT_NO_RESEND'));
+  assert.ok(publisher.includes('DELIVERY_UNCERTAIN_RECONCILE_BEFORE_RESEND'));
+  assert.ok(publisher.includes('delivery_evidence:\'graph_post_2xx_message_id\''));
 });

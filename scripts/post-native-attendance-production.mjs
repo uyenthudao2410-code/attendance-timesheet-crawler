@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import {setTimeout as sleep} from 'node:timers/promises';
 import path from 'node:path';
 import {
   LAYOUT, TEST_CHAT, buildNativeCard, auditCard, digest
@@ -7,10 +8,14 @@ import {
   resolveAttendanceTeamsTarget, attendanceReceiptMatchesTarget
 } from '../src/attendance-teams-target.mjs';
 import {businessReportToNativeSource} from '../src/attendance-native-production-source.mjs';
+import {
+  findDuplicateAttendanceMessage, verifyTeamsAdaptiveMessage
+} from '../src/attendance-teams-card-proof.mjs';
 import {createRepoStore, request} from '../src/attendance-delivery-io.mjs';
 
 const GRAPH='https://graph.microsoft.com/v1.0';
 const EXPECTED_USER='info@stacorp.net';
+const OFFICIAL_CHAT_ID='19:ccbf6c512a4c4a4192678485255c618e@thread.v2';
 
 const required=name=>{
   const value=String(process.env[name]||'').trim();
@@ -26,6 +31,7 @@ async function delegatedToken(targetPermission){
     scope:[
       'offline_access',
       'https://graph.microsoft.com/'+targetPermission,
+      'https://graph.microsoft.com/Chat.Read',
       'https://graph.microsoft.com/User.Read'
     ].join(' ')
   });
@@ -56,16 +62,13 @@ if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw new Error('Invalid target date');
 const preview=process.env.ATTENDANCE_NATIVE_PREVIEW==='true';
 const routeCheck=process.env.ATTENDANCE_NATIVE_ROUTE_CHECK==='true';
 const requestId=String(process.env.ATTENDANCE_REQUEST_ID||'');
-const designPreviewId=/^design-preview-(?:morning_1230|daily_2105)-\d{4}-\d{2}-\d{2}-[A-Za-z0-9-]{6,80}$/;
-const configuredRouteId=/^route-check-(?:morning_1230|daily_2105)-\d{4}-\d{2}-\d{2}-[A-Za-z0-9-]{6,80}$/;
-if(routeCheck&&!preview)throw new Error('ATTENDANCE_ROUTE_CHECK_REQUIRES_SEPARATE_PREVIEW_LEDGER');
-if(preview && (
-  !/^(?:morning_1230|daily_2105)$/.test(slot) ||
-  !(routeCheck?configuredRouteId:designPreviewId).test(requestId) ||
-  !requestId.startsWith((routeCheck?'route-check-':'design-preview-')+slot+'-'+date+'-')
-))throw new Error('INVALID_EXPLICIT_NATIVE_PREVIEW_REQUEST');
-if(!routeCheck && configuredRouteId.test(requestId))
-  throw new Error('CONFIGURED_CHAT_ROUTE_CHECK_FLAG_REQUIRED');
+const configuredRouteId=new RegExp('^route-check-(?:morning_1230|daily_2105)-[0-9]{4}-[0-9]{2}-[0-9]{2}-[A-Za-z0-9-]{6,80}$');
+if(preview!==routeCheck)
+  throw new Error('ATTENDANCE_DESIGN_PREVIEW_DISABLED_ROUTE_CHECK_ONLY');
+if(routeCheck && (
+  !configuredRouteId.test(requestId) ||
+  !requestId.startsWith('route-check-'+slot+'-'+date+'-')
+))throw new Error('INVALID_EXPLICIT_ROUTE_CHECK_REQUEST');
 
 const reportPath=path.join('output','report-'+slot+'-'+date+'.json');
 const report=JSON.parse(fs.readFileSync(reportPath,'utf8'));
@@ -74,13 +77,13 @@ if(report.slot!==slot||report.date!==date)throw new Error('BUSINESS_REPORT_BINDI
 const directory=JSON.parse(fs.readFileSync('test/fixtures/attendance-user-directory.json','utf8'));
 const source=businessReportToNativeSource(report);
 
-const target=resolveAttendanceTeamsTarget(process.env,preview&&!routeCheck,TEST_CHAT);
-if(routeCheck && (
-  target.type!=='chat' || target.is_preview ||
-  !/^19:[A-Fa-f0-9]{32}@thread\.v2$/.test(target.chat_id)
-))throw new Error('ATTENDANCE_ROUTE_CHECK_REQUIRES_CONFIGURED_GROUP_CHAT');
+const target=resolveAttendanceTeamsTarget(process.env,false,TEST_CHAT);
+if(target.type!=='chat'||target.is_preview||target.chat_id!==OFFICIAL_CHAT_ID)
+  throw new Error('ATTENDANCE_OFFICIAL_GROUP_CHAT_ONLY');
+if(routeCheck && !/^19:[A-Fa-f0-9]{32}@thread[.]v2$/.test(target.chat_id))
+  throw new Error('ATTENDANCE_ROUTE_CHECK_REQUIRES_CONFIGURED_GROUP_CHAT');
 console.log('ATTENDANCE_NATIVE_DESTINATION_TYPE='+target.type);
-console.log('ATTENDANCE_NATIVE_DESTINATION_SOURCE='+(routeCheck?'configured_chat_route_check':preview?'preview_TEST':'configured_production'));
+console.log('ATTENDANCE_NATIVE_DESTINATION_SOURCE='+(routeCheck?'configured_chat_route_check':'configured_production'));
 const store=createRepoStore(required('GITHUB_REPOSITORY'),required('GITHUB_TOKEN'));
 const ledgerPath=preview
   ? '.github/attendance-native-previews/'+requestId+'.json'
@@ -90,7 +93,10 @@ const previous=await store.read(ledgerPath);
 if(previous?.value?.status==='sent' && /^\d+$/.test(String(previous.value.message_id||''))){
   if(!attendanceReceiptMatchesTarget(previous.value,target))
     throw new Error('ATTENDANCE_ALREADY_SENT_DIFFERENT_TEAMS_DESTINATION_NO_AUTOREPOST');
-  console.log(preview?'ATTENDANCE_NATIVE_PREVIEW=ALREADY_SENT':'ATTENDANCE_NATIVE_PROD=ALREADY_SENT');
+  if(!Number.isFinite(Date.parse(previous.value.teams_verified_at||'')) ||
+     previous.value.verified_card_sha256!==previous.value.card_sha256)
+    throw new Error('ATTENDANCE_SENT_WITHOUT_ADAPTIVE_CARD_PROOF_RECONCILE');
+  console.log(routeCheck?'ATTENDANCE_NATIVE_ROUTE_CHECK=ALREADY_VERIFIED':'ATTENDANCE_NATIVE_PROD=ALREADY_VERIFIED');
   console.log('ATTENDANCE_NATIVE_TEAMS_MESSAGE_ID='+previous.value.message_id);
   process.exit(0);
 }
@@ -125,6 +131,24 @@ console.log('ATTENDANCE_NATIVE_PROD_PAYLOAD_BYTES='+qa.bytes);
 console.log('ATTENDANCE_NATIVE_PROD_GRAPH_PERSONAS='+qa.graph_persona_count);
 console.log('ATTENDANCE_NATIVE_PROD_VERIFIED_ENTRA_ACCOUNTS='+qa.verified_Entra_account_count);
 console.log('ATTENDANCE_NATIVE_PROD_MANUAL_AVATARS='+qa.image_avatar_count);
+
+// Read the real official chat before sending. Chat.Read is required to prevent
+// cross-run duplicate cards and to verify that the posted message exists.
+const listUrl=GRAPH+target.endpoint;
+let pageUrl=listUrl+'?$top=50';
+for(let page=0;page<4 && pageUrl;page++){
+  const chatResponse=await request(pageUrl,{headers},{retrySafe:true});
+  if(!chatResponse.ok)
+    throw new Error('ATTENDANCE_TEAMS_CHAT_READ_PREFLIGHT_HTTP_'+chatResponse.status);
+  const history=await chatResponse.json();
+  const duplicate=findDuplicateAttendanceMessage(history.value,source,slot);
+  if(duplicate)
+    throw new Error('ATTENDANCE_CARD_ALREADY_EXISTS_IN_OFFICIAL_CHAT_NO_RESEND');
+  const next=String(history['@odata.nextLink']||'');
+  if(next && !next.startsWith(listUrl+'?'))
+    throw new Error('ATTENDANCE_GRAPH_PAGINATION_TARGET_MISMATCH');
+  pageUrl=next;
+}
 
 let receipt=await store.write(ledgerPath,{
   schema_version:1,
@@ -214,6 +238,25 @@ if(!/^\d+$/.test(messageId)){
   throw new Error('MESSAGE_ID_MISSING_NO_AUTOMATIC_RESEND');
 }
 
-await mark('sent',{message_id:messageId,published_at:new Date().toISOString()});
+// Graph POST acknowledgement alone is not proof of Adaptive Card delivery.
+let proof=null;
+try{
+  for(let attempt=0;attempt<4;attempt++){
+    const check=await request(listUrl+'/'+encodeURIComponent(messageId),
+      {headers},{retrySafe:true});
+    if(check.status===404 && attempt<3){
+      await sleep(1500*(attempt+1));
+      continue;
+    }
+    if(!check.ok)throw new Error('TEAMS_READBACK_HTTP_'+check.status);
+    proof=verifyTeamsAdaptiveMessage(await check.json(),messageId,qa.card_sha256,source,slot);
+    break;
+  }
+  if(!proof)throw new Error('TEAMS_READBACK_UNAVAILABLE');
+}catch(error){
+  await mark('uncertain',{message_id:messageId,verification_stage:'readback_failed'});
+  throw new Error('ATTENDANCE_TEAMS_POST_UNVERIFIED_NO_RESEND: '+String(error.message||'unknown'));
+}
+await mark('sent',{...proof,published_at:new Date().toISOString()});
 console.log('ATTENDANCE_NATIVE_TEAMS_MESSAGE_ID='+messageId);
-console.log(preview?'ATTENDANCE_NATIVE_PREVIEW=SUCCESS':'ATTENDANCE_NATIVE_PROD=SUCCESS');
+console.log(routeCheck?'ATTENDANCE_NATIVE_ROUTE_CHECK=SUCCESS_VERIFIED':'ATTENDANCE_NATIVE_PROD=SUCCESS_VERIFIED');

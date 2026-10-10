@@ -71,7 +71,12 @@ jobs:
             encodeURIComponent(process.env.MS_TENANT_ID)+'/oauth2/v2.0/token',{
             method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form
           });
-          if(!auth.ok)throw new Error('ATTENDANCE_CHAT_READ_TOKEN_HTTP_'+auth.status);
+          if(!auth.ok){
+            const failed=await auth.json().catch(()=>({}));
+            const code=String(failed.error||'unknown').replace(/[^a-z0-9_.-]/gi,'').slice(0,64);
+            const aadsts=(String(failed.error_description||'').match(/AADSTS[0-9]{5,7}/)||[])[0]||'unknown';
+            throw new Error('ATTENDANCE_CHAT_READ_TOKEN_HTTP_'+auth.status+'_'+code+'_'+aadsts);
+          }
           const access=String((await auth.json()).access_token||'');
           if(!access)throw new Error('ATTENDANCE_CHAT_READ_TOKEN_MISSING');
           const endpoint='https://graph.microsoft.com/v1.0/chats/'+

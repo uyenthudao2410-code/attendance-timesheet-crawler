@@ -80,9 +80,19 @@ jobs:
           const tokenResponse=await auth.json();
           const token=String(tokenResponse.access_token||'');
           if(!token)throw new Error('ATTENDANCE_SEND_PREFLIGHT_TOKEN_MISSING');
-          const scope=String(tokenResponse.scope||'').split(/\s+/);
-          if(tokenResponse.scope && !scope.includes('ChatMessage.Send'))
-            throw new Error('ATTENDANCE_SEND_SCOPE_NOT_GRANTED');
+          // Graph token responses may qualify scopes with a resource URL;
+          // the access token itself uses unqualified 'scp' claim names.
+          const scopes=String(tokenResponse.scope||'').split(/\s+/)
+            .map(v=>v.replace(/^https:\/\/graph[.]microsoft[.]com\//,''));
+          let tokenScopes=[];
+          try{
+            const claims=JSON.parse(Buffer.from(token.split('.')[1],'base64url').toString('utf8'));
+            tokenScopes=String(claims.scp||'').split(/\s+/);
+          }catch{}
+          const sendGrant=scopes.includes('ChatMessage.Send')||tokenScopes.includes('ChatMessage.Send');
+          console.log('ATTENDANCE_SEND_SCOPE_IN_TOKEN='+String(sendGrant));
+          if(!sendGrant)
+            throw new Error('ATTENDANCE_SEND_SCOPE_NOT_IN_ACCESS_TOKEN');
           const meRes=await fetch('https://graph.microsoft.com/v1.0/me?$select=userPrincipalName,mail',{
             headers:{Authorization:'Bearer '+token}
           });

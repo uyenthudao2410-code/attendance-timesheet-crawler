@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "route-check-morning_1230-2026-10-09-20261009-143952-reversible",
-  "slot": "morning_1230",
+  "request_id": "self-heal-daily_2105-2026-10-09-20261010-send-scope-restored-once",
+  "slot": "daily_2105",
   "target_date": "2026-10-09",
-  "requested_at": "2026-10-09T14:39:52+07:00",
-  "reason": "User found morning V24 card missing Xem chi tiet and Thu gon. Post exactly one refreshed 8-employee morning Adaptive Card with verified Entra details and reversible sibling expand/collapse controls to configured official BC- Bao cao hinh anh Teams chat. Fresh crawl and separate route-check receipt; do not touch existing production sent ledger, do not post to TEST.",
+  "requested_at": "2026-10-10T00:55:41.115Z",
+  "reason": "One-time recovery of missed 06:50 native V24 previous-day report; preserve source freshness gates and send only to locked official Teams chat using existing ChatMessage.Send scope; no TEST, no blind resend.",
   "delivery": {
     "enabled": false
   }

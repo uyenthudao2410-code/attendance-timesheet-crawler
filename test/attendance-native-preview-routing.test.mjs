@@ -24,10 +24,13 @@ test('explicit route-check is isolated from immutable production receipts',()=>{
   assert.ok(publisher.includes('ATTENDANCE_NATIVE_TEAMS_SEND_GATE=ACKNOWLEDGED'));
 });
 
-test('UTC cron correctly preserves VN 06:00 and 13:00 crawl, with 06:50 and 13:50 posting',()=>{
-  assert.match(workflow,/cron: "0 23 \* \* \*"/);
-  assert.match(workflow,/cron: "0 6 \* \* \*"/);
-  assert.doesNotMatch(workflow,/timezone:/);
+test('Vietnam-local cron preserves 06:00 and 13:00 crawl, with 06:50 and 13:50 posting',()=>{
+  for(const cron of ['0 6 * * *','0 13 * * *']){
+    assert.ok(workflow.includes('cron: "'+cron+'"\n      timezone: "Asia/Ho_Chi_Minh"'));
+  }
+  assert.ok(workflow.includes('"0 6 * * *")'));
+  assert.ok(workflow.includes('"0 13 * * *")'));
+  assert.doesNotMatch(workflow,/cron: "0 23 \* \* \*"/);
   assert.match(workflow,/daily_2105\) publish_hm="06:50"/);
   assert.match(workflow,/morning_1230\) publish_hm="13:50"/);
   assert.match(workflow,/wait_seconds" -gt 3600/);

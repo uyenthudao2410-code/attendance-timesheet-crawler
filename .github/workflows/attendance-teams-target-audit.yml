@@ -17,11 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      ATTENDANCE_TEAMS_TARGET_TYPE: ${{ vars.TEAMS_TARGET_TYPE || vars.ATTENDANCE_TEAMS_TARGET_TYPE || secrets.ATTENDANCE_TEAMS_TARGET_TYPE || secrets.TEAMS_TARGET_TYPE }}
-      ATTENDANCE_TEAMS_CHAT_ID: ${{ vars.TEAMS_CHAT_ID || vars.ATTENDANCE_TEAMS_CHAT_ID || secrets.ATTENDANCE_TEAMS_CHAT_ID || secrets.TEAMS_CHAT_ID }}
-      ATTENDANCE_TEAMS_TEAM_ID: ${{ vars.ATTENDANCE_TEAMS_TEAM_ID || secrets.ATTENDANCE_TEAMS_TEAM_ID || vars.TEAMS_TEAM_ID || secrets.TEAMS_TEAM_ID || vars.TEAMS_GROUP_ID || secrets.TEAMS_GROUP_ID }}
-      ATTENDANCE_TEAMS_CHANNEL_ID: ${{ vars.ATTENDANCE_TEAMS_CHANNEL_ID || secrets.ATTENDANCE_TEAMS_CHANNEL_ID || vars.TEAMS_CHANNEL_ID || secrets.TEAMS_CHANNEL_ID }}
-      ATTENDANCE_TEAMS_TARGET_ID: ${{ vars.ATTENDANCE_TEAMS_TARGET_ID || secrets.ATTENDANCE_TEAMS_TARGET_ID || vars.TEAMS_TARGET_ID || secrets.TEAMS_TARGET_ID }}
+      ATTENDANCE_TEAMS_TARGET_TYPE: ${{ vars.TEAMS_TARGET_TYPE }}
+      ATTENDANCE_TEAMS_CHAT_ID: ${{ vars.TEAMS_CHAT_ID }}
+      MS_TENANT_ID: ${{ secrets.MS_TENANT_ID }}
+      MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
+      MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
+      MS_REFRESH_TOKEN: ${{ secrets.MS_REFRESH_TOKEN }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v7
@@ -41,10 +42,44 @@ jobs:
             console.error('ATTENDANCE_TEAMS_DESTINATION_ERROR='+code);
             process.exit(1);
           }
-          if(target.is_preview)throw new Error('PRODUCTION_PREVIEW_MIXUP');
+          if(target.is_preview || target.type!=='chat' ||
+             target.chat_id!=='19:ccbf6c512a4c4a4192678485255c618e@thread.v2')
+             throw new Error('PRODUCTION_OFFICIAL_CHAT_ID_MISMATCH');
           console.log('ATTENDANCE_TEAMS_DESTINATION_AUDIT=PASSED');
           console.log('ATTENDANCE_TEAMS_DESTINATION_TYPE='+target.type);
           console.log('ATTENDANCE_TEAMS_DESTINATION_PERMISSION='+target.permission);
           console.log('ATTENDANCE_TEAMS_DESTINATION_EQUALS_TEST=false');
           console.log('ATTENDANCE_TEAMS_MESSAGE_POST_ATTEMPTED=false');
+          NODE
+
+      - name: Verify delegated Graph Chat.Read permission without sending
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const mandatory=['MS_TENANT_ID','MS_CLIENT_ID','MS_REFRESH_TOKEN'];
+          for(const key of mandatory)if(!process.env[key])
+            throw new Error('ATTENDANCE_GRAPH_PREFLIGHT_MISSING_'+key);
+          const form=new URLSearchParams({
+            client_id:process.env.MS_CLIENT_ID,
+            grant_type:'refresh_token',
+            refresh_token:process.env.MS_REFRESH_TOKEN,
+            scope:'offline_access https://graph.microsoft.com/Chat.Read https://graph.microsoft.com/User.Read'
+          });
+          if(process.env.MS_CLIENT_SECRET)form.set('client_secret',process.env.MS_CLIENT_SECRET);
+          const auth=await fetch('https://login.microsoftonline.com/'+
+            encodeURIComponent(process.env.MS_TENANT_ID)+'/oauth2/v2.0/token',{
+            method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:form
+          });
+          if(!auth.ok)throw new Error('ATTENDANCE_CHAT_READ_TOKEN_HTTP_'+auth.status);
+          const access=String((await auth.json()).access_token||'');
+          if(!access)throw new Error('ATTENDANCE_CHAT_READ_TOKEN_MISSING');
+          const endpoint='https://graph.microsoft.com/v1.0/chats/'+
+            encodeURIComponent(process.env.ATTENDANCE_TEAMS_CHAT_ID)+'/messages?$top=1';
+          const check=await fetch(endpoint,{headers:{Authorization:'Bearer '+access}});
+          if(!check.ok)throw new Error('ATTENDANCE_CHAT_READ_PREFLIGHT_HTTP_'+check.status);
+          const result=await check.json();
+          if(!Array.isArray(result.value))throw new Error('ATTENDANCE_CHAT_READ_INVALID_RESPONSE');
+          console.log('ATTENDANCE_CHAT_READ_PREFLIGHT=PASSED');
+          console.log('ATTENDANCE_TEAMS_SEND_ATTEMPTED=false');
           NODE

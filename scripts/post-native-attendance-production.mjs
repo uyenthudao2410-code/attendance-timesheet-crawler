@@ -85,7 +85,9 @@ const ledgerPath=preview
   : '.github/attendance-publications/'+slot+'-'+date+'.json';
 const previous=await store.read(ledgerPath);
 
-if(previous?.value?.status==='sent' && /^\d+$/.test(String(previous.value.message_id||''))){
+if(previous?.value?.status==='sent'){
+  if(!/^\d+$/.test(String(previous.value.message_id||'')))
+    throw new Error('ATTENDANCE_SENT_RECEIPT_ID_MISSING_RECONCILE_NO_RESEND');
   if(!attendanceReceiptMatchesTarget(previous.value,target))
     throw new Error('ATTENDANCE_ALREADY_SENT_DIFFERENT_TEAMS_DESTINATION_NO_AUTOREPOST');
   // A successful Graph POST with a concrete Teams message id is a durable

@@ -80,8 +80,11 @@ jobs:
                 if(!/^\d+$/.test(String(receipt?.message_id||'')))state='uncertain';
                 else if(receipt.target_chat_id!==official ||
                         (receipt.target_type && receipt.target_type!=='chat'))state='sent_wrong_target';
-                else if(!Number.isFinite(Date.parse(receipt.teams_verified_at||'')))state='sent_unverified';
-                else state='sent_verified';
+                else if(Number.isFinite(Date.parse(receipt.teams_verified_at||'')) &&
+                        receipt.verified_card_sha256===receipt.card_sha256)state='sent_verified';
+                else if(receipt.delivery_evidence==='graph_post_2xx_message_id' &&
+                        Number.isFinite(Date.parse(receipt.published_at||'')))state='sent_acknowledged';
+                else state='sent_unverified';
               }else if(['sending','uncertain'].includes(receipt?.status))state=receipt.status;
               else state=String(receipt?.status||'invalid');
             }catch{state='invalid';}
@@ -90,7 +93,7 @@ jobs:
           NODE
           )"
 
-          if [ "$receipt_state" = "sent_verified" ]; then
+          if [ "$receipt_state" = "sent_verified" ] || [ "$receipt_state" = "sent_acknowledged" ]; then
             # Durable receipt proof must ALSO bind to a successful exact GitHub run.
             publisher_id="$(RECEIPT_PATH="$receipt_path" node --input-type=module <<'NODE'
           import fs from 'node:fs';
@@ -105,7 +108,11 @@ jobs:
             run_identity="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${publisher_id}" |
               jq -r '[(.name // ""),(.head_branch // ""),(.status // ""),(.conclusion // "")] | join("|")')"
             if [ "$run_identity" = "Attendance Crawl|main|completed|success" ]; then
-              echo "WATCHDOG_STATE=verified_publication_receipt_present slot=$slot date=$target_date run=$publisher_id"
+              if [ "$receipt_state" = "sent_verified" ]; then
+                echo "WATCHDOG_STATE=verified_publication_receipt_present slot=$slot date=$target_date run=$publisher_id"
+              else
+                echo "WATCHDOG_STATE=acknowledged_publication_receipt_present slot=$slot date=$target_date run=$publisher_id"
+              fi
               exit 0
             fi
             if [[ "$run_identity" == "Attendance Crawl|main|queued|" ||

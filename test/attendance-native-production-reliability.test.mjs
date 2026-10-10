@@ -6,10 +6,10 @@ const workflow=fs.readFileSync('.github/workflows/attendance-crawl.yml','utf8');
 const publisher=fs.readFileSync('scripts/post-native-attendance-production.mjs','utf8');
 
 test('early producer and final refresh run before publishing either native V24 slot',()=>{
-  for(const cron of ['0 6 * * *','0 13 * * *']){
+  for(const cron of ['0 23 * * *','0 6 * * *']){
     assert.ok(workflow.includes('cron: "'+cron+'"'));
   }
-  assert.equal(workflow.split('timezone: "Asia/Ho_Chi_Minh"').length-1,2);
+  assert.equal(workflow.includes('timezone: "Asia/Ho_Chi_Minh"'),false);
   const early=workflow.indexOf('- name: Crawl all attendance sources and wait for completion');
   const wait=workflow.indexOf('- name: Wait until two minutes before Teams publication');
   const preflight=workflow.indexOf('- name: Verify browser fallback for final source refresh');

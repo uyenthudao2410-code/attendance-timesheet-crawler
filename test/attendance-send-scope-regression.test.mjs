@@ -7,7 +7,7 @@ const watchdog=fs.readFileSync('.github/workflows/attendance-producer-watchdog.y
 const audit=fs.readFileSync('.github/workflows/attendance-teams-target-audit.yml','utf8');
 
 test('V24 delegates existing ChatMessage.Send and User.Read without newly mandatory Chat.Read',()=>{
-  assert.match(publisher,/https:\/\/graph[.]microsoft[.]com\/['+']targetPermission/);
+  assert.ok(publisher.includes("'https://graph.microsoft.com/'+targetPermission"));
   assert.match(publisher,/graph[.]microsoft[.]com\/User[.]Read/);
   assert.doesNotMatch(publisher,/graph[.]microsoft[.]com\/Chat[.]Read/);
   assert.doesNotMatch(publisher,/ATTENDANCE_TEAMS_CHAT_READ_PREFLIGHT/);

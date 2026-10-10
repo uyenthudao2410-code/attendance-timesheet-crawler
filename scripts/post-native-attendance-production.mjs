@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import {setTimeout as sleep} from 'node:timers/promises';
 import path from 'node:path';
 import {
   LAYOUT, TEST_CHAT, buildNativeCard, auditCard, digest
@@ -8,9 +7,6 @@ import {
   resolveAttendanceTeamsTarget, attendanceReceiptMatchesTarget
 } from '../src/attendance-teams-target.mjs';
 import {businessReportToNativeSource} from '../src/attendance-native-production-source.mjs';
-import {
-  findDuplicateAttendanceMessage, verifyTeamsAdaptiveMessage
-} from '../src/attendance-teams-card-proof.mjs';
 import {createRepoStore, request} from '../src/attendance-delivery-io.mjs';
 
 const GRAPH='https://graph.microsoft.com/v1.0';
@@ -31,7 +27,6 @@ async function delegatedToken(targetPermission){
     scope:[
       'offline_access',
       'https://graph.microsoft.com/'+targetPermission,
-      'https://graph.microsoft.com/Chat.Read',
       'https://graph.microsoft.com/User.Read'
     ].join(' ')
   });
@@ -93,10 +88,10 @@ const previous=await store.read(ledgerPath);
 if(previous?.value?.status==='sent' && /^\d+$/.test(String(previous.value.message_id||''))){
   if(!attendanceReceiptMatchesTarget(previous.value,target))
     throw new Error('ATTENDANCE_ALREADY_SENT_DIFFERENT_TEAMS_DESTINATION_NO_AUTOREPOST');
-  if(!Number.isFinite(Date.parse(previous.value.teams_verified_at||'')) ||
-     previous.value.verified_card_sha256!==previous.value.card_sha256)
-    throw new Error('ATTENDANCE_SENT_WITHOUT_ADAPTIVE_CARD_PROOF_RECONCILE');
-  console.log(routeCheck?'ATTENDANCE_NATIVE_ROUTE_CHECK=ALREADY_VERIFIED':'ATTENDANCE_NATIVE_PROD=ALREADY_VERIFIED');
+  // A successful Graph POST with a concrete Teams message id is a durable
+  // acknowledgement. Do not resend just because this delegated OAuth client
+  // lacks optional Chat.Read (the last successfully working permission model).
+  console.log(routeCheck?'ATTENDANCE_NATIVE_ROUTE_CHECK=ALREADY_SENT':'ATTENDANCE_NATIVE_PROD=ALREADY_SENT');
   console.log('ATTENDANCE_NATIVE_TEAMS_MESSAGE_ID='+previous.value.message_id);
   process.exit(0);
 }
@@ -132,24 +127,9 @@ console.log('ATTENDANCE_NATIVE_PROD_GRAPH_PERSONAS='+qa.graph_persona_count);
 console.log('ATTENDANCE_NATIVE_PROD_VERIFIED_ENTRA_ACCOUNTS='+qa.verified_Entra_account_count);
 console.log('ATTENDANCE_NATIVE_PROD_MANUAL_AVATARS='+qa.image_avatar_count);
 
-// Read the real official chat before sending. Chat.Read is required to prevent
-// cross-run duplicate cards and to verify that the posted message exists.
-const listUrl=GRAPH+target.endpoint;
-let pageUrl=listUrl+'?$top=50';
-for(let page=0;page<4 && pageUrl;page++){
-  const chatResponse=await request(pageUrl,{headers},{retrySafe:true});
-  if(!chatResponse.ok)
-    throw new Error('ATTENDANCE_TEAMS_CHAT_READ_PREFLIGHT_HTTP_'+chatResponse.status);
-  const history=await chatResponse.json();
-  const duplicate=findDuplicateAttendanceMessage(history.value,source,slot);
-  if(duplicate)
-    throw new Error('ATTENDANCE_CARD_ALREADY_EXISTS_IN_OFFICIAL_CHAT_NO_RESEND');
-  const next=String(history['@odata.nextLink']||'');
-  if(next && !next.startsWith(listUrl+'?'))
-    throw new Error('ATTENDANCE_GRAPH_PAGINATION_TARGET_MISMATCH');
-  pageUrl=next;
-}
-
+// Idempotency is guarded by the atomic GitHub sending receipt before POST,
+// not by a new Microsoft Graph read permission. This preserves the sender's
+// previously working ChatMessage.Send + User.Read delegated token.
 let receipt=await store.write(ledgerPath,{
   schema_version:1,
   kind:routeCheck?'attendance_native_adaptive_card_route_check'
@@ -238,25 +218,16 @@ if(!/^\d+$/.test(messageId)){
   throw new Error('MESSAGE_ID_MISSING_NO_AUTOMATIC_RESEND');
 }
 
-// Graph POST acknowledgement alone is not proof of Adaptive Card delivery.
-let proof=null;
-try{
-  for(let attempt=0;attempt<4;attempt++){
-    const check=await request(listUrl+'/'+encodeURIComponent(messageId),
-      {headers},{retrySafe:true});
-    if(check.status===404 && attempt<3){
-      await sleep(1500*(attempt+1));
-      continue;
-    }
-    if(!check.ok)throw new Error('TEAMS_READBACK_HTTP_'+check.status);
-    proof=verifyTeamsAdaptiveMessage(await check.json(),messageId,qa.card_sha256,source,slot);
-    break;
-  }
-  if(!proof)throw new Error('TEAMS_READBACK_UNAVAILABLE');
-}catch(error){
-  await mark('uncertain',{message_id:messageId,verification_stage:'readback_failed'});
-  throw new Error('ATTENDANCE_TEAMS_POST_UNVERIFIED_NO_RESEND: '+String(error.message||'unknown'));
-}
-await mark('sent',{...proof,published_at:new Date().toISOString()});
+// Microsoft Graph returned a successful POST response with a numeric Teams id.
+// This is transport acknowledgement, not independently verified card rendering.
+// Exact Teams message readback is performed separately by ChatGPT's Teams
+// connector and may be promoted to verified only with independent evidence.
+await mark('sent',{
+  message_id:messageId,
+  published_at:new Date().toISOString(),
+  delivery_evidence:'graph_post_2xx_message_id',
+  verification_stage:'awaiting_independent_teams_readback'
+});
 console.log('ATTENDANCE_NATIVE_TEAMS_MESSAGE_ID='+messageId);
-console.log(routeCheck?'ATTENDANCE_NATIVE_ROUTE_CHECK=SUCCESS_VERIFIED':'ATTENDANCE_NATIVE_PROD=SUCCESS_VERIFIED');
+console.log('ATTENDANCE_NATIVE_TEAMS_SEND_GATE=ACKNOWLEDGED');
+console.log(routeCheck?'ATTENDANCE_NATIVE_ROUTE_CHECK=GRAPH_POST_ACKNOWLEDGED':'ATTENDANCE_NATIVE_PROD=GRAPH_POST_ACKNOWLEDGED');

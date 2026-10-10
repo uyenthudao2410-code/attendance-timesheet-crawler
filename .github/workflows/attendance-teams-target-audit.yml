@@ -90,7 +90,40 @@ jobs:
             });
             if(oldAuth.ok){
               console.log('ATTENDANCE_BASELINE_REFRESH_TOKEN=VALID');
-              console.log('ATTENDANCE_CHAT_READ_NEW_SCOPE=NOT_CONSENTED_FOR_THIS_OAUTH_CLIENT');
+              // Static scope reflects the tenant's effective grants for the same app,
+              // not just the dynamic-scopes request. No token or personal claims logged.
+              const staticGrant=new URLSearchParams({
+                client_id:process.env.MS_CLIENT_ID,
+                grant_type:'refresh_token',
+                refresh_token:process.env.MS_REFRESH_TOKEN,
+                scope:'https://graph.microsoft.com/.default'
+              });
+              if(process.env.MS_CLIENT_SECRET)staticGrant.set('client_secret',process.env.MS_CLIENT_SECRET);
+              const defaultAuth=await fetch('https://login.microsoftonline.com/'+
+                encodeURIComponent(process.env.MS_TENANT_ID)+'/oauth2/v2.0/token',{
+                method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:staticGrant
+              });
+              if(defaultAuth.ok){
+                const staticJson=await defaultAuth.json();
+                const access=String(staticJson.access_token||'');
+                let canRead=false;
+                try{
+                  const claims=JSON.parse(Buffer.from(access.split('.')[1],'base64url').toString('utf8'));
+                  canRead=String(claims.scp||'').split(/\s+/).includes('Chat.Read');
+                }catch{}
+                console.log('ATTENDANCE_STATIC_GRAPH_CHAT_READ_SCOPE='+String(canRead));
+                if(canRead){
+                  const endpoint='https://graph.microsoft.com/v1.0/chats/'+
+                    encodeURIComponent(process.env.ATTENDANCE_TEAMS_CHAT_ID)+'/messages?$top=1';
+                  const c=await fetch(endpoint,{headers:{Authorization:'Bearer '+access}});
+                  console.log('ATTENDANCE_STATIC_GRAPH_CHAT_READ_HTTP='+c.status);
+                }
+              }else{
+                const failedDefault=await defaultAuth.json().catch(()=>({}));
+                const defaultAadsts=(String(failedDefault.error_description||'').match(/AADSTS[0-9]{5,7}/)||[])[0]||'unknown';
+                console.log('ATTENDANCE_STATIC_GRAPH_SCOPE=REJECTED_'+defaultAadsts);
+              }
+              console.log('ATTENDANCE_CHAT_READ_DYNAMIC_SCOPE=REJECTED');
             }else{
               const oldError=await oldAuth.json().catch(()=>({}));
               const oldAadsts=(String(oldError.error_description||'').match(/AADSTS[0-9]{5,7}/)||[])[0]||'unknown';

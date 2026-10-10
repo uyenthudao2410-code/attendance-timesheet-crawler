@@ -45,11 +45,12 @@ test('SCOPE LOCK: crawler and publisher timing is 06:00->06:50 and 13:00->13:50'
   assert.equal(contract.slots.morning_1230.crawl,'13:00');
   assert.equal(contract.slots.morning_1230.publish,'13:50');
   assert.equal(contract.slots.morning_1230.date_rule,'today');
-  for(const cron of ['0 6 * * *','0 13 * * *']){
-    assert.ok(workflow.includes('cron: "'+cron+'"\n      timezone: "Asia/Ho_Chi_Minh"'));
+  for(const cron of ['0 23 * * *','0 6 * * *']){
+    assert.ok(workflow.includes('cron: "'+cron+'"'));
   }
+  assert.doesNotMatch(workflow,/timezone:/);
+  assert.ok(workflow.includes('"0 23 * * *")'));
   assert.ok(workflow.includes('"0 6 * * *")'));
-  assert.ok(workflow.includes('"0 13 * * *")'));
   assert.ok(workflow.includes('daily_2105) publish_hm="06:50"'));
   assert.ok(workflow.includes('morning_1230) publish_hm="13:50"'));
   assert.ok(workflow.includes("date -d 'yesterday' +%F"));

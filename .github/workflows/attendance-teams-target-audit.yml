@@ -75,6 +75,27 @@ jobs:
             const failed=await auth.json().catch(()=>({}));
             const code=String(failed.error||'unknown').replace(/[^a-z0-9_.-]/gi,'').slice(0,64);
             const aadsts=(String(failed.error_description||'').match(/AADSTS[0-9]{5,7}/)||[])[0]||'unknown';
+            // Distinguish a stale/invalid refresh token from consent missing
+            // only for newly requested Chat.Read. Never print token or PII.
+            const baseline=new URLSearchParams({
+              client_id:process.env.MS_CLIENT_ID,
+              grant_type:'refresh_token',
+              refresh_token:process.env.MS_REFRESH_TOKEN,
+              scope:'offline_access https://graph.microsoft.com/ChatMessage.Send https://graph.microsoft.com/User.Read'
+            });
+            if(process.env.MS_CLIENT_SECRET)baseline.set('client_secret',process.env.MS_CLIENT_SECRET);
+            const oldAuth=await fetch('https://login.microsoftonline.com/'+
+              encodeURIComponent(process.env.MS_TENANT_ID)+'/oauth2/v2.0/token',{
+              method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:baseline
+            });
+            if(oldAuth.ok){
+              console.log('ATTENDANCE_BASELINE_REFRESH_TOKEN=VALID');
+              console.log('ATTENDANCE_CHAT_READ_NEW_SCOPE=NOT_CONSENTED_FOR_THIS_OAUTH_CLIENT');
+            }else{
+              const oldError=await oldAuth.json().catch(()=>({}));
+              const oldAadsts=(String(oldError.error_description||'').match(/AADSTS[0-9]{5,7}/)||[])[0]||'unknown';
+              console.log('ATTENDANCE_BASELINE_REFRESH_TOKEN=REJECTED_'+oldAadsts);
+            }
             throw new Error('ATTENDANCE_CHAT_READ_TOKEN_HTTP_'+auth.status+'_'+code+'_'+aadsts);
           }
           const access=String((await auth.json()).access_token||'');

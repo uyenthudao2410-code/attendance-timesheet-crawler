@@ -3,11 +3,12 @@ name: Attendance Crawl
 on:
   workflow_dispatch:
   schedule:
-    # Fixed UTC cron: Viet Nam is UTC+07 year-round, no daylight saving.
-    # 23:00 UTC = 06:00 next calendar day in Asia/Ho_Chi_Minh.
-    - cron: "0 23 * * *"
-    # 06:00 UTC = 13:00 Asia/Ho_Chi_Minh.
+    # Production business times are evaluated in Vietnam's fixed UTC+07 zone.
+    # This cron definition also refreshes the GitHub scheduled workflow actor.
     - cron: "0 6 * * *"
+      timezone: "Asia/Ho_Chi_Minh"
+    - cron: "0 13 * * *"
+      timezone: "Asia/Ho_Chi_Minh"
   push:
     paths:
       - ".github/attendance-rerun-trigger.json"
@@ -46,12 +47,12 @@ jobs:
             requested_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
             case "$cron" in
-              "0 6 * * *")
+              "0 13 * * *")
                 # 13:00 Vietnam time: prepare data for the 13:50 native V24 morning report.
                 run_slot="morning_1230"
                 target_date="$(TZ=Asia/Ho_Chi_Minh date +%F)"
                 ;;
-              "0 23 * * *")
+              "0 6 * * *")
                 # 06:00 Vietnam time: prepare data for the 06:50 native V24 previous-day report.
                 run_slot="daily_2105"
                 target_date="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"

@@ -2,24 +2,16 @@ name: Attendance Producer Watchdog
 
 on:
   schedule:
-    # Three early checks and one post-publication recovery for each V24 slot.
-    # Keep off the top of each hour to reduce GitHub scheduler congestion.
+    # Fixed UTC cron, equivalent to Vietnam 06:12/06:30/06:42/07:10.
+    - cron: "12 23 * * *"
+    - cron: "30 23 * * *"
+    - cron: "42 23 * * *"
+    - cron: "10 0 * * *"
+    # Vietnam 13:12/13:30/13:42/14:10.
     - cron: "12 6 * * *"
-      timezone: "Asia/Ho_Chi_Minh"
     - cron: "30 6 * * *"
-      timezone: "Asia/Ho_Chi_Minh"
     - cron: "42 6 * * *"
-      timezone: "Asia/Ho_Chi_Minh"
     - cron: "10 7 * * *"
-      timezone: "Asia/Ho_Chi_Minh"
-    - cron: "12 13 * * *"
-      timezone: "Asia/Ho_Chi_Minh"
-    - cron: "30 13 * * *"
-      timezone: "Asia/Ho_Chi_Minh"
-    - cron: "42 13 * * *"
-      timezone: "Asia/Ho_Chi_Minh"
-    - cron: "10 14 * * *"
-      timezone: "Asia/Ho_Chi_Minh"
 
 permissions:
   contents: write
@@ -37,6 +29,8 @@ jobs:
       TZ: Asia/Ho_Chi_Minh
       GH_TOKEN: ${{ github.token }}
       WATCHDOG_CRON: ${{ github.event.schedule }}
+      OFFICIAL_TEAMS_TARGET_TYPE: ${{ vars.TEAMS_TARGET_TYPE }}
+      OFFICIAL_TEAMS_CHAT_ID: ${{ vars.TEAMS_CHAT_ID }}
 
     steps:
       - name: Checkout main
@@ -53,11 +47,11 @@ jobs:
           git pull --ff-only origin main
 
           case "$WATCHDOG_CRON" in
-            "12 6 * * *"|"30 6 * * *"|"42 6 * * *"|"10 7 * * *")
+            "12 23 * * *"|"30 23 * * *"|"42 23 * * *"|"10 0 * * *")
               slot="daily_2105"
               target_date="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"
               ;;
-            "12 13 * * *"|"30 13 * * *"|"42 13 * * *"|"10 14 * * *")
+            "12 6 * * *"|"30 6 * * *"|"42 6 * * *"|"10 7 * * *")
               slot="morning_1230"
               target_date="$(TZ=Asia/Ho_Chi_Minh date +%F)"
               ;;
@@ -67,32 +61,67 @@ jobs:
               ;;
           esac
 
+          # These repository variables are the ONLY official destination for native V24.
+          test "$OFFICIAL_TEAMS_TARGET_TYPE" = "chat" || { echo "WATCHDOG_STAGE=invalid_repository_target_type" >&2; exit 1; }
+          test "$OFFICIAL_TEAMS_CHAT_ID" = "19:ccbf6c512a4c4a4192678485255c618e@thread.v2" || {
+            echo "WATCHDOG_STAGE=official_chat_mismatch" >&2
+            exit 1
+          }
+
           receipt_path=".github/attendance-publications/${slot}-${target_date}.json"
           receipt_state="$(RECEIPT_PATH="$receipt_path" node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          let state = 'missing';
-          try {
-            const receipt = JSON.parse(fs.readFileSync(process.env.RECEIPT_PATH, 'utf8'));
-            if (receipt?.status === 'sent') {
-              state = /^\d+$/.test(String(receipt?.message_id || '')) ? 'sent' : 'uncertain';
-            } else if (['sending','uncertain'].includes(String(receipt?.status || ''))) {
-              state = receipt.status;
-            } else if (receipt?.status) {
-              state = String(receipt.status);
-            }
-          } catch {}
+          const official=process.env.OFFICIAL_TEAMS_CHAT_ID;
+          let state='missing';
+          if(fs.existsSync(process.env.RECEIPT_PATH)){
+            try {
+              const receipt=JSON.parse(fs.readFileSync(process.env.RECEIPT_PATH,'utf8'));
+              if(receipt?.status==='sent'){
+                if(!/^\d+$/.test(String(receipt?.message_id||'')))state='uncertain';
+                else if(receipt.target_chat_id!==official ||
+                        (receipt.target_type && receipt.target_type!=='chat'))state='sent_wrong_target';
+                else if(!Number.isFinite(Date.parse(receipt.teams_verified_at||'')))state='sent_unverified';
+                else state='sent_verified';
+              }else if(['sending','uncertain'].includes(receipt?.status))state=receipt.status;
+              else state=String(receipt?.status||'invalid');
+            }catch{state='invalid';}
+          }
           process.stdout.write(state);
           NODE
           )"
 
-          if [ "$receipt_state" = "sent" ]; then
-            echo "WATCHDOG_STATE=publication_receipt_sent slot=$slot target_date=$target_date"
-            exit 0
-          fi
-          if [ "$receipt_state" = "sending" ] || [ "$receipt_state" = "uncertain" ]; then
-            echo "WATCHDOG_STATE=delivery_uncertain_fail_closed slot=$slot target_date=$target_date receipt_status=$receipt_state" >&2
+          if [ "$receipt_state" = "sent_verified" ]; then
+            # Durable receipt proof must ALSO bind to a successful exact GitHub run.
+            publisher_id="$(RECEIPT_PATH="$receipt_path" node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync(process.env.RECEIPT_PATH,'utf8'));
+          process.stdout.write(String(r.publisher_run_id||''));
+          NODE
+          )"
+            if ! [[ "$publisher_id" =~ ^[0-9]+$ ]]; then
+              echo "WATCHDOG_STAGE=receipt_missing_publisher_run_id" >&2
+              exit 1
+            fi
+            run_identity="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${publisher_id}" |
+              jq -r '[(.name // ""),(.head_branch // ""),(.status // ""),(.conclusion // "")] | join("|")')"
+            if [ "$run_identity" = "Attendance Crawl|main|completed|success" ]; then
+              echo "WATCHDOG_STATE=verified_publication_receipt_present slot=$slot date=$target_date run=$publisher_id"
+              exit 0
+            fi
+            if [[ "$run_identity" == "Attendance Crawl|main|queued|" ||
+                  "$run_identity" == "Attendance Crawl|main|in_progress|" ]]; then
+              echo "WATCHDOG_STATE=publisher_pending_completion slot=$slot date=$target_date run=$publisher_id"
+              exit 0
+            fi
+            echo "WATCHDOG_STAGE=publication_run_reconciliation_required slot=$slot date=$target_date run=$publisher_id" >&2
             exit 1
           fi
+          case "$receipt_state" in
+            sending|uncertain|sent_wrong_target|sent_unverified|invalid)
+              echo "WATCHDOG_STAGE=receipt_reconciliation_required slot=$slot target_date=$target_date receipt_state=$receipt_state" >&2
+              exit 1
+              ;;
+          esac
 
           # V24's authoritative state is its Teams publication receipt, not legacy AI producer state.
           # A live crawl run may be waiting until the exact Teams publication minute.
@@ -137,7 +166,7 @@ jobs:
             # Earlier recovery already exists. Only the late watchdog may retry
             # that SAME request, once, after all live runs have finished.
             case "$WATCHDOG_CRON" in
-              "10 7 * * *"|"10 14 * * *")
+              "10 0 * * *"|"10 7 * * *")
                 retry_path=".github/attendance-watchdog-retries/${slot}-${target_date}.json"
                 if [ -e "$retry_path" ]; then
                   echo "WATCHDOG_STATE=post_publication_retry_already_used slot=$slot target_date=$target_date"

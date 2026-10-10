@@ -14,24 +14,26 @@ const publisher=read('scripts/post-native-attendance-production.mjs');
 const cardSource=read('src/attendance-native-card.mjs');
 const io=read('src/attendance-delivery-io.mjs');
 
-test('SCOPE LOCK: V24 scheduled production honors configured Teams destination; design previews use TEST, explicit route checks use configured chat',()=>{
+test('SCOPE LOCK: V24 production allows official Teams chat only; design previews disabled',()=>{
   assert.equal(contract.schema_version,1);
   assert.equal(contract.stage,'production');
   assert.equal(contract.layout,LAYOUT);
   assert.equal(contract.visual_revision,ROW_VISUAL_REVISION);
   assert.equal(contract.timezone,'Asia/Ho_Chi_Minh');
   assert.equal(contract.expected_employees,8);
-  assert.equal(contract.delivery.mode,'configured_chat_or_channel');
-  assert.equal(contract.delivery.production_channel,'GITHUB_ACTIONS_RUNTIME_CONFIG');
+  assert.equal(contract.delivery.mode,'configured_official_group_chat_only');
+  assert.equal(contract.delivery.production_channel,'GITHUB_REPOSITORY_VARIABLES_TEAMS_CHAT_ID');
+  assert.equal(contract.delivery.design_preview_enabled,false);
+  assert.equal(contract.delivery.requires_graph_chat_read,true);
   assert.equal(contract.delivery.test_chat_id,TEST_CHAT);
-  assert.ok(publisher.includes('resolveAttendanceTeamsTarget(process.env,preview&&!routeCheck,TEST_CHAT)'));
+  assert.ok(publisher.includes('resolveAttendanceTeamsTarget(process.env,false,TEST_CHAT)'));
   assert.ok(publisher.includes("if(routeCheck && ("));
   assert.ok(publisher.includes("routeCheck?'attendance_native_adaptive_card_route_check'"));
   assert.ok(publisher.includes('GRAPH+target.endpoint'));
   assert.ok(publisher.includes('ATTENDANCE_ALREADY_SENT_DIFFERENT_TEAMS_DESTINATION_NO_AUTOREPOST'));
   assert.ok(workflow.includes('ATTENDANCE_TEAMS_CHAT_ID:'));
-  assert.ok(workflow.includes('ATTENDANCE_TEAMS_CHANNEL_ID:'));
-  assert.ok(workflow.includes('ATTENDANCE_TEAMS_TEAM_ID:'));
+  assert.ok(!workflow.includes('ATTENDANCE_TEAMS_CHANNEL_ID:'));
+  assert.ok(!workflow.includes('ATTENDANCE_TEAMS_TEAM_ID:'));
   assert.ok(!publisher.includes("GRAPH+'/chats/'+encodeURIComponent(TEST_CHAT)"));
 });
 
@@ -42,10 +44,10 @@ test('SCOPE LOCK: crawler and publisher timing is 06:00->06:50 and 13:00->13:50'
   assert.equal(contract.slots.morning_1230.crawl,'13:00');
   assert.equal(contract.slots.morning_1230.publish,'13:50');
   assert.equal(contract.slots.morning_1230.date_rule,'today');
-  for(const cron of ['0 6 * * *','0 13 * * *']){
+  for(const cron of ['0 23 * * *','0 6 * * *']){
     assert.ok(workflow.includes('cron: "'+cron+'"'));
   }
-  assert.equal(workflow.split('timezone: "Asia/Ho_Chi_Minh"').length-1,2);
+  assert.equal(workflow.includes('timezone: "Asia/Ho_Chi_Minh"'),false);
   assert.ok(workflow.includes('daily_2105) publish_hm="06:50"'));
   assert.ok(workflow.includes('morning_1230) publish_hm="13:50"'));
   assert.ok(workflow.includes("date -d 'yesterday' +%F"));
@@ -80,14 +82,16 @@ test('SCOPE LOCK: source refresh, roster gate, browser fallback and retry are ma
 
 test('SCOPE LOCK: exact-slot watchdog windows remain enabled and fail closed',()=>{
   for(const cron of [
-    '12 6 * * *','30 6 * * *','42 6 * * *','10 7 * * *',
-    '12 13 * * *','30 13 * * *','42 13 * * *','10 14 * * *'
+    '12 23 * * *','30 23 * * *','42 23 * * *','10 0 * * *',
+    '12 6 * * *','30 6 * * *','42 6 * * *','10 7 * * *'
   ]){
     assert.ok(watchdog.includes('cron: "'+cron+'"'));
   }
-  assert.equal(watchdog.split('timezone: "Asia/Ho_Chi_Minh"').length-1,8);
-  assert.ok(watchdog.includes('WATCHDOG_STATE=publication_receipt_sent'));
-  assert.ok(watchdog.includes('WATCHDOG_STATE=delivery_uncertain_fail_closed'));
+  assert.equal(watchdog.includes('timezone: "Asia/Ho_Chi_Minh"'),false);
+  assert.ok(watchdog.includes('WATCHDOG_STATE=verified_publication_receipt_present'));
+  assert.ok(watchdog.includes('WATCHDOG_STAGE=receipt_reconciliation_required'));
+  assert.ok(watchdog.includes('sent_wrong_target'));
+  assert.ok(watchdog.includes('sent_unverified'));
   assert.ok(watchdog.includes('WATCHDOG_STATE=producer_pending'));
   assert.ok(watchdog.includes('post_publication_retry_already_used'));
   assert.ok(watchdog.includes('slot_start="05:45"'));
@@ -135,7 +139,7 @@ test('SCOPE LOCK: no duplicate Teams send when ledger sent or uncertain',()=>{
   assert.ok(pSent>=0&&pUncertain>pSent&&pToken>pUncertain);
   assert.ok(pSending>pToken&&pNetwork>pSending);
   assert.ok(publisher.includes("if(!/^\\d+$/.test(messageId))"));
-  assert.ok(publisher.includes("await mark('sent',{message_id:messageId"));
+  assert.ok(publisher.includes("await mark('sent',{...proof,published_at:"));
   assert.ok(io.includes("if (retrySafe && attempt < 2"));
   assert.equal(contract.delivery.uncertain_fails_closed,true);
 });
@@ -158,9 +162,10 @@ test('SCOPE LOCK: smoke test cannot post Teams or mutate its ledger',()=>{
 });
 
 test('SCOPE LOCK: never accidentally reactivate legacy AI production posting',()=>{
-  assert.ok(workflow.includes('Legacy AI visual pipeline disabled for native V24 production'));
-  assert.ok(workflow.includes('Legacy AI visual validation disabled for native V24 production'));
-  assert.ok(workflow.includes('Legacy AI handoff disabled for native V24 production'));
+  assert.ok(!workflow.includes('build-ai-visual-request.mjs'));
+  assert.ok(!workflow.includes('validate-ai-visual-request.mjs'));
+  assert.ok(!workflow.includes('post-ai-handoff-to-self-chat.mjs'));
+  assert.ok(workflow.includes('Purge private attendance output'));
   assert.ok(!workflow.includes('attendance-ai-post.yml'));
   assert.equal(contract.visuals.uses_image_ai,false);
 });

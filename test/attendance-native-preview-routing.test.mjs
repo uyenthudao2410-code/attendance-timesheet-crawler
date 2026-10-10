@@ -6,53 +6,44 @@ const workflow=fs.readFileSync('.github/workflows/attendance-crawl.yml','utf8');
 const publisher=fs.readFileSync('scripts/post-native-attendance-production.mjs','utf8');
 const watchdog=fs.readFileSync('.github/workflows/attendance-producer-watchdog.yml','utf8');
 
-test('daily and morning preview requests are routed through separate native Teams ledgers',()=>{
-  assert.match(workflow,/design-preview-morning_1230-\*\|design-preview-daily_2105-\*/);
+test('design-preview and legacy AI are disabled in native V24 production',()=>{
+  assert.doesNotMatch(workflow,/design-preview-morning_1230/);
+  assert.doesNotMatch(workflow,/post-ai-handoff-to-self-chat[.]mjs/);
+  assert.match(publisher,/ATTENDANCE_DESIGN_PREVIEW_DISABLED_ROUTE_CHECK_ONLY/);
   assert.match(workflow,/ATTENDANCE_NATIVE_PREVIEW=\$preview/);
-  assert.match(workflow,/case "\$\{ATTENDANCE_RUN_SLOT\}" in[\s\S]*morning_1230\|daily_2105/);
-  assert.match(publisher,/design-preview-\(\?:morning_1230\|daily_2105\)/);
-  assert.match(publisher,/route-check-\(\?:morning_1230\|daily_2105\)/);
-  assert.match(publisher,/routeCheck\?'route-check-':'design-preview-'/);
+  assert.match(publisher,/ATTENDANCE_ALREADY_SENT_DIFFERENT_TEAMS_DESTINATION_NO_AUTOREPOST/);
+  assert.match(publisher,/DELIVERY_UNCERTAIN_RECONCILE_BEFORE_RESEND/);
+});
+
+test('explicit route-check is isolated from immutable production receipts',()=>{
+  assert.match(workflow,/route-check-morning_1230-\*\|route-check-daily_2105-\*/);
   assert.ok(publisher.includes("'.github/attendance-native-previews/'+requestId+'.json'"));
   assert.ok(publisher.includes("'.github/attendance-publications/'+slot+'-'+date+'.json'"));
-  assert.match(publisher,/DELIVERY_UNCERTAIN_RECONCILE_BEFORE_RESEND/);
-  assert.match(publisher,/previous\?\.value\?\.status==='sent'/);
+  assert.ok(publisher.includes('ATTENDANCE_CARD_ALREADY_EXISTS_IN_OFFICIAL_CHAT_NO_RESEND'));
+  assert.ok(publisher.includes('ATTENDANCE_TEAMS_POST_UNVERIFIED_NO_RESEND'));
 });
 
-test('production crawl 06:00/13:00 leads unchanged 06:50/13:50 Teams publication',()=>{
+test('UTC cron correctly preserves VN 06:00 and 13:00 crawl, with 06:50 and 13:50 posting',()=>{
+  assert.match(workflow,/cron: "0 23 \* \* \*"/);
   assert.match(workflow,/cron: "0 6 \* \* \*"/);
-  assert.match(workflow,/cron: "0 13 \* \* \*"/);
-  assert.equal((workflow.match(/timezone: "Asia\/Ho_Chi_Minh"/g)||[]).length,2);
-  assert.match(workflow,/timeout-minutes: 90/);
+  assert.doesNotMatch(workflow,/timezone:/);
+  assert.match(workflow,/daily_2105\) publish_hm="06:50"/);
+  assert.match(workflow,/morning_1230\) publish_hm="13:50"/);
   assert.match(workflow,/wait_seconds" -gt 3600/);
-  assert.match(workflow,/daily_2105\) publish_hm="06:50"/);
-  assert.match(workflow,/morning_1230\) publish_hm="13:50"/);
-  assert.ok(workflow.includes('if [ "${{ github.event_name }}" = "schedule" ]; then'));
-  assert.match(publisher,/TEST_CHAT/);
+  assert.match(workflow,/timeout-minutes: 90/);
   assert.match(publisher,/status:'sending'/);
-  assert.match(publisher,/ATTENDANCE_NATIVE_TEAMS_MESSAGE_ID/);
+  assert.match(publisher,/SUCCESS_VERIFIED/);
 });
 
-
-test('both production slots remain scheduled with native Adaptive Card publishing',()=>{
-  assert.match(workflow,/cron: "0 6 \* \* \*"/);
-  assert.match(workflow,/cron: "0 13 \* \* \*"/);
-  assert.match(workflow,/daily_2105\) publish_hm="06:50"/);
-  assert.match(workflow,/morning_1230\) publish_hm="13:50"/);
-  assert.match(workflow,/node scripts\/post-native-attendance-production\.mjs/);
-  assert.match(publisher,/ATTENDANCE_NATIVE_SCOPE_LAYOUT_GATE_FAILED/);
-});
-
-test('native V24 watchdog has early checks, one late recovery and fail-closed receipt gating',()=>{
-  const crons=[
-    '12 6 * * *','30 6 * * *','42 6 * * *','10 7 * * *',
-    '12 13 * * *','30 13 * * *','42 13 * * *','10 14 * * *'
-  ];
-  for(const cron of crons)assert.ok(watchdog.includes('cron: "'+cron+'"'));
-  assert.equal(watchdog.split('timezone: "Asia/Ho_Chi_Minh"').length-1,8);
-  assert.ok(watchdog.includes("state = /^\\d+$/.test(String(receipt?.message_id || ''))"));
-  assert.ok(watchdog.includes('WATCHDOG_STATE=publication_receipt_sent'));
-  assert.ok(watchdog.includes('WATCHDOG_STATE=delivery_uncertain_fail_closed'));
+test('watchdog checks early, late, correct-target proof and exactly one bounded retry',()=>{
+  for(const cron of ['12 23 * * *','30 23 * * *','42 23 * * *','10 0 * * *',
+    '12 6 * * *','30 6 * * *','42 6 * * *','10 7 * * *']){
+    assert.ok(watchdog.includes('cron: "'+cron+'"'));
+  }
+  assert.doesNotMatch(watchdog,/timezone:/);
+  assert.ok(watchdog.includes('sent_wrong_target'));
+  assert.ok(watchdog.includes('sent_unverified'));
+  assert.ok(watchdog.includes('WATCHDOG_STAGE=receipt_reconciliation_required'));
   assert.ok(watchdog.includes('WATCHDOG_STATE=producer_pending'));
   assert.ok(watchdog.includes('WATCHDOG_STATE=self_heal_already_requested'));
   assert.ok(watchdog.includes('WATCHDOG_STATE=post_publication_retry_already_used'));
@@ -60,7 +51,6 @@ test('native V24 watchdog has early checks, one late recovery and fail-closed re
   assert.ok(watchdog.includes('POST_PUBLICATION_RETRY_TRIGGER_MISMATCH'));
   assert.ok(watchdog.includes('git pull --ff-only origin main'));
   assert.ok(watchdog.includes('/^(?:watchdog-|self-heal-)/.test(id)'));
-  assert.ok(watchdog.indexOf('WATCHDOG_STATE=publication_receipt_sent')<
+  assert.ok(watchdog.indexOf('WATCHDOG_STATE=verified_publication_receipt_present')<
     watchdog.indexOf('request_id="watchdog-'));
-  assert.doesNotMatch(watchdog,/ATTENDANCE_AI_VISUAL_V10/);
 });

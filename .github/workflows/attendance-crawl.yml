@@ -3,13 +3,11 @@ name: Attendance Crawl
 on:
   workflow_dispatch:
   schedule:
-    # Produce 50 minutes before native V24 Teams publication; IANA timezone avoids date confusion.
-    # 06:00 Vietnam time: prepare yesterday's full-day report, publish at 06:50.
+    # Fixed UTC cron: Viet Nam is UTC+07 year-round, no daylight saving.
+    # 23:00 UTC = 06:00 next calendar day in Asia/Ho_Chi_Minh.
+    - cron: "0 23 * * *"
+    # 06:00 UTC = 13:00 Asia/Ho_Chi_Minh.
     - cron: "0 6 * * *"
-      timezone: "Asia/Ho_Chi_Minh"
-    # 13:00 Vietnam time: prepare today's morning report, publish at 13:50.
-    - cron: "0 13 * * *"
-      timezone: "Asia/Ho_Chi_Minh"
   push:
     paths:
       - ".github/attendance-rerun-trigger.json"
@@ -48,12 +46,12 @@ jobs:
             requested_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
             case "$cron" in
-              "0 13 * * *")
+              "0 6 * * *")
                 # 13:00 Vietnam time: prepare data for the 13:50 native V24 morning report.
                 run_slot="morning_1230"
                 target_date="$(TZ=Asia/Ho_Chi_Minh date +%F)"
                 ;;
-              "0 6 * * *")
+              "0 23 * * *")
                 # 06:00 Vietnam time: prepare data for the 06:50 native V24 previous-day report.
                 run_slot="daily_2105"
                 target_date="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"
@@ -253,30 +251,18 @@ jobs:
             auto=true
           else
             case "${ATTENDANCE_REQUEST_ID}" in
-              watchdog-*|self-heal-*) auto=true ;;
-              design-preview-morning_1230-*|design-preview-daily_2105-*)
-                # User-requested design preview always uses a separate receipt.
-                # Publisher validates the exact request ID, slot and target date
-                # before any Teams call; never overwrite production sent ledger.
-                case "${ATTENDANCE_RUN_SLOT}" in
-                  morning_1230|daily_2105) ;;
-                  *) echo "Unsupported V24 design-preview slot" >&2; exit 1 ;;
-                esac
+              watchdog-*|self-heal-*)
                 auto=true
-                preview=true
                 ;;
               route-check-morning_1230-*|route-check-daily_2105-*)
-                # One explicit, source-fresh route verification to the configured
-                # production CHAT. It uses an isolated preview ledger, never
-                # the existing sent production receipt. Design previews still
-                # route only to TEST. Validated again by the publisher.
-                case "${ATTENDANCE_RUN_SLOT}" in
-                  morning_1230|daily_2105) ;;
-                  *) echo "Unsupported configured chat route-check slot" >&2; exit 1 ;;
-                esac
+                # Explicit recovery only, using an isolated receipt and configured chat.
                 auto=true
                 preview=true
                 route_check=true
+                ;;
+              *)
+                echo "Non-native or unsolicited attendance trigger refused: ${ATTENDANCE_REQUEST_ID}" >&2
+                exit 1
                 ;;
             esac
           fi
@@ -375,13 +361,9 @@ jobs:
           MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
           MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
           MS_REFRESH_TOKEN: ${{ secrets.MS_REFRESH_TOKEN }}
-          # A production destination must be explicit. Do not fall back to TEST.
-          # Prefer the exact repository variables TEAMS_CHAT_ID and TEAMS_TARGET_TYPE visible in GitHub settings; fall back to compatible aliases.
-          ATTENDANCE_TEAMS_TARGET_TYPE: ${{ vars.TEAMS_TARGET_TYPE || vars.ATTENDANCE_TEAMS_TARGET_TYPE || secrets.ATTENDANCE_TEAMS_TARGET_TYPE || secrets.TEAMS_TARGET_TYPE }}
-          ATTENDANCE_TEAMS_CHAT_ID: ${{ vars.TEAMS_CHAT_ID || vars.ATTENDANCE_TEAMS_CHAT_ID || secrets.ATTENDANCE_TEAMS_CHAT_ID || secrets.TEAMS_CHAT_ID }}
-          ATTENDANCE_TEAMS_TEAM_ID: ${{ vars.ATTENDANCE_TEAMS_TEAM_ID || secrets.ATTENDANCE_TEAMS_TEAM_ID || vars.TEAMS_TEAM_ID || secrets.TEAMS_TEAM_ID || vars.TEAMS_GROUP_ID || secrets.TEAMS_GROUP_ID }}
-          ATTENDANCE_TEAMS_CHANNEL_ID: ${{ vars.ATTENDANCE_TEAMS_CHANNEL_ID || secrets.ATTENDANCE_TEAMS_CHANNEL_ID || vars.TEAMS_CHANNEL_ID || secrets.TEAMS_CHANNEL_ID }}
-          ATTENDANCE_TEAMS_TARGET_ID: ${{ vars.ATTENDANCE_TEAMS_TARGET_ID || secrets.ATTENDANCE_TEAMS_TARGET_ID || vars.TEAMS_TARGET_ID || secrets.TEAMS_TARGET_ID }}
+          # Production destination comes only from repository variables, no TEST fallback.
+          ATTENDANCE_TEAMS_TARGET_TYPE: ${{ vars.TEAMS_TARGET_TYPE }}
+          ATTENDANCE_TEAMS_CHAT_ID: ${{ vars.TEAMS_CHAT_ID }}
         shell: bash
         run: |
           set -euo pipefail
@@ -391,96 +373,7 @@ jobs:
           fi
           node scripts/post-native-attendance-production.mjs
 
-      - name: Build approved AI visual request bundle
+      - name: Purge private attendance output
+        if: always()
         shell: bash
-        run: |
-          set -euo pipefail
-          if [ "${ATTENDANCE_NATIVE_AUTO_PUBLISH:-false}" = "true" ]; then
-            echo "Legacy AI visual pipeline disabled for native V24 production"
-            exit 0
-          fi
-          node scripts/build-ai-visual-request.mjs
-
-      - name: Validate AI visual request against canonical report
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "${ATTENDANCE_NATIVE_AUTO_PUBLISH:-false}" = "true" ]; then
-            echo "Legacy AI visual validation disabled for native V24 production"
-            exit 0
-          fi
-          node scripts/validate-ai-visual-request.mjs
-
-      - name: Send validated AI prompt to isolated technical handoff chat
-        env:
-          MS_TENANT_ID: ${{ secrets.MS_TENANT_ID }}
-          MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
-          MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
-          MS_REFRESH_TOKEN: ${{ secrets.MS_REFRESH_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "${ATTENDANCE_NATIVE_AUTO_PUBLISH:-false}" = "true" ]; then
-            echo "Legacy AI handoff disabled for native V24 production"
-            exit 0
-          fi
-          node scripts/post-ai-handoff-to-self-chat.mjs
-
-      - name: Encrypt result before artifact upload
-        if: ${{ hashFiles('output/*.json') != '' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          set +x
-          umask 077
-          mkdir -p secure-bundle
-          cp -R output secure-bundle/
-          if [ -d debug ]; then
-            cp -R debug secure-bundle/
-          fi
-          tar -C secure-bundle -czf attendance-payload.tgz .
-          openssl rand -hex 32 > attendance-payload.key
-          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
-            -pass file:attendance-payload.key \
-            -in attendance-payload.tgz \
-            -out attendance-payload.tgz.enc
-          openssl pkeyutl -encrypt -pubin \
-            -inkey .github/attendance-artifact-public.pem \
-            -pkeyopt rsa_padding_mode:oaep \
-            -pkeyopt rsa_oaep_md:sha256 \
-            -in attendance-payload.key \
-            -out attendance-payload.key.enc
-          rm -rf secure-bundle output debug attendance-payload.tgz attendance-payload.key
-
-      - name: Upload encrypted attendance artifact
-        id: upload_artifact
-        if: ${{ hashFiles('attendance-payload.tgz.enc') != '' && hashFiles('attendance-payload.key.enc') != '' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: attendance-encrypted-${{ github.run_id }}
-          path: |
-            attendance-payload.tgz.enc
-            attendance-payload.key.enc
-          retention-days: 3
-          if-no-files-found: error
-
-      - name: Publish request-correlated production run state
-        if: ${{ steps.upload_artifact.outcome == 'success' }}
-        env:
-          ARTIFACT_ID: ${{ steps.upload_artifact.outputs['artifact-id'] }}
-          ARTIFACT_NAME: attendance-encrypted-${{ github.run_id }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "${ATTENDANCE_NATIVE_AUTO_PUBLISH:-false}" = "true" ]; then
-            echo "Native V24 production uses attendance publication receipt as delivery authority; legacy AI producer state update skipped"
-            exit 0
-          fi
-          state_path="$(node scripts/write-producer-state.mjs)"
-          git checkout -- .github/attendance-rerun-trigger.json
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$state_path"
-          git commit -m "state: attendance ${ATTENDANCE_RUN_SLOT} ${TARGET_DATE} ${ATTENDANCE_REQUEST_ID} [skip ci]"
-          git pull --rebase origin main
-          git push origin HEAD:main
+        run: rm -rf output debug secure-bundle attendance-payload*

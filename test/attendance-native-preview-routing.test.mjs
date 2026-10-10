@@ -19,8 +19,9 @@ test('explicit route-check is isolated from immutable production receipts',()=>{
   assert.match(workflow,/route-check-morning_1230-\*\|route-check-daily_2105-\*/);
   assert.ok(publisher.includes("'.github/attendance-native-previews/'+requestId+'.json'"));
   assert.ok(publisher.includes("'.github/attendance-publications/'+slot+'-'+date+'.json'"));
-  assert.ok(publisher.includes('ATTENDANCE_CARD_ALREADY_EXISTS_IN_OFFICIAL_CHAT_NO_RESEND'));
-  assert.ok(publisher.includes('ATTENDANCE_TEAMS_POST_UNVERIFIED_NO_RESEND'));
+  assert.ok(publisher.includes('DELIVERY_UNCERTAIN_NO_AUTOMATIC_RESEND'));
+  assert.doesNotMatch(publisher,/ATTENDANCE_TEAMS_CHAT_READ_PREFLIGHT/);
+  assert.ok(publisher.includes('ATTENDANCE_NATIVE_TEAMS_SEND_GATE=ACKNOWLEDGED'));
 });
 
 test('UTC cron correctly preserves VN 06:00 and 13:00 crawl, with 06:50 and 13:50 posting',()=>{
@@ -32,7 +33,7 @@ test('UTC cron correctly preserves VN 06:00 and 13:00 crawl, with 06:50 and 13:5
   assert.match(workflow,/wait_seconds" -gt 3600/);
   assert.match(workflow,/timeout-minutes: 90/);
   assert.match(publisher,/status:'sending'/);
-  assert.match(publisher,/SUCCESS_VERIFIED/);
+  assert.match(publisher,/GRAPH_POST_ACKNOWLEDGED/);
 });
 
 test('watchdog checks early, late, correct-target proof and exactly one bounded retry',()=>{

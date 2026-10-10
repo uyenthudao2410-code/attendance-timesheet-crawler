@@ -60,6 +60,12 @@ jobs:
           const mandatory=['MS_TENANT_ID','MS_CLIENT_ID','MS_REFRESH_TOKEN'];
           for(const key of mandatory)if(!process.env[key])
             throw new Error('ATTENDANCE_GRAPH_PREFLIGHT_MISSING_'+key);
+          // Identifiers are not credentials. Print only suffixes to make
+          // admin consent/app registration comparisons exact and safe.
+          console.log('ATTENDANCE_OAUTH_CLIENT_ID_SUFFIX='+
+            process.env.MS_CLIENT_ID.slice(-8).toLowerCase());
+          console.log('ATTENDANCE_OAUTH_TENANT_ID_SUFFIX='+
+            process.env.MS_TENANT_ID.slice(-8).toLowerCase());
           const form=new URLSearchParams({
             client_id:process.env.MS_CLIENT_ID,
             grant_type:'refresh_token',

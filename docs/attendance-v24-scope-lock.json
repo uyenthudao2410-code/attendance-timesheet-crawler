@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "contract_id": "ATTENDANCE_V24_OFFICIAL_CHAT_UTC_RECOVERY_2026_10_10",
+  "contract_id": "ATTENDANCE_V24_RESTORED_SEND_ACK_AND_INDEPENDENT_VERIFY_2026_10_10",
   "stage": "production",
   "layout": "ATTENDANCE_MOBILE_NATIVE_V24_BALANCED_INFO_BARS",
   "visual_revision": "V24_BOTH_SHIFTS_REVERSIBLE_DETAILS_2026_10_09",
@@ -54,15 +54,19 @@
     "production_channel": "GITHUB_REPOSITORY_VARIABLES_TEAMS_CHAT_ID",
     "smoke_posts_teams": false,
     "official_chat_id": "19:ccbf6c512a4c4a4192678485255c618e@thread.v2",
-    "requires_graph_chat_read": true,
-    "sent_requires_exact_adaptive_card_readback": true,
+    "requires_graph_chat_read": false,
+    "sent_requires_exact_adaptive_card_readback": false,
     "explicit_route_check_only": true,
     "design_preview_enabled": false,
-    "requires_exact_run_success": true
+    "requires_exact_run_success": true,
+    "requires_message_id_ack": true,
+    "independent_teams_readback_for_final_confirmation": true,
+    "transport_ack_status": "sent"
   },
   "pending_acceptance": [
-    "verify_read_only_Graph_Chat.Read_access_to_official_chat",
-    "verify_verified_sent_receipt_and_Github_run_success",
-    "verify_expand_collapse_in_actual_Teams_mobile_client"
+    "verify_Graph_ChatMessage_Send_without_post",
+    "verify_exact_run_and_delivery_ack_receipt_with_official_target",
+    "independently_check_real_Adaptive_Card_in_official_Teams_chat",
+    "verify_expand_collapse_in_Teams_mobile"
   ]
 }

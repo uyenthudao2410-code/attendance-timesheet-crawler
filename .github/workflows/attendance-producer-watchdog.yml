@@ -91,8 +91,30 @@ jobs:
           )"
 
           if [ "$receipt_state" = "sent_verified" ]; then
-            echo "WATCHDOG_STATE=verified_publication_receipt_present slot=$slot date=$target_date"
-            exit 0
+            # Durable receipt proof must ALSO bind to a successful exact GitHub run.
+            publisher_id="$(RECEIPT_PATH="$receipt_path" node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync(process.env.RECEIPT_PATH,'utf8'));
+          process.stdout.write(String(r.publisher_run_id||''));
+          NODE
+          )"
+            if ! [[ "$publisher_id" =~ ^[0-9]+$ ]]; then
+              echo "WATCHDOG_STAGE=receipt_missing_publisher_run_id" >&2
+              exit 1
+            fi
+            run_identity="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${publisher_id}" |
+              jq -r '[(.name // ""),(.head_branch // ""),(.status // ""),(.conclusion // "")] | join("|")')"
+            if [ "$run_identity" = "Attendance Crawl|main|completed|success" ]; then
+              echo "WATCHDOG_STATE=verified_publication_receipt_present slot=$slot date=$target_date run=$publisher_id"
+              exit 0
+            fi
+            if [[ "$run_identity" == "Attendance Crawl|main|queued|" ||
+                  "$run_identity" == "Attendance Crawl|main|in_progress|" ]]; then
+              echo "WATCHDOG_STATE=publisher_pending_completion slot=$slot date=$target_date run=$publisher_id"
+              exit 0
+            fi
+            echo "WATCHDOG_STAGE=publication_run_reconciliation_required slot=$slot date=$target_date run=$publisher_id" >&2
+            exit 1
           fi
           case "$receipt_state" in
             sending|uncertain|sent_wrong_target|sent_unverified|invalid)

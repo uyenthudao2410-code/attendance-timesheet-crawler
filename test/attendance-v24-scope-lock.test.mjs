@@ -24,7 +24,8 @@ test('SCOPE LOCK: V24 production allows official Teams chat only; design preview
   assert.equal(contract.delivery.mode,'configured_official_group_chat_only');
   assert.equal(contract.delivery.production_channel,'GITHUB_REPOSITORY_VARIABLES_TEAMS_CHAT_ID');
   assert.equal(contract.delivery.design_preview_enabled,false);
-  assert.equal(contract.delivery.requires_graph_chat_read,true);
+  assert.equal(contract.delivery.requires_graph_chat_read,false);
+  assert.equal(contract.delivery.independent_teams_readback_for_final_confirmation,true);
   assert.equal(contract.delivery.test_chat_id,TEST_CHAT);
   assert.ok(publisher.includes('resolveAttendanceTeamsTarget(process.env,false,TEST_CHAT)'));
   assert.ok(publisher.includes("if(routeCheck && ("));
@@ -139,7 +140,8 @@ test('SCOPE LOCK: no duplicate Teams send when ledger sent or uncertain',()=>{
   assert.ok(pSent>=0&&pUncertain>pSent&&pToken>pUncertain);
   assert.ok(pSending>pToken&&pNetwork>pSending);
   assert.ok(publisher.includes("if(!/^\\d+$/.test(messageId))"));
-  assert.ok(publisher.includes("await mark('sent',{...proof,published_at:"));
+  assert.ok(publisher.includes("await mark('sent',{"));
+  assert.ok(publisher.includes("delivery_evidence:'graph_post_2xx_message_id'"));
   assert.ok(io.includes("if (retrySafe && attempt < 2"));
   assert.equal(contract.delivery.uncertain_fails_closed,true);
 });

@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "self-heal-morning_1230-2026-10-10-20261010T070134Z-once",
-  "slot": "morning_1230",
+  "request_id": "self-heal-daily_2105-2026-10-10-20261011-first-recovery",
+  "slot": "daily_2105",
   "target_date": "2026-10-10",
-  "requested_at": "2026-10-10T07:01:34Z",
-  "reason": "One-time production recovery of missing 13:00 morning producer. Require fresh eight-person source gate and native V24 delivery to official Teams chat only; no TEST, no blind resend.",
+  "requested_at": "2026-10-11T00:24:19.499Z",
+  "reason": "11 Oct 2026 missing 06:00 attendance GitHub schedule and 06:50 publication: single recovery. Fresh 8-person crawl, source gating, official BC- Bao cao hinh anh Teams chat only; reject duplicates/TEST.",
   "delivery": {
     "enabled": false
   }

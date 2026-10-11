@@ -85,8 +85,8 @@ test('SCOPE LOCK: source refresh, roster gate, browser fallback and retry are ma
 
 test('SCOPE LOCK: exact-slot watchdog windows remain enabled and fail closed',()=>{
   for(const cron of [
-    '12 23 * * *','30 23 * * *','42 23 * * *','10 0 * * *',
-    '12 6 * * *','30 6 * * *','42 6 * * *','10 7 * * *'
+    '9 23 * * *','12 23 * * *','30 23 * * *','42 23 * * *','10 0 * * *',
+    '9 6 * * *','12 6 * * *','30 6 * * *','42 6 * * *','10 7 * * *'
   ]){
     assert.ok(watchdog.includes('cron: "'+cron+'"'));
   }
@@ -97,6 +97,10 @@ test('SCOPE LOCK: exact-slot watchdog windows remain enabled and fail closed',()
   assert.ok(watchdog.includes('sent_unverified'));
   assert.ok(watchdog.includes('WATCHDOG_STATE=producer_pending'));
   assert.ok(watchdog.includes('post_publication_retry_already_used'));
+  assert.ok(watchdog.includes('WATCHDOG_STATE=stale_schedule_ignored'));
+  assert.ok(watchdog.includes('now_hm'));
+  assert.ok(watchdog.includes('10#$now_hm > 800'));
+  assert.ok(watchdog.includes('10#$now_hm > 1500'));
   assert.ok(watchdog.includes('slot_start="05:45"'));
   assert.ok(watchdog.includes('slot_start="12:45"'));
 });

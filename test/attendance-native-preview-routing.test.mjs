@@ -41,8 +41,8 @@ test('fixed UTC cron preserves 06:00 and 13:00 Vietnam crawl, with 06:50 and 13:
 });
 
 test('watchdog checks early, late, correct-target proof and exactly one bounded retry',()=>{
-  for(const cron of ['12 23 * * *','30 23 * * *','42 23 * * *','10 0 * * *',
-    '12 6 * * *','30 6 * * *','42 6 * * *','10 7 * * *']){
+  for(const cron of ['9 23 * * *','12 23 * * *','30 23 * * *','42 23 * * *','10 0 * * *',
+    '9 6 * * *','12 6 * * *','30 6 * * *','42 6 * * *','10 7 * * *']){
     assert.ok(watchdog.includes('cron: "'+cron+'"'));
   }
   assert.doesNotMatch(watchdog,/timezone:/);
@@ -51,6 +51,7 @@ test('watchdog checks early, late, correct-target proof and exactly one bounded 
   assert.ok(watchdog.includes('WATCHDOG_STAGE=receipt_reconciliation_required'));
   assert.ok(watchdog.includes('WATCHDOG_STATE=producer_pending'));
   assert.ok(watchdog.includes('WATCHDOG_STATE=self_heal_already_requested'));
+  assert.ok(watchdog.includes('WATCHDOG_STATE=stale_schedule_ignored'));
   assert.ok(watchdog.includes('WATCHDOG_STATE=post_publication_retry_already_used'));
   assert.ok(watchdog.includes('WATCHDOG_STATE=existing_request_redispatched_once'));
   assert.ok(watchdog.includes('POST_PUBLICATION_RETRY_TRIGGER_MISMATCH'));

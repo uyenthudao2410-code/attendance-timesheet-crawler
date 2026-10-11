@@ -2,12 +2,17 @@ name: Attendance Producer Watchdog
 
 on:
   schedule:
+    # Off-peak 06:09/13:09 guard: Github schedule may drop runs at :00.
+    # Independent ChatGPT tasks also guard 06:16/13:16.
+    # All cron values below are in UTC; local time is UTC+07.
+    - cron: "9 23 * * *"
     # Fixed UTC cron, equivalent to Vietnam 06:12/06:30/06:42/07:10.
     - cron: "12 23 * * *"
     - cron: "30 23 * * *"
     - cron: "42 23 * * *"
     - cron: "10 0 * * *"
-    # Vietnam 13:12/13:30/13:42/14:10.
+    # Vietnam 13:09/13:12/13:30/13:42/14:10.
+    - cron: "9 6 * * *"
     - cron: "12 6 * * *"
     - cron: "30 6 * * *"
     - cron: "42 6 * * *"
@@ -47,17 +52,36 @@ jobs:
           git pull --ff-only origin main
 
           case "$WATCHDOG_CRON" in
-            "12 23 * * *"|"30 23 * * *"|"42 23 * * *"|"10 0 * * *")
+            "9 23 * * *"|"12 23 * * *"|"30 23 * * *"|"42 23 * * *"|"10 0 * * *")
               slot="daily_2105"
               target_date="$(TZ=Asia/Ho_Chi_Minh date -d 'yesterday' +%F)"
               ;;
-            "12 6 * * *"|"30 6 * * *"|"42 6 * * *"|"10 7 * * *")
+            "9 6 * * *"|"12 6 * * *"|"30 6 * * *"|"42 6 * * *"|"10 7 * * *")
               slot="morning_1230"
               target_date="$(TZ=Asia/Ho_Chi_Minh date +%F)"
               ;;
             *)
               echo "Unsupported watchdog schedule: $WATCHDOG_CRON" >&2
               exit 1
+              ;;
+          esac
+
+          # GitHub's schedule queue can run HOURS late. A deferred watchdog must
+          # never silently post today's report in the evening or use an unrelated
+          # local-date target after the intended publication window.
+          now_hm="$(TZ=Asia/Ho_Chi_Minh date +%H%M)"
+          case "$slot" in
+            daily_2105)
+              if (( 10#$now_hm < 555 || 10#$now_hm > 800 )); then
+                echo "WATCHDOG_STATE=stale_schedule_ignored slot=$slot local_hm=$now_hm"
+                exit 0
+              fi
+              ;;
+            morning_1230)
+              if (( 10#$now_hm < 1255 || 10#$now_hm > 1500 )); then
+                echo "WATCHDOG_STATE=stale_schedule_ignored slot=$slot local_hm=$now_hm"
+                exit 0
+              fi
               ;;
           esac
 

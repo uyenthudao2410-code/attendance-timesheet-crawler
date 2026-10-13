@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "self-heal-morning_1230-2026-10-12-20261012T070640Z-once",
-  "slot": "morning_1230",
+  "request_id": "self-heal-daily_2105-2026-10-12-20261013T000308Z-once",
+  "slot": "daily_2105",
   "target_date": "2026-10-12",
-  "requested_at": "2026-10-12T07:06:40Z",
-  "reason": "Recover missed 13:00 morning attendance for 12/10/2026. Trigger GitHub native V24 only; final eight-person recrawl and freshness/source gate; official chat 19:ccbf6c512a4c4a4192678485255c618e@thread.v2 via repo variables only. No TEST, no direct Teams post, fail closed on existing receipt/uncertain, no duplicate.",
+  "requested_at": "2026-10-13T00:03:08.182Z",
+  "reason": "Single recovery of missing 2026-10-12 previous-day native V24 attendance publication: fresh crawl all 8 employees, source freshness/quality gates, Teams official chat strictly from repository variables, no TEST or direct posting, deduplicate against receipt.",
   "delivery": {
     "enabled": false
   }

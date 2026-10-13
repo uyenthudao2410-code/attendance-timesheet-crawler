@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "self-heal-morning_1230-2026-10-13-20261013T064510Z-once",
-  "slot": "morning_1230",
+  "request_id": "self-heal-daily_2105-2026-10-13-20261013T235404110Z-once",
+  "slot": "daily_2105",
   "target_date": "2026-10-13",
-  "requested_at": "2026-10-13T06:45:10.743Z",
-  "reason": "Manual user-requested recovery: launch one fresh 8-employee morning crawl for 13/10/2026, enforce final freshness/source gate, publish native V24 only to locked official Teams chat 19:ccbf6c512a4c4a4192678485255c618e@thread.v2 via repository variables; never TEST; fail closed for any existing receipt or ambiguous send.",
+  "requested_at": "2026-10-13T23:54:04.110Z",
+  "reason": "Self-heal one missing daily_2105 previous-day report for 2026-10-13: fresh eight-person crawl, source quality/freshness gates and V24 publication only to repository-variable configured official Teams chat; no TEST, no ChatGPT-direct post, fail closed against duplicates or uncertain receipts.",
   "delivery": {
     "enabled": false
   }

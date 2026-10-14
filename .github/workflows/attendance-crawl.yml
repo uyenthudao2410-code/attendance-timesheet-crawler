@@ -373,6 +373,20 @@ jobs:
           fi
           node scripts/post-native-attendance-production.mjs
 
+      - name: Upload business report for dashboard ingestion
+        # Feeds the private attendance dashboard. Additive only: runs after
+        # Teams publication and before the purge. Best-effort, never fails
+        # the run: the dashboard ingestion job downloads this artifact within
+        # minutes and deletes it afterwards.
+        if: ${{ env.ATTENDANCE_NATIVE_AUTO_PUBLISH == 'true' && env.ATTENDANCE_NATIVE_ROUTE_CHECK != 'true' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: attendance-report-${{ env.ATTENDANCE_RUN_SLOT }}-${{ env.TARGET_DATE }}
+          path: output/report-${{ env.ATTENDANCE_RUN_SLOT }}-${{ env.TARGET_DATE }}.json
+          retention-days: 1
+          if-no-files-found: warn
+
       - name: Purge private attendance output
         if: always()
         shell: bash

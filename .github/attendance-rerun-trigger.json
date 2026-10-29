@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "request_id": "watchdog-daily_2105-2026-10-28-20261028T225805Z-once",
-  "slot": "daily_2105",
-  "target_date": "2026-10-28",
-  "requested_at": "2026-10-28T22:58:05.550Z",
-  "reason": "Reliable scheduler trigger (previous-day full report) for 2026-10-28: GitHub schedule events were observed 2.5-8h late, so this push trigger starts the Attendance Crawl workflow immediately. Fresh eight-person crawl, source quality/freshness gates and V24 publication only to the repository-variable configured official Teams chat; no TEST, no design change, fail closed against duplicates via the publication receipt.",
+  "request_id": "watchdog-morning_1230-2026-10-29-20261029T055804Z-once",
+  "slot": "morning_1230",
+  "target_date": "2026-10-29",
+  "requested_at": "2026-10-29T05:58:04.136Z",
+  "reason": "Reliable scheduler trigger (current-day morning report) for 2026-10-29: GitHub schedule events were observed 2.5-8h late, so this push trigger starts the Attendance Crawl workflow immediately. Fresh eight-person crawl, source quality/freshness gates and V24 publication only to the repository-variable configured official Teams chat; no TEST, no design change, fail closed against duplicates via the publication receipt.",
   "delivery": {
     "enabled": false
   }
